@@ -46,6 +46,10 @@
             "Microsoft.Data.Sqlite": {
               "target": "Package",
               "version": "[10.0.10, )"
+            },
+            "System.IO.Ports": {
+              "target": "Package",
+              "version": "[10.0.10, )"
             }
           },
           "imports": [
