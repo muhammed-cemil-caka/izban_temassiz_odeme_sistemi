@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using IzbanKioskApp.Core;
 using IzbanKioskApp.UI;
 
 namespace IzbanKioskApp
@@ -8,9 +9,13 @@ namespace IzbanKioskApp
     {
         static void Main(string[] args)
         {
-            // 1. EKRAN: ANA EKRAN (KART BEKLENİYOR)
+            // 0. Yerel Veritabanını Başlat
+            DatabaseService.InitializeDatabase();
+            Thread.Sleep(1000);
+
+            // 1. EKRAN: ANA EKRAN
             KioskScreenManager.RenderScreen(KioskState.Idle);
-            Thread.Sleep(2000); // Kart okunma simülasyonu
+            Thread.Sleep(1500);
 
             string cardUid = "35-IZM-9921";
             decimal currentBalance = 45.50m;
@@ -31,17 +36,21 @@ namespace IzbanKioskApp
 
             // 3. EKRAN: POS ÖDEME BEKLENİYOR
             KioskScreenManager.RenderScreen(KioskState.PaymentPending, amount: selectedAmount);
-            Thread.Sleep(2500); // POS ödeme simülasyonu
+            Thread.Sleep(2000);
+            string approvalCode = "PROV_" + new Random().Next(100000, 999999);
 
             // 4. EKRAN: KARTA BAKIYE YAZILIYOR
             KioskScreenManager.RenderScreen(KioskState.WritingCard);
-            Thread.Sleep(2000); // NFC karta yazma simülasyonu
+            Thread.Sleep(1500);
 
-            // 5. EKRAN: BAŞARILI
+            // 5. YEREL VERİTABANINA LOG YAZ (FAIL-SAFE / OFFLINE LOG)
+            DatabaseService.LogTransaction(cardUid, selectedAmount, approvalCode, "SUCCESS");
+
+            // 6. EKRAN: BAŞARILI
             decimal newBalance = currentBalance + selectedAmount;
             KioskScreenManager.RenderScreen(KioskState.Success, balance: newBalance);
 
-            Console.WriteLine("\n[Sistem] 5 saniye sonra Ana Ekran'a dönülecek...");
+            Console.WriteLine("\n[Sistem] 3 saniye sonra Ana Ekran'a dönülecek...");
             Thread.Sleep(3000);
         }
     }
