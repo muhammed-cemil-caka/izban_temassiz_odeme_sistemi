@@ -1,117 +1,48 @@
 ﻿using System;
 using System.Threading;
+using IzbanKioskApp.UI;
 
 namespace IzbanKioskApp
 {
-    // --- DONANIM ARAYÜZLERİ VEYA SİMÜLATÖRLERİ ---
-    public interface ICardReader
-    {
-        bool Connect(string portName);
-        (string CardUid, decimal CurrentBalance) ReadCard();
-        bool WriteBalance(string cardUid, decimal newBalance);
-    }
-
-    public interface IPosTerminal
-    {
-        bool Connect(string portOrIp);
-        bool ProcessPayment(decimal amount, out string approvalCode);
-    }
-
-    public class MockCardReader : ICardReader
-    {
-        public bool Connect(string portName)
-        {
-            Console.WriteLine($"[DONANIM] İzmirim Kart okuyucuya bağlanıldı ({portName})...");
-            return true;
-        }
-
-        public (string CardUid, decimal CurrentBalance) ReadCard()
-        {
-            Console.WriteLine("[DONANIM] İzmirim Kart bekleniyor...");
-            Thread.Sleep(1000);
-            return ("35-IZM-9921", 45.50m);
-        }
-
-        public bool WriteBalance(string cardUid, decimal newBalance)
-        {
-            Console.WriteLine($"[DONANIM] Kart UID: {cardUid} üzerine yeni bakiye yazılıyor ({newBalance} TL)...");
-            Thread.Sleep(1200);
-            return true;
-        }
-    }
-
-    public class MockPosTerminal : IPosTerminal
-    {
-        public bool Connect(string portOrIp)
-        {
-            Console.WriteLine($"[DONANIM] POS Cihazına bağlanıldı ({portOrIp})...");
-            return true;
-        }
-
-        public bool ProcessPayment(decimal amount, out string approvalCode)
-        {
-            Console.WriteLine($"[POS] {amount} TL tutarında temassız ödeme bekleniyor. Kartınızı POS'a yaklaştırın...");
-            Thread.Sleep(2000);
-            approvalCode = "PROV_" + new Random().Next(100000, 999999);
-            Console.WriteLine($"[POS] Ödeme Onaylandı! Onay Kodu: {approvalCode}");
-            return true;
-        }
-    }
-
-    // --- UYGULAMA GİRİŞ NOKTASI ---
     internal class Program
     {
         static void Main(string[] args)
         {
-            Console.Clear();
-            Console.WriteLine("==================================================");
-            Console.WriteLine("  İZBAN KIOSK BAKİYE YÜKLEME SİSTEMİ (PROTOTİP v1) ");
-            Console.WriteLine("==================================================\n");
+            // 1. EKRAN: ANA EKRAN (KART BEKLENİYOR)
+            KioskScreenManager.RenderScreen(KioskState.Idle);
+            Thread.Sleep(2000); // Kart okunma simülasyonu
 
-            ICardReader cardReader = new MockCardReader();
-            IPosTerminal posTerminal = new MockPosTerminal();
+            string cardUid = "35-IZM-9921";
+            decimal currentBalance = 45.50m;
 
-            cardReader.Connect("COM3");
-            posTerminal.Connect("192.168.1.100");
-
-            Console.WriteLine("\n--- İŞLEM BAŞLIYOR ---");
-
-            // 1. Kart Okuma
-            var cardData = cardReader.ReadCard();
-            Console.WriteLine($"\n[KART OKUNDU] Kart No: {cardData.CardUid} | Mevcut Bakiye: {cardData.CurrentBalance} TL");
-
-            // 2. Tutar Seçimi
-            Console.WriteLine("\nYüklemek istediğiniz tutarı seçin:");
-            Console.WriteLine("1 - 20 TL | 2 - 50 TL | 3 - 100 TL | 4 - 200 TL");
-            Console.Write("Seçim (1-4): ");
+            // 2. EKRAN: TUTAR SEÇİMİ
+            KioskScreenManager.RenderScreen(KioskState.AmountSelect, balance: currentBalance);
+            Console.Write("\n[Dokunmatik Ekran Simülasyonu] Seçiminiz (1: 20TL, 2: 50TL, 3: 100TL, 4: 200TL): ");
             string input = Console.ReadLine();
-            decimal amount = input switch { "1" => 20m, "2" => 50m, "3" => 100m, "4" => 200m, _ => 50m };
 
-            // 3. POS Ödemesi
-            Console.WriteLine($"\n[ÖDEME] {amount} TL POS cihazına gönderiliyor...");
-            bool isPaid = posTerminal.ProcessPayment(amount, out string provCode);
-
-            if (isPaid)
+            decimal selectedAmount = input switch
             {
-                // 4. Karta Bakiye Yazma
-                decimal newTotal = cardData.CurrentBalance + amount;
-                bool isWritten = cardReader.WriteBalance(cardData.CardUid, newTotal);
+                "1" => 20m,
+                "2" => 50m,
+                "3" => 100m,
+                "4" => 200m,
+                _ => 50m
+            };
 
-                if (isWritten)
-                {
-                    Console.WriteLine("\n==================================================");
-                    Console.WriteLine($" BAŞARILI! İşlem Tamamlandı. Yeni Bakiye: {newTotal} TL");
-                    Console.WriteLine("==================================================");
-                }
-                else
-                {
-                    Console.WriteLine("\n[HATA] Karta yazma başarısız! POS ödemesi iptal ediliyor (Auto-Void)...");
-                }
-            }
-            else
-            {
-                Console.WriteLine("\n[HATA] Ödeme alınamadı!");
-            }
+            // 3. EKRAN: POS ÖDEME BEKLENİYOR
+            KioskScreenManager.RenderScreen(KioskState.PaymentPending, amount: selectedAmount);
+            Thread.Sleep(2500); // POS ödeme simülasyonu
+
+            // 4. EKRAN: KARTA BAKIYE YAZILIYOR
+            KioskScreenManager.RenderScreen(KioskState.WritingCard);
+            Thread.Sleep(2000); // NFC karta yazma simülasyonu
+
+            // 5. EKRAN: BAŞARILI
+            decimal newBalance = currentBalance + selectedAmount;
+            KioskScreenManager.RenderScreen(KioskState.Success, balance: newBalance);
+
+            Console.WriteLine("\n[Sistem] 5 saniye sonra Ana Ekran'a dönülecek...");
+            Thread.Sleep(3000);
         }
     }
 }
