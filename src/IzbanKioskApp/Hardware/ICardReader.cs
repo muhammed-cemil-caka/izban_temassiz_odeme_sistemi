@@ -1,4 +1,4 @@
-namespace IzbanKioskApp.Hardware
+﻿namespace IzbanKioskApp.Hardware
 {
     public interface ICardReader
     {

@@ -1,0 +1,781 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="IzbanKioskApp.MainWindow"
+        Title="İZBAN Kiosk Bakiye Yükleme"
+        WindowState="Maximized"
+        SystemDecorations="None"
+        WindowStartupLocation="CenterScreen"
+        FontFamily="Segoe UI, SF Pro Display, Helvetica Neue, Arial, sans-serif">
+
+    <Window.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Offset="0.0" Color="#F8FAFC"/>
+            <GradientStop Offset="1.0" Color="#E2E8F0"/>
+        </LinearGradientBrush>
+    </Window.Background>
+
+    <Window.Styles>
+        <!-- Glassmorphism Light Panel style -->
+        <Style Selector="Border.glass-panel">
+            <Setter Property="Background" Value="#F1F5F9"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="CornerRadius" Value="20"/>
+            <Setter Property="BoxShadow" Value="0 8 20 0 #15000000"/>
+        </Style>
+
+        <!-- Amount Button style -->
+        <Style Selector="Button.amount-btn">
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#2563EB"/>
+            <Setter Property="BorderThickness" Value="3"/>
+            <Setter Property="CornerRadius" Value="16"/>
+            <Setter Property="Padding" Value="25,18"/>
+            <Setter Property="ClipToBounds" Value="False"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25" Easing="CubicEaseOut"/>
+                    <BrushTransition Property="Background" Duration="0:0:0.2"/>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.2"/>
+                </Transitions>
+            </Setter>
+            <Setter Property="RenderTransform" Value="none"/>
+        </Style>
+        <Style Selector="Button.amount-btn:pointerover">
+            <Setter Property="Background" Value="#2563EB"/>
+            <Setter Property="BorderBrush" Value="#1E4ED8"/>
+            <Setter Property="RenderTransform" Value="scale(1.04)"/>
+        </Style>
+        <Style Selector="Button.amount-btn:pressed">
+            <Setter Property="Background" Value="#1D4ED8"/>
+            <Setter Property="RenderTransform" Value="scale(0.96)"/>
+        </Style>
+
+        <!-- Generic Action Button style -->
+        <Style Selector="Button.action-btn">
+            <Setter Property="Background" Value="#2563EB"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="20,12"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.2" Easing="CubicEaseOut"/>
+                    <BrushTransition Property="Background" Duration="0:0:0.2"/>
+                </Transitions>
+            </Setter>
+            <Setter Property="RenderTransform" Value="none"/>
+        </Style>
+        <Style Selector="Button.action-btn:pointerover">
+            <Setter Property="Background" Value="#1D4ED8"/>
+            <Setter Property="RenderTransform" Value="scale(1.04)"/>
+        </Style>
+        <Style Selector="Button.action-btn:pressed">
+            <Setter Property="Background" Value="#1E3A8A"/>
+            <Setter Property="RenderTransform" Value="scale(0.96)"/>
+        </Style>
+
+        <!-- Numpad Button style (Enlarged + 3D tactile depth) -->
+        <Style Selector="Button.numpad-btn">
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="Foreground" Value="#0F172A"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+            <Setter Property="BorderThickness" Value="0,0,0,4"/>
+            <Setter Property="FontSize" Value="34"/>
+            <Setter Property="FontWeight" Value="Black"/>
+            <Setter Property="CornerRadius" Value="16"/>
+            <Setter Property="Margin" Value="8"/>
+            <Setter Property="Width" Value="130"/>
+            <Setter Property="Height" Value="95"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+            <Setter Property="RenderTransform" Value="none"/>
+        </Style>
+        <Style Selector="Button.numpad-btn /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BoxShadow" Value="0 5 10 -2 #15000000, 0 3 6 -3 #10000000"/>
+        </Style>
+        <Style Selector="Button.numpad-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#F8FAFC"/>
+            <Setter Property="BorderBrush" Value="#94A3B8"/>
+            <Setter Property="BorderThickness" Value="0,0,0,4"/>
+            <Setter Property="Foreground" Value="#1E293B"/>
+            <Setter Property="BoxShadow" Value="0 5 10 -2 #15000000, 0 3 6 -3 #10000000"/>
+        </Style>
+        <Style Selector="Button.numpad-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#E2E8F0"/>
+            <Setter Property="BorderBrush" Value="#64748B"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="Foreground" Value="#1E293B"/>
+        </Style>
+
+        <!-- Kapat, Delete & Confirm Buttons Style (TACTILE 3D) -->
+        <Style Selector="Button.numpad-btn-action">
+            <Setter Property="FontWeight" Value="Black"/>
+            <Setter Property="FontSize" Value="30"/>
+            <Setter Property="CornerRadius" Value="16"/>
+            <Setter Property="Margin" Value="8"/>
+            <Setter Property="Width" Value="130"/>
+            <Setter Property="Height" Value="95"/>
+            <Setter Property="BorderThickness" Value="0,0,0,4"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+            <Setter Property="RenderTransform" Value="none"/>
+        </Style>
+        <Style Selector="Button.numpad-btn-action /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BoxShadow" Value="0 5 10 -2 #15000000, 0 3 6 -3 #10000000"/>
+        </Style>
+        <Style Selector="Button.numpad-btn-action:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderThickness" Value="0,0,0,4"/>
+            <Setter Property="BoxShadow" Value="0 5 10 -2 #15000000, 0 3 6 -3 #10000000"/>
+        </Style>
+        <Style Selector="Button.numpad-btn-action:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        </Style>
+
+        <!-- 3D style for Action Buttons -->
+        <Style Selector="Button.action-btn">
+            <Setter Property="Background" Value="#2563EB"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="25,12"/>
+            <Setter Property="BorderThickness" Value="0,0,0,4"/>
+            <Setter Property="BorderBrush" Value="#1E3A8A"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.2" Easing="CubicEaseOut"/>
+                    <BrushTransition Property="Background" Duration="0:0:0.2"/>
+                </Transitions>
+            </Setter>
+            <Setter Property="RenderTransform" Value="none"/>
+        </Style>
+        <Style Selector="Button.action-btn /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BoxShadow" Value="0 5 10 -2 #20000000"/>
+        </Style>
+        <Style Selector="Button.action-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#3B82F6"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#1D4ED8"/>
+            <Setter Property="BorderThickness" Value="0,0,0,4"/>
+            <Setter Property="BoxShadow" Value="0 5 10 -2 #20000000"/>
+        </Style>
+        <Style Selector="Button.action-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#1D4ED8"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#1E3B8A"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        </Style>
+
+        <!-- 3D style for Amount Buttons -->
+        <Style Selector="Button.amount-btn">
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+            <Setter Property="BorderThickness" Value="0,0,0,4"/>
+            <Setter Property="CornerRadius" Value="16"/>
+            <Setter Property="Padding" Value="25,18"/>
+            <Setter Property="ClipToBounds" Value="False"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25" Easing="CubicEaseOut"/>
+                    <BrushTransition Property="Background" Duration="0:0:0.2"/>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.2"/>
+                </Transitions>
+            </Setter>
+            <Setter Property="RenderTransform" Value="none"/>
+        </Style>
+        <Style Selector="Button.amount-btn /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BoxShadow" Value="0 5 10 -2 #12000000"/>
+        </Style>
+        <Style Selector="Button.amount-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#F8FAFC"/>
+            <Setter Property="BorderBrush" Value="#2563EB"/>
+            <Setter Property="BorderThickness" Value="0,0,0,4"/>
+            <Setter Property="BoxShadow" Value="0 5 10 -2 #12000000"/>
+        </Style>
+        <Style Selector="Button.amount-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#E2E8F0"/>
+            <Setter Property="BorderBrush" Value="#1D4ED8"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        </Style>
+
+        <!-- Pulse Card Animation (Blinking / Breathing glow) -->
+        <Style Selector="Border.pulse-card">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.3"/>
+                </Transitions>
+            </Setter>
+            <Style.Animations>
+                <Animation Duration="0:0:2.5" IterationCount="Infinite" Easing="SineEaseInOut">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="BoxShadow" Value="0 0 15 2 #402563EB"/>
+                        <Setter Property="ScaleTransform.ScaleX" Value="1.00"/>
+                        <Setter Property="ScaleTransform.ScaleY" Value="1.00"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="50%">
+                        <Setter Property="BoxShadow" Value="0 0 35 10 #A02563EB"/>
+                        <Setter Property="ScaleTransform.ScaleX" Value="1.03"/>
+                        <Setter Property="ScaleTransform.ScaleY" Value="1.03"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="BoxShadow" Value="0 0 15 2 #402563EB"/>
+                        <Setter Property="ScaleTransform.ScaleX" Value="1.00"/>
+                        <Setter Property="ScaleTransform.ScaleY" Value="1.00"/>
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <!-- Spinner rotation -->
+        <Style Selector="Ellipse.spinner-ring">
+            <Style.Animations>
+                <Animation Duration="0:0:1.5" IterationCount="Infinite" Easing="LinearEasing">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="RotateTransform.Angle" Value="0"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="RotateTransform.Angle" Value="360"/>
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+
+        <!-- Header Button Style (Dil / Yardım) with 3D tactile borders & Scale Animation -->
+        <Style Selector="Button.header-btn">
+            <Setter Property="BorderThickness" Value="0,0,0,3"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+            <Setter Property="RenderTransform" Value="none"/>
+        </Style>
+        <Style Selector="Button.header-btn /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BoxShadow" Value="0 3 6 -1 #15000000"/>
+        </Style>
+        <Style Selector="Button.header-btn:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1.05) translate(0px, -2px)"/>
+        </Style>
+        <Style Selector="Button.header-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BoxShadow" Value="0 5 10 -2 #20000000"/>
+        </Style>
+        <Style Selector="Button.header-btn:pressed">
+            <Setter Property="RenderTransform" Value="scale(0.98) translate(0px, 1px)"/>
+        </Style>
+        <Style Selector="Button.header-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        </Style>
+
+        <!-- Specific overrides for LanguageToggleBtn & HelpBtn -->
+        <Style Selector="Button#LanguageToggleBtn">
+            <Setter Property="Background" Value="#E2E8F0"/>
+            <Setter Property="BorderBrush" Value="#94A3B8"/>
+            <Setter Property="Foreground" Value="#0F172A"/>
+        </Style>
+        <Style Selector="Button#LanguageToggleBtn /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#E2E8F0"/>
+            <Setter Property="BorderBrush" Value="#94A3B8"/>
+            <Setter Property="Foreground" Value="#0F172A"/>
+        </Style>
+        <Style Selector="Button#LanguageToggleBtn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#D1D5DB"/>
+            <Setter Property="BorderBrush" Value="#64748B"/>
+            <Setter Property="Foreground" Value="#0F172A"/>
+        </Style>
+        <Style Selector="Button#LanguageToggleBtn:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#94A3B8"/>
+            <Setter Property="BorderBrush" Value="#475569"/>
+            <Setter Property="Foreground" Value="#0F172A"/>
+        </Style>
+
+        <Style Selector="Button#HelpBtn">
+            <Setter Property="Background" Value="#FBBF24"/>
+            <Setter Property="BorderBrush" Value="#D97706"/>
+            <Setter Property="Foreground" Value="#0F172A"/>
+        </Style>
+        <Style Selector="Button#HelpBtn /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#FBBF24"/>
+            <Setter Property="BorderBrush" Value="#D97706"/>
+            <Setter Property="Foreground" Value="#0F172A"/>
+        </Style>
+        <Style Selector="Button#HelpBtn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#F59E0B"/>
+            <Setter Property="BorderBrush" Value="#B45309"/>
+            <Setter Property="Foreground" Value="#0F172A"/>
+        </Style>
+        <Style Selector="Button#HelpBtn:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#D97706"/>
+            <Setter Property="BorderBrush" Value="#92400E"/>
+            <Setter Property="Foreground" Value="#0F172A"/>
+        </Style>
+
+        <!-- Kapat Button Target Styles -->
+        <Style Selector="Button#CloseHelpBtn">
+            <Setter Property="Background" Value="#1E293B"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Padding" Value="20,10"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button#CloseHelpBtn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#0F172A"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style Selector="Button#CloseHelpBtn:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#020617"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+
+        <!-- Screen Panel Transition (Fade & Zoom in when visible) -->
+        <Style Selector="Grid.screen-panel[IsVisible=True]">
+            <Style.Animations>
+                <Animation Duration="0:0:0.35" Easing="CubicEaseOut">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="0.0"/>
+                        <Setter Property="ScaleTransform.ScaleX" Value="0.97"/>
+                        <Setter Property="ScaleTransform.ScaleY" Value="0.97"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="1.0"/>
+                        <Setter Property="ScaleTransform.ScaleX" Value="1.00"/>
+                        <Setter Property="ScaleTransform.ScaleY" Value="1.00"/>
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        <!-- ==================== HEADER ==================== -->
+        <Border Grid.Row="0" Margin="20,15,20,10" Height="80" CornerRadius="16" BorderBrush="#CBD5E1" BorderThickness="0,0,0,4" BoxShadow="0 6 16 0 #25000000">
+            <Border.Background>
+                <SolidColorBrush Color="#EEF2F6"/>
+            </Border.Background>
+            <Grid ColumnDefinitions="*,Auto,*" Margin="25,0">
+                <!-- Left: Station Info -->
+                <StackPanel Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Left" Spacing="4">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Ellipse Width="10" Height="10" Fill="#2563EB"/>
+                        <TextBlock x:Name="HeaderStationText" Text="ALSANCAK İSTASYONU" Foreground="#0F172A" FontSize="18" FontWeight="Bold" LetterSpacing="1"/>
+                    </StackPanel>
+                    <TextBlock x:Name="HeaderKioskStatusText" Text="Kiosk ID: #0482 / Hat Durumu: Normal" Foreground="#475569" FontSize="12"/>
+                </StackPanel>
+
+                <!-- Center: İZBAN Logo Area (Pulsating Image + Vector Fallback) -->
+                <Grid Grid.Column="1" x:Name="LogoContainer" HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="50%,50%">
+                    <Grid.RenderTransform>
+                        <ScaleTransform ScaleX="1.0" ScaleY="1.0"/>
+                    </Grid.RenderTransform>
+                    <Grid.Styles>
+                        <Style Selector="Grid">
+                            <Style.Animations>
+                                <Animation Duration="0:0:3.0" IterationCount="Infinite" Easing="SineEaseInOut">
+                                    <KeyFrame Cue="0%">
+                                        <Setter Property="ScaleTransform.ScaleX" Value="1.00"/>
+                                        <Setter Property="ScaleTransform.ScaleY" Value="1.00"/>
+                                    </KeyFrame>
+                                    <KeyFrame Cue="50%">
+                                        <Setter Property="ScaleTransform.ScaleX" Value="1.08"/>
+                                        <Setter Property="ScaleTransform.ScaleY" Value="1.08"/>
+                                    </KeyFrame>
+                                    <KeyFrame Cue="100%">
+                                        <Setter Property="ScaleTransform.ScaleX" Value="1.00"/>
+                                        <Setter Property="ScaleTransform.ScaleY" Value="1.00"/>
+                                    </KeyFrame>
+                                </Animation>
+                            </Style.Animations>
+                        </Style>
+                    </Grid.Styles>
+                    <Image x:Name="IzbanLogoImage" IsVisible="False" Stretch="Uniform" Height="55" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <Grid x:Name="FallbackLogo" IsVisible="False" HorizontalAlignment="Center" VerticalAlignment="Center" Width="72" Height="72">
+                        <Ellipse Stroke="#2563EB" StrokeThickness="4" Margin="2"/>
+                        <Ellipse Stroke="#00D26A" StrokeThickness="3.5" StrokeDashArray="5,3" Margin="7"/>
+                        <TextBlock Text="İZBAN" Foreground="#0F172A" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center" LetterSpacing="0.5"/>
+                    </Grid>
+                </Grid>
+
+                <!-- Right: Clock, Language & Help -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right" Spacing="15">
+                    <!-- TR / EN Toggle Button -->
+                    <Button x:Name="LanguageToggleBtn" Classes="header-btn" CornerRadius="8" Padding="12,8">
+                        <TextBlock x:Name="LanguageToggleText" Text="🌍 EN" FontSize="13" FontWeight="Bold"/>
+                    </Button>
+
+                    <!-- Clock -->
+                    <TextBlock x:Name="ClockText" Text="27.07.2026 - 15:04" Foreground="#0F172A" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
+
+                    <!-- HELP / YARDIM Button -->
+                    <Button x:Name="HelpBtn" Classes="header-btn" CornerRadius="8" Padding="12,8">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="❓" FontSize="12"/>
+                            <TextBlock x:Name="HelpBtnText" Text="YARDIM AL" FontSize="12" FontWeight="Bold"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ==================== MAIN CONTENT ==================== -->
+        <Grid Grid.Row="1" Margin="40,10">
+            <!-- 1. IDLE STATE SCREEN -->
+            <Grid x:Name="IdleScreen" Classes="screen-panel" RowDefinitions="*,Auto,Auto" IsVisible="True" RenderTransformOrigin="50%,50%">
+                <Grid.RenderTransform>
+                    <ScaleTransform ScaleX="1.0" ScaleY="1.0"/>
+                </Grid.RenderTransform>
+
+                <!-- Center Pulse İzmirim Kart Graphic -->
+                <Border Grid.Row="0" Classes="glass-panel pulse-card" Width="300" Height="190" HorizontalAlignment="Center" VerticalAlignment="Center" CornerRadius="16" ClipToBounds="True" BorderBrush="#2563EB" BorderThickness="2.5" RenderTransformOrigin="50%,50%">
+                    <Border.RenderTransform>
+                        <ScaleTransform ScaleX="1.0" ScaleY="1.0"/>
+                    </Border.RenderTransform>
+                    <Grid>
+                        <!-- Actual clock tower İzmirim Card Image -->
+                        <Image x:Name="IzmirimCardImage" IsVisible="False" Stretch="UniformToFill" Width="300" Height="190" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                        <!-- Fallback Vector Graphic if image can't be loaded -->
+                        <Grid x:Name="FallbackCardGraphic" IsVisible="False">
+                            <Grid.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Offset="0.0" Color="#D90429"/>
+                                    <GradientStop Offset="0.6" Color="#EF233C"/>
+                                    <GradientStop Offset="1.0" Color="#2563EB"/>
+                                </LinearGradientBrush>
+                            </Grid.Background>
+                            <Border Width="45" Height="35" Background="#E0A96D" CornerRadius="6" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="20,35,0,0">
+                                <Grid ColumnDefinitions="*,*" RowDefinitions="*,*,*">
+                                    <Border BorderBrush="#6C4A23" BorderThickness="0,0,1,1" Grid.Row="0" Grid.Column="0"/>
+                                    <Border BorderBrush="#6C4A23" BorderThickness="0,0,0,1" Grid.Row="0" Grid.Column="1"/>
+                                    <Border BorderBrush="#6C4A23" BorderThickness="0,0,1,1" Grid.Row="1" Grid.Column="0"/>
+                                    <Border BorderBrush="#6C4A23" BorderThickness="0,0,0,1" Grid.Row="1" Grid.Column="1"/>
+                                    <Border BorderBrush="#6C4A23" BorderThickness="0,0,1,0" Grid.Row="2" Grid.Column="0"/>
+                                    <Border BorderBrush="#6C4A23" BorderThickness="0,0,0,0" Grid.Row="2" Grid.Column="1"/>
+                                </Grid>
+                            </Border>
+                            <Canvas Width="40" Height="40" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,30,0">
+                                <Path Stroke="White" StrokeThickness="3.5" StrokeLineCap="Round" Data="M 12 5 A 25 25 0 0 1 12 35"/>
+                                <Path Stroke="White" StrokeThickness="3.5" StrokeLineCap="Round" Data="M 20 10 A 15 15 0 0 1 20 30"/>
+                                <Path Stroke="White" StrokeThickness="3.5" StrokeLineCap="Round" Data="M 28 15 A 8 8 0 0 1 28 25"/>
+                                <Path Fill="White" Data="M 32,20 A 2,2 0 1,1 28,20 A 2,2 0 1,1 32,20"/>
+                            </Canvas>
+                            <TextBlock x:Name="CardBrandText" Text="İZMİRİM KART" Foreground="White" FontSize="18" FontWeight="Bold" Margin="20,15,0,0" VerticalAlignment="Top"/>
+                            <TextBlock x:Name="CardSubBrandText" Text="Ulaşım &amp; Yaşam Kartı" Foreground="#DDD" FontSize="10" FontWeight="SemiBold" Margin="20,130,0,0" VerticalAlignment="Top"/>
+                            <TextBlock Text="•••• 9921" Foreground="White" FontSize="14" FontWeight="Bold" Margin="0,0,20,15" HorizontalAlignment="Right" VerticalAlignment="Bottom"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- Instruction Heading (large readable typography in dark navy) -->
+                <StackPanel Grid.Row="1" HorizontalAlignment="Center" Margin="0,20,0,10">
+                    <TextBlock x:Name="IdleHeadingText1" Text="LÜTFEN İZMİRİM KARTINIZI KART OKUYUCU" 
+                               Foreground="#0F172A" FontSize="26" FontWeight="Bold" 
+                               HorizontalAlignment="Center" LetterSpacing="1"/>
+                    <TextBlock x:Name="IdleHeadingText2" Text="BÖLGESİNE YERLEŞTİRİNİZ" 
+                               Foreground="#2563EB" FontSize="26" FontWeight="Bold" 
+                               HorizontalAlignment="Center" LetterSpacing="1"/>
+                </StackPanel>
+
+                <!-- Sub-Label -->
+                <TextBlock x:Name="IdleSubHeadingText" Grid.Row="2" Text="Kartınızı aşağıdaki okutma yuvasına yerleştirin. Yükleme tamamlanana kadar kartınızı çekmeyin." 
+                           Foreground="#475569" FontSize="15" HorizontalAlignment="Center" Margin="0,5,0,25" FontWeight="SemiBold"/>
+            </Grid>
+
+            <!-- 2. AMOUNT SELECT SCREEN (Geri/İptal button completely removed per rule) -->
+            <Grid x:Name="AmountScreen" Classes="screen-panel" RowDefinitions="Auto,*" IsVisible="False" RenderTransformOrigin="50%,50%">
+                <Grid.RenderTransform>
+                    <ScaleTransform ScaleX="1.0" ScaleY="1.0"/>
+                </Grid.RenderTransform>
+
+                <!-- Top: Card Status Banner -->
+                <Grid Grid.Row="0" ColumnDefinitions="*,*" Margin="0,0,0,20" Width="800" HorizontalAlignment="Center">
+                    <!-- Left: Card Info Glass Card -->
+                    <Border Grid.Column="0" Classes="glass-panel" Margin="0,0,10,0" Padding="25,18">
+                        <StackPanel Orientation="Horizontal" Spacing="20">
+                            <TextBlock Text="💳" FontSize="36" VerticalAlignment="Center"/>
+                            <StackPanel VerticalAlignment="Center" Spacing="4">
+                                <TextBlock x:Name="CardInfoLabel" Text="OKUNAN İZMİRİM KART" Foreground="#475569" FontSize="11" FontWeight="Bold" LetterSpacing="1"/>
+                                <TextBlock x:Name="CardUidText" Text="Kart UID: 35-IZM-9921" Foreground="#0F172A" FontSize="18" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Right: Balance Glass Card -->
+                    <Border Grid.Column="1" Classes="glass-panel" Margin="10,0,0,0" Padding="25,18">
+                        <StackPanel Orientation="Horizontal" Spacing="20">
+                            <TextBlock Text="💰" FontSize="36" VerticalAlignment="Center"/>
+                            <StackPanel VerticalAlignment="Center" Spacing="4">
+                                <TextBlock x:Name="BalanceLabel" Text="MEVCUT BAKİYE" Foreground="#00D26A" FontSize="11" FontWeight="Bold" LetterSpacing="1"/>
+                                <TextBlock x:Name="CurrentBalanceText" Text="45.50 TL" Foreground="#0F172A" FontSize="26" FontWeight="Bold"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- Middle: Amounts Section (Symmetric Grid with large buttons and Diğer Tutar) -->
+                <Grid Grid.Row="1" RowDefinitions="Auto,*" Margin="0,5" Width="800" HorizontalAlignment="Center">
+                    <TextBlock x:Name="SelectAmountInstruction" Grid.Row="0" Text="LÜTFEN YÜKLEMEK İSTEDİĞİNİZ TUTARI SEÇİNİZ" Foreground="#0F172A" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,20" LetterSpacing="1"/>
+                    
+                    <Grid Grid.Row="1" RowDefinitions="Auto,Auto" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                        <!-- Top Row: 4 symmetric fixed amounts side-by-side -->
+                        <UniformGrid Grid.Row="0" Columns="4" Rows="1" Height="130" Margin="0,0,0,15">
+                            <!-- 20 TL Button -->
+                            <Button x:Name="Btn20" Classes="amount-btn" Margin="6">
+                                <Grid RowDefinitions="*,*" VerticalAlignment="Center">
+                                    <TextBlock Grid.Row="0" Text="20 TL" Foreground="#2563EB" FontSize="32" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Name="Btn20SubText" Grid.Row="1" Text="Tutarını Yükle" Foreground="#475569" FontSize="12" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,3,0,0"/>
+                                </Grid>
+                            </Button>
+
+                            <!-- 50 TL Button -->
+                            <Button x:Name="Btn50" Classes="amount-btn" Margin="6">
+                                <Grid RowDefinitions="*,*" VerticalAlignment="Center">
+                                    <TextBlock Grid.Row="0" Text="50 TL" Foreground="#2563EB" FontSize="32" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Name="Btn50SubText" Grid.Row="1" Text="Tutarını Yükle" Foreground="#475569" FontSize="12" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,3,0,0"/>
+                                </Grid>
+                            </Button>
+
+                            <!-- 100 TL Button -->
+                            <Button x:Name="Btn100" Classes="amount-btn" Margin="6">
+                                <Grid RowDefinitions="*,*" VerticalAlignment="Center">
+                                    <TextBlock Grid.Row="0" Text="100 TL" Foreground="#2563EB" FontSize="32" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Name="Btn100SubText" Grid.Row="1" Text="Tutarını Yükle" Foreground="#475569" FontSize="12" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,3,0,0"/>
+                                </Grid>
+                            </Button>
+
+                            <!-- 200 TL Button -->
+                            <Button x:Name="Btn200" Classes="amount-btn" Margin="6">
+                                <Grid RowDefinitions="*,*" VerticalAlignment="Center">
+                                    <TextBlock Grid.Row="0" Text="200 TL" Foreground="#2563EB" FontSize="32" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Name="Btn200SubText" Grid.Row="1" Text="Tutarını Yükle" Foreground="#475569" FontSize="12" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,3,0,0"/>
+                                </Grid>
+                            </Button>
+                        </UniformGrid>
+
+                        <!-- Bottom Row: Diğer Tutar button, styled to be prominent -->
+                        <Button Grid.Row="1" x:Name="BtnOther" Classes="amount-btn" Height="100" Width="380" HorizontalAlignment="Center" Margin="0,5,0,0" BorderBrush="#00D26A">
+                            <Grid RowDefinitions="*,*" VerticalAlignment="Center">
+                                <TextBlock x:Name="BtnOtherText" Grid.Row="0" Text="DİĞER TUTAR" Foreground="#00D26A" FontSize="26" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                <TextBlock x:Name="BtnOtherSubText" Grid.Row="1" Text="Klavyeden Farklı Tutar Girin" Foreground="#475569" FontSize="12" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                            </Grid>
+                        </Button>
+                    </Grid>
+                </Grid>
+            </Grid>
+
+            <!-- 2.5 DIĞER TUTAR NUMPAD SCREEN -->
+            <Grid x:Name="NumpadScreen" Classes="screen-panel" RowDefinitions="Auto,Auto,*,Auto" IsVisible="False" RenderTransformOrigin="50%,50%">
+                <Grid.RenderTransform>
+                    <ScaleTransform ScaleX="1.0" ScaleY="1.0"/>
+                </Grid.RenderTransform>
+
+                <TextBlock Grid.Row="0" x:Name="NumpadTitleText" Text="LÜTFEN YÜKLEMEK İSTEDİĞİNİZ TUTARI GİRİNİZ" Foreground="#0F172A" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,5,0,10"/>
+                
+                <Border Grid.Row="1" Background="#FFFFFF" BorderBrush="#2563EB" BorderThickness="3" CornerRadius="16" Width="360" Padding="20,10" HorizontalAlignment="Center" Margin="0,0,0,15">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10">
+                        <TextBlock x:Name="NumpadValueText" Text="0 TL" Foreground="#2563EB" FontSize="36" FontWeight="Bold" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Keypad 3x4 Layout (Enlarged to 450x450 for Kiosk) -->
+                <UniformGrid Grid.Row="2" Columns="3" Rows="4" Width="450" Height="450" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Button Content="1" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
+                    <Button Content="2" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
+                    <Button Content="3" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
+                    <Button Content="4" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
+                    <Button Content="5" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
+                    <Button Content="6" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
+                    <Button Content="7" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
+                    <Button Content="8" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
+                    <Button Content="9" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
+                    <!-- Backspace -->
+                    <Button x:Name="BtnDelete" Content="⌫" Classes="numpad-btn-action" Background="#EF4444" Foreground="White" BorderBrush="#B91C1C" Click="OnNumpadDeleteClick"/>
+                    <Button Content="0" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
+                    <!-- Confirm -->
+                    <Button x:Name="BtnConfirm" Content="✔" Classes="numpad-btn-action" Background="#10B981" Foreground="White" BorderBrush="#047857" Click="OnNumpadConfirmClick"/>
+                </UniformGrid>
+
+                <Button Grid.Row="3" x:Name="CancelNumpadBtn" Classes="action-btn" Content="VAZGEÇ" Background="#64748B" Foreground="White" Width="180" HorizontalAlignment="Center" Margin="0,15,0,0"/>
+            </Grid>
+
+            <!-- 3. PAYMENT PEND STATE SCREEN -->
+            <Grid x:Name="PaymentScreen" Classes="screen-panel" RowDefinitions="*,Auto,Auto" IsVisible="False" RenderTransformOrigin="50%,50%">
+                <Grid.RenderTransform>
+                    <ScaleTransform ScaleX="1.0" ScaleY="1.0"/>
+                </Grid.RenderTransform>
+
+                <!-- Top Spinner Center with dynamic small İZBAN Logo inside -->
+                <Grid Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Center" Width="140" Height="140" Margin="0,0,0,10">
+                    <Ellipse Stroke="#20000000" StrokeThickness="6" Width="100" Height="100"/>
+                    <Ellipse Stroke="#2563EB" StrokeThickness="6" StrokeDashArray="6,8" Width="100" Height="100" RenderTransformOrigin="50%,50%" Classes="spinner-ring">
+                        <Ellipse.RenderTransform>
+                            <RotateTransform Angle="0"/>
+                        </Ellipse.RenderTransform>
+                    </Ellipse>
+                    <Grid Width="95" Height="60" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Image x:Name="PosLogoImage" IsVisible="False" Stretch="Uniform" Width="85" Height="45" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="PosFallbackText" Text="İZBAN" IsVisible="False" Foreground="#0F172A" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Grid>
+                </Grid>
+
+                <!-- Status Title Header -->
+                <StackPanel Grid.Row="1" HorizontalAlignment="Center" Spacing="10" Margin="0,10,0,10">
+                    <TextBlock x:Name="SelectedAmountText" Text="SEÇİLEN TUTAR: 100 TL" Foreground="#0F172A" TextAlignment="Center" FontSize="26" FontWeight="Bold" LetterSpacing="1"/>
+                    <TextBlock x:Name="PaymentStatusText" Text="📟 LÜTFEN KREDİ KARTINIZI POS CİHAZINA YAKLAŞTIRINIZ..." Foreground="#EF4444" TextAlignment="Center" FontSize="20" FontWeight="Bold" LetterSpacing="0.5"/>
+                </StackPanel>
+
+                <!-- Sub details explanation -->
+                <TextBlock x:Name="PaymentLabelDetails" Grid.Row="2" Text="Banka POS terminali hazırlandı. Temassız ödeme işlemi için kredi kartınızı POS ünitesine okutun." Foreground="#475569" TextAlignment="Center" FontSize="14" HorizontalAlignment="Center" Margin="0,5,0,30" FontWeight="SemiBold"/>
+            </Grid>
+
+            <!-- 4. SUCCESS SCREEN ( Tik işareti tam merkezde olacak şekilde hizalandı. ) -->
+            <Grid x:Name="SuccessScreen" Classes="screen-panel" RowDefinitions="*,Auto,Auto,Auto" IsVisible="False" RenderTransformOrigin="50%,50%">
+                <Grid.RenderTransform>
+                    <ScaleTransform ScaleX="1.0" ScaleY="1.0"/>
+                </Grid.RenderTransform>
+
+                <!-- Centered glowing checkmark -->
+                <Grid Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Center" Width="130" Height="130" Margin="0,20">
+                    <Border Classes="pulse-card" Width="120" Height="120" CornerRadius="60" BorderBrush="#10B981" BorderThickness="5" HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="50%,50%" ClipToBounds="False">
+                        <Border.RenderTransform>
+                            <ScaleTransform ScaleX="1.0" ScaleY="1.0"/>
+                        </Border.RenderTransform>
+                        <Border.Background>
+                            <SolidColorBrush Color="#2010B981"/>
+                        </Border.Background>
+                        <Border.Styles>
+                            <Style Selector="Border">
+                                <Style.Animations>
+                                    <Animation Duration="0:0:1.5" IterationCount="Infinite" Easing="SineEaseInOut">
+                                        <KeyFrame Cue="0%">
+                                              <Setter Property="BoxShadow" Value="0 0 15 2 #4010B981"/>
+                                        </KeyFrame>
+                                        <KeyFrame Cue="50%">
+                                              <Setter Property="BoxShadow" Value="0 0 35 12 #A010B981"/>
+                                        </KeyFrame>
+                                        <KeyFrame Cue="100%">
+                                              <Setter Property="BoxShadow" Value="0 0 15 2 #4010B981"/>
+                                        </KeyFrame>
+                                    </Animation>
+                                </Style.Animations>
+                            </Style>
+                        </Border.Styles>
+                        <!-- Perfect centered checkmark inside a Viewbox -->
+                        <Viewbox Width="50" Height="50" HorizontalAlignment="Center" VerticalAlignment="Center" Stretch="Uniform" ClipToBounds="False">
+                            <Path Data="M 12 25 L 22 35 L 38 15" 
+                                  Stroke="#10B981" 
+                                  StrokeThickness="5" 
+                                  StrokeLineCap="Round" 
+                                  StrokeJoin="Round"
+                                  ClipToBounds="False"/>
+                        </Viewbox>
+                    </Border>
+                </Grid>
+
+                <!-- Title confirmation header -->
+                <StackPanel Grid.Row="1" HorizontalAlignment="Center" Spacing="10" Margin="0,5,0,10">
+                    <TextBlock x:Name="SuccessHeadingText" Text="YÜKLEME BAŞARILI!" Foreground="#10B981" TextAlignment="Center" FontSize="30" FontWeight="Bold" LetterSpacing="2">
+                        <TextBlock.Effect>
+                            <DropShadowEffect BlurRadius="12" Color="#10B981" Opacity="0.5"/>
+                        </TextBlock.Effect>
+                    </TextBlock>
+                    <TextBlock x:Name="FinalBalanceText" Text="Yeni Bakiyeniz: 145.50 TL" Foreground="#0F172A" TextAlignment="Center" FontSize="24" FontWeight="Bold"/>
+                </StackPanel>
+
+                <!-- Kind wishes greeting -->
+                <TextBlock x:Name="SuccessSubHeadingText1" Grid.Row="2" Text="İşleminiz tamamlanmıştır. İyi yolculuklar dileriz!" Foreground="#475569" TextAlignment="Center" FontSize="16" HorizontalAlignment="Center" Margin="0,5,0,25" FontWeight="SemiBold"/>
+
+                <!-- Auto screen close note (Card presence release instructions) -->
+                <TextBlock x:Name="SuccessSubHeadingText2" Grid.Row="3" Text="Kartınızı okuyucudan çekebilirsiniz. Kart çekildiğinde işlem sonlanacaktır." Foreground="#64748B" TextAlignment="Center" FontSize="13" HorizontalAlignment="Center" FontWeight="SemiBold"/>
+            </Grid>
+        </Grid>
+
+        <!-- ==================== FOOTER ==================== -->
+        <Border Grid.Row="2" Margin="20,10,20,15" Height="65" BorderBrush="#CBD5E1" BorderThickness="0,2,0,0">
+            <Border.Background>
+                <SolidColorBrush Color="#EEF2F6"/>
+            </Border.Background>
+            <Border.CornerRadius>12</Border.CornerRadius>
+            <Grid ColumnDefinitions="*,Auto,*" Margin="25,0">
+                <!-- Left: Status indicator of reader -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+                    <Ellipse Width="10" Height="10" Fill="#10B981">
+                        <Ellipse.Styles>
+                            <Style Selector="Ellipse">
+                                <Style.Animations>
+                                    <Animation Duration="0:0:1.5" IterationCount="Infinite">
+                                        <KeyFrame Cue="0%">
+                                            <Setter Property="Opacity" Value="0.4"/>
+                                        </KeyFrame>
+                                        <KeyFrame Cue="50%">
+                                            <Setter Property="Opacity" Value="1.0"/>
+                                        </KeyFrame>
+                                        <KeyFrame Cue="100%">
+                                            <Setter Property="Opacity" Value="0.4"/>
+                                        </KeyFrame>
+                                    </Animation>
+                                </Style.Animations>
+                            </Style>
+                        </Ellipse.Styles>
+                    </Ellipse>
+                    <TextBlock x:Name="FooterStatusText" Text="Kart Okuyucu ve POS Terminali Hazır" Foreground="#475569" FontSize="13" FontWeight="SemiBold"/>
+                </StackPanel>
+
+                <!-- Center: Technical support line -->
+                <TextBlock Grid.Column="1" Text="Kiosk No: K-082 | Destek Hattı: ALO 153" Foreground="#94A3B8" FontSize="12" VerticalAlignment="Center" FontWeight="Bold"/>
+
+                <!-- Right: Simulated NFC sensor Controls -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="10">
+                    <Border BorderBrush="#CBD5E1" BorderThickness="1.5" CornerRadius="6" Background="White" Padding="6,3" VerticalAlignment="Center">
+                        <TextBlock x:Name="FooterNfcLabel" Text="NFC SENSÖR: KART YOK" Foreground="#EF4444" FontSize="10" FontWeight="Bold"/>
+                    </Border>
+                    <!-- Simulation Toggle Trigger -->
+                    <Button x:Name="ToggleCardBtn" Content="📥 KART YAKLAŞTIR" Background="#10B981" Foreground="White" FontSize="11" FontWeight="Bold" CornerRadius="6" Padding="12,6"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ==================== HELP POPUP MODAL ==================== -->
+        <Grid x:Name="HelpModal" Grid.RowSpan="3" Background="#80000000" IsVisible="False" ZIndex="100">
+            <Border Classes="glass-panel" Width="480" Height="290" HorizontalAlignment="Center" VerticalAlignment="Center" Background="White" BorderBrush="#2563EB" BorderThickness="3">
+                <Grid RowDefinitions="Auto,*,Auto" Margin="25">
+                    <TextBlock Grid.Row="0" x:Name="HelpModalTitle" Text="KULLANIM KILAVUZU &amp; YARDIM" Foreground="#0F172A" FontSize="20" FontWeight="Bold" Margin="0,0,0,15"/>
+                    <StackPanel Grid.Row="1" Spacing="8">
+                        <TextBlock x:Name="HelpBodyText1" Text="1. İzmirim Kartınızı alttaki okuyucu haznesine yerleştirin." Foreground="#334155" FontSize="14" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="HelpBodyText2" Text="2. Yüklemek istediğiniz hazır tutarı seçin veya DİĞER TUTAR butonundan klavyeyi açarak el ile girin." Foreground="#334155" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        <TextBlock x:Name="HelpBodyText3" Text="3. Kredi kartınızı temassız banka POS cihazına yaklaştırıp ödemeyi tamamlayın." Foreground="#334155" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        <TextBlock x:Name="HelpBodyText4" Text="İletişim Hattı: ALO 153 / Çağrı Merkezi: 444 15 20" Foreground="#2563EB" FontWeight="Bold" FontSize="14" Margin="0,10,0,0"/>
+                    </StackPanel>
+                    <Button Grid.Row="2" x:Name="CloseHelpBtn" Content="Kapat" HorizontalAlignment="Right"/>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ==================== WARNING EARLY REMOVAL MODAL ==================== -->
+        <Grid x:Name="WarningModal" Grid.RowSpan="3" Background="#80000000" IsVisible="False" ZIndex="101">
+            <Border Classes="glass-panel" Width="460" Height="210" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#FFFBEB" BorderBrush="#D97706" BorderThickness="3">
+                <Grid RowDefinitions="*,*" Margin="25">
+                    <TextBlock Grid.Row="0" Text="⚠️" FontSize="50" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Row="1" Spacing="6" VerticalAlignment="Center">
+                        <TextBlock x:Name="WarnTitleText" Text="UYARI: KART ERKEN ÇEKİLDİ!" Foreground="#EF4444" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
+                        <TextBlock x:Name="WarnBodyText" Text="İşlem iptal edilmiştir. Kartınızdan ücret alınmadı." Foreground="#78350F" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>
