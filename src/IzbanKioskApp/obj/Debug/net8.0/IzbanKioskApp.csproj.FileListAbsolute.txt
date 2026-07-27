@@ -1,0 +1,14 @@
+/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/bin/Debug/net8.0/IzbanKioskApp
+/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/bin/Debug/net8.0/IzbanKioskApp.deps.json
+/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/bin/Debug/net8.0/IzbanKioskApp.runtimeconfig.json
+/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/bin/Debug/net8.0/IzbanKioskApp.dll
+/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/bin/Debug/net8.0/IzbanKioskApp.pdb
+/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/obj/Debug/net8.0/IzbanKioskApp.GeneratedMSBuildEditorConfig.editorconfig
+/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/obj/Debug/net8.0/IzbanKioskApp.AssemblyInfoInputs.cache
+/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/obj/Debug/net8.0/IzbanKioskApp.AssemblyInfo.cs
+/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/obj/Debug/net8.0/IzbanKioskApp.csproj.CoreCompileInputs.cache
+/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/obj/Debug/net8.0/IzbanKioskApp.dll
+/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/obj/Debug/net8.0/refint/IzbanKioskApp.dll
+/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/obj/Debug/net8.0/IzbanKioskApp.pdb
+/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/obj/Debug/net8.0/IzbanKioskApp.genruntimeconfig.cache
+/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/obj/Debug/net8.0/ref/IzbanKioskApp.dll

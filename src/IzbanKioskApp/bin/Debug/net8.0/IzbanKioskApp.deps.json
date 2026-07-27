@@ -1,0 +1,23 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v8.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v8.0": {
+      "IzbanKioskApp/1.0.0": {
+        "runtime": {
+          "IzbanKioskApp.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "IzbanKioskApp/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
