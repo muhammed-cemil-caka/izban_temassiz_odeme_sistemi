@@ -12,3 +12,4 @@
 /Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/obj/Debug/net8.0/IzbanKioskApp.pdb
 /Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/obj/Debug/net8.0/IzbanKioskApp.genruntimeconfig.cache
 /Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/obj/Debug/net8.0/ref/IzbanKioskApp.dll
+/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/obj/Debug/net8.0/IzbanKioskApp.sourcelink.json
