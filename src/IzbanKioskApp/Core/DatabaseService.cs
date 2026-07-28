@@ -28,6 +28,33 @@ namespace IzbanKioskApp.Core
             {
                 using var connection = await GetConnectionAsync();
 
+                // Eskiden kalma INTEGER PRIMARY KEY içeren tablo varsa, yeni şemaya (TEXT GUID) temiz geçiş sağlamak için tabloyu yeniden oluştur
+                bool dropTableNeeded = false;
+                var checkCmdText = "PRAGMA table_info(Transactions);";
+                using (var checkCmd = new SqliteCommand(checkCmdText, connection))
+                {
+                    using (var reader = await checkCmd.ExecuteReaderAsync())
+                    {
+                        while (await reader.ReadAsync())
+                        {
+                            var colName = reader["name"]?.ToString();
+                            var colType = reader["type"]?.ToString();
+                            if (colName == "Id" && colType == "INTEGER")
+                            {
+                                dropTableNeeded = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (dropTableNeeded)
+                {
+                    Console.WriteLine("[DATABASE] Eski şema (INTEGER PRIMARY KEY) tespit edildi. Tablo dönüştürülüyor...");
+                    using var dropCmd = new SqliteCommand("DROP TABLE Transactions;", connection);
+                    await dropCmd.ExecuteNonQueryAsync();
+                }
+
                 var tableCommand = @"
                     CREATE TABLE IF NOT EXISTS Transactions (
                         Id TEXT PRIMARY KEY,
@@ -65,11 +92,11 @@ namespace IzbanKioskApp.Core
                     VALUES (@id, @cardUid, @amount, @approvalCode, @status);";
 
                 using var command = new SqliteCommand(insertCommand, connection);
-                command.Parameters.AddWithValue("@id", Guid.NewGuid().ToString());
-                command.Parameters.AddWithValue("@cardUid", maskedCardUid);
-                command.Parameters.AddWithValue("@amount", amount);
-                command.Parameters.AddWithValue("@approvalCode", approvalCode);
-                command.Parameters.AddWithValue("@status", status);
+                command.Parameters.Add("@id", SqliteType.Text).Value = Guid.NewGuid().ToString();
+                command.Parameters.Add("@cardUid", SqliteType.Text).Value = maskedCardUid;
+                command.Parameters.Add("@amount", SqliteType.Text).Value = amount.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                command.Parameters.Add("@approvalCode", SqliteType.Text).Value = approvalCode;
+                command.Parameters.Add("@status", SqliteType.Text).Value = status;
 
                 await command.ExecuteNonQueryAsync();
                 Console.WriteLine($"[DATABASE LOG] İşlem kaydedildi: {maskedCardUid} | {amount} TL | Kod: {approvalCode}");

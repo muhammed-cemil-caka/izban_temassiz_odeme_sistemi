@@ -142,6 +142,40 @@
             <Setter Property="BorderThickness" Value="0,0,0,1"/>
         </Style>
 
+        <!-- Red Delete Button Style Overrides -->
+        <Style Selector="Button#BtnDelete /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#EF4444"/>
+            <Setter Property="BorderBrush" Value="#B91C1C"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style Selector="Button#BtnDelete:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#DC2626"/>
+            <Setter Property="BorderBrush" Value="#991B1B"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style Selector="Button#BtnDelete:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#991B1B"/>
+            <Setter Property="BorderBrush" Value="#7F1D1D"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+
+        <!-- Green Confirm Button Style Overrides -->
+        <Style Selector="Button#BtnConfirm /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#10B981"/>
+            <Setter Property="BorderBrush" Value="#047857"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style Selector="Button#BtnConfirm:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#059669"/>
+            <Setter Property="BorderBrush" Value="#065F46"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style Selector="Button#BtnConfirm:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#065F46"/>
+            <Setter Property="BorderBrush" Value="#064E3B"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+
         <!-- 3D style for Action Buttons -->
         <Style Selector="Button.action-btn">
             <Setter Property="Background" Value="#2563EB"/>
@@ -602,8 +636,8 @@
                             <Button Content="5" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
                             <Button Content="6" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
                             <Button Content="7" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
-                            <Button Content="8" Classes="OnNumpadKeyClick"/>
-                            <Button Content="9" Classes="OnNumpadKeyClick"/>
+                            <Button Content="8" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
+                            <Button Content="9" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
                             <!-- Backspace -->
                             <Button x:Name="BtnDelete" Content="⌫" Classes="numpad-btn-action" Background="#EF4444" Foreground="White" BorderBrush="#B91C1C" Click="OnNumpadDeleteClick"/>
                             <Button Content="0" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
