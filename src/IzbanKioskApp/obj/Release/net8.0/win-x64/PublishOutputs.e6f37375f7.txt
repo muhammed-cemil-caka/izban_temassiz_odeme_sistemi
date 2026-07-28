@@ -1,6 +1,0 @@
-/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/bin/Release/net8.0/win-x64/publish/IzbanKioskApp.pdb
-/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/bin/Release/net8.0/win-x64/publish/av_libglesv2.dll
-/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/bin/Release/net8.0/win-x64/publish/libHarfBuzzSharp.dll
-/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/bin/Release/net8.0/win-x64/publish/libSkiaSharp.dll
-/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/bin/Release/net8.0/win-x64/publish/e_sqlite3.dll
-/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/bin/Release/net8.0/win-x64/publish/IzbanKioskApp.exe

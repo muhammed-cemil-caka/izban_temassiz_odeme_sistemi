@@ -449,7 +449,7 @@ namespace IzbanKioskApp
         }
 
         // --- NFC Card Presence Operations ---
-        private void OnToggleCardClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+        private async void OnToggleCardClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
             if (!_isCardPresent)
             {
@@ -462,10 +462,22 @@ namespace IzbanKioskApp
                 _footerNfcLabel.Text = GetText("FooterNfcCard");
                 _footerNfcLabel.Foreground = SolidColorBrush.Parse("#10B981");
 
-                // Execute read card
-                _cardUidText.Text = $"Card UID: {_cardUid}";
-                _currentBalanceText.Text = $"{_currentBalance:F2} TL";
-                SetCurrentScreen(_amountScreen);
+                try
+                {
+                    // Asenkron olarak NFC kart okuma servisini çağır
+                    var (cardUid, balance) = await AppServices.NfcReader.ReadCardAsync();
+                    _cardUid = cardUid;
+                    _currentBalance = balance;
+
+                    _cardUidText.Text = $"Card UID: {DatabaseService.MaskCardUid(_cardUid)}";
+                    _currentBalanceText.Text = $"{_currentBalance:F2} TL";
+                    SetCurrentScreen(_amountScreen);
+                }
+                catch (Exception ex)
+                {
+                    _paymentStatusText.Text = _currentLang == "TR" ? "Kart Okuma Hatası!" : "Card Reading Error!";
+                    Console.WriteLine($"[NFC READ ERROR] {ex.Message}");
+                }
             }
             else
             {
@@ -592,8 +604,16 @@ namespace IzbanKioskApp
 
             try
             {
-                // Wait for bank network POS terminal simulation
-                await Task.Delay(2500, token);
+                // Banka POS Cihazı ile Ödeme Alma İşlemi (Asenkron Servis Çağrısı)
+                var (paySuccess, approvalCode, errMsg) = await AppServices.PosTerminal.ProcessPaymentAsync(amount);
+                
+                if (token.IsCancellationRequested) return;
+
+                if (!paySuccess)
+                {
+                    await DatabaseService.LogTransactionAsync(_cardUid, amount, "FAILED_PROV", "FAILED");
+                    throw new Exception(errMsg ?? (string)(_currentLang == "TR" ? "Banka POS ödemeyi reddetti." : "Bank POS declined the card payment."));
+                }
 
                 // Beep confirmation sound
                 try { Console.Beep(1800, 250); } catch { }
@@ -608,7 +628,15 @@ namespace IzbanKioskApp
                 _paymentStatusText.Text = GetText("WritingCardStatus");
                 _paymentStatusText.Foreground = SolidColorBrush.Parse("#0F172A");
 
-                await Task.Delay(1500, token);
+                // Asenkron olarak karta yeni bakiyeyi yaz (NFC Sektör Güncellemesi)
+                bool writeSuccess = await AppServices.NfcReader.WriteBalanceAsync(_cardUid, _currentBalance + amount);
+                
+                if (token.IsCancellationRequested) return;
+
+                if (!writeSuccess)
+                {
+                    throw new Exception((string)(_currentLang == "TR" ? "İzmirim Kart'a bakiye yazılamadı." : "Failed to write balance to Izmirim Kart."));
+                }
 
                 if (!_isCardPresent)
                 {
@@ -616,9 +644,8 @@ namespace IzbanKioskApp
                     return;
                 }
 
-                // Log SQLite transaction
-                string approvalCode = "PROV_" + Random.Shared.Next(100000, 999999);
-                DatabaseService.LogTransaction(_cardUid, amount, approvalCode, "SUCCESS");
+                // Log SQLite transaction asynchronously
+                await DatabaseService.LogTransactionAsync(_cardUid, amount, approvalCode, "SUCCESS");
 
                 _currentBalance += amount;
 
@@ -649,10 +676,21 @@ namespace IzbanKioskApp
             catch (Exception ex)
             {
                 Console.WriteLine($"[PAYMENT LOGIC FAIL...] {ex.Message}");
+                _paymentStatusText.Text = _currentLang == "TR" 
+                    ? $"❌ HATA: {ex.Message}" 
+                    : $"❌ ERROR: {ex.Message}";
+                _paymentStatusText.Foreground = SolidColorBrush.Parse("#EF4444");
+                
+                try
+                {
+                    await Task.Delay(4000, token);
+                }
+                catch { }
+                ResetKioskToDefault();
             }
             finally
             {
-                _paymentCts.Dispose();
+                _paymentCts?.Dispose();
                 _paymentCts = null;
             }
         }

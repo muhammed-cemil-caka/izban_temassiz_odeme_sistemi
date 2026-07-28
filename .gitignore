@@ -1,0 +1,9 @@
+# .NET Build outputs
+bin/
+obj/
+
+# macOS system files
+.DS_Store
+
+# SQLite database files
+*.db

@@ -1,7 +1,0 @@
-/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/bin/Release/net8.0/osx-arm64/publish/IzbanKioskApp.pdb
-/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/bin/Release/net8.0/osx-arm64/publish/libAvaloniaNative.dylib
-/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/bin/Release/net8.0/osx-arm64/publish/libHarfBuzzSharp.dylib
-/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/bin/Release/net8.0/osx-arm64/publish/libSystem.IO.Ports.Native.dylib
-/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/bin/Release/net8.0/osx-arm64/publish/libSkiaSharp.dylib
-/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/bin/Release/net8.0/osx-arm64/publish/libe_sqlite3.dylib
-/Users/muhammedcemilcaka/Desktop/izban_temassiz_odeme_sistemi/src/IzbanKioskApp/bin/Release/net8.0/osx-arm64/publish/IzbanKioskApp

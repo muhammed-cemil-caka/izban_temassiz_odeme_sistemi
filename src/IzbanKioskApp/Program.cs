@@ -10,7 +10,7 @@ namespace IzbanKioskApp
         static void Main(string[] args)
         {
             // SQLite Veritabanını Başlat
-            DatabaseService.InitializeDatabase();
+            DatabaseService.InitializeDatabaseAsync().GetAwaiter().GetResult();
 
             // Avalonia Masaüstü Pencere Uygulamasını Başlat
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);

@@ -5,7 +5,7 @@ namespace IzbanKioskApp.Hardware
 {
     public class SerialCardReader : ICardReader
     {
-        private SerialPort _serialPort;
+        private SerialPort? _serialPort;
 
         public bool Connect(string portName)
         {
