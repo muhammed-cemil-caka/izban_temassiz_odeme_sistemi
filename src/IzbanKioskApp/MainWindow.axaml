@@ -591,25 +591,29 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Keypad 3x4 Layout (Enlarged to 450x450 for Kiosk) -->
-                <UniformGrid Grid.Row="2" Columns="3" Rows="4" Width="450" Height="450" HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <Button Content="1" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
-                    <Button Content="2" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
-                    <Button Content="3" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
-                    <Button Content="4" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
-                    <Button Content="5" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
-                    <Button Content="6" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
-                    <Button Content="7" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
-                    <Button Content="8" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
-                    <Button Content="9" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
-                    <!-- Backspace -->
-                    <Button x:Name="BtnDelete" Content="⌫" Classes="numpad-btn-action" Background="#EF4444" Foreground="White" BorderBrush="#B91C1C" Click="OnNumpadDeleteClick"/>
-                    <Button Content="0" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
-                    <!-- Confirm -->
-                    <Button x:Name="BtnConfirm" Content="✔" Classes="numpad-btn-action" Background="#10B981" Foreground="White" BorderBrush="#047857" Click="OnNumpadConfirmClick"/>
-                </UniformGrid>
+                <!-- Keypad 3x4 Layout (Responsive Viewbox scaled down on constrained layouts) -->
+                <Viewbox Grid.Row="2" MaxWidth="440" MaxHeight="390" HorizontalAlignment="Center" VerticalAlignment="Center" Stretch="Uniform">
+                    <Grid Width="420" Height="385">
+                        <UniformGrid Columns="3" Rows="4" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                            <Button Content="1" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
+                            <Button Content="2" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
+                            <Button Content="3" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
+                            <Button Content="4" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
+                            <Button Content="5" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
+                            <Button Content="6" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
+                            <Button Content="7" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
+                            <Button Content="8" Classes="OnNumpadKeyClick"/>
+                            <Button Content="9" Classes="OnNumpadKeyClick"/>
+                            <!-- Backspace -->
+                            <Button x:Name="BtnDelete" Content="⌫" Classes="numpad-btn-action" Background="#EF4444" Foreground="White" BorderBrush="#B91C1C" Click="OnNumpadDeleteClick"/>
+                            <Button Content="0" Classes="numpad-btn" Click="OnNumpadKeyClick"/>
+                            <!-- Confirm -->
+                            <Button x:Name="BtnConfirm" Content="✔" Classes="numpad-btn-action" Background="#10B981" Foreground="White" BorderBrush="#047857" Click="OnNumpadConfirmClick"/>
+                        </UniformGrid>
+                    </Grid>
+                </Viewbox>
 
-                <Button Grid.Row="3" x:Name="CancelNumpadBtn" Classes="action-btn" Content="VAZGEÇ" Background="#64748B" Foreground="White" Width="180" HorizontalAlignment="Center" Margin="0,15,0,0"/>
+                <Button Grid.Row="3" x:Name="CancelNumpadBtn" Classes="action-btn" Content="VAZGEÇ" Background="#64748B" Foreground="White" Width="180" Height="50" HorizontalAlignment="Center" Margin="0,15,0,15"/>
             </Grid>
 
             <!-- 3. PAYMENT PEND STATE SCREEN -->
