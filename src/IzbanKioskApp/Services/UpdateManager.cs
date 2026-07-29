@@ -10,7 +10,10 @@ namespace IzbanKioskApp.Services
 {
     public static class UpdateManager
     {
-        public static async Task CheckAndPerformUpdateAsync(string owner, string repo)
+        // Varsayılan GitHub Bilgileriniz eklendi (Gerektiğinde parametre göndererek de değiştirebilirsiniz)
+        public static async Task CheckAndPerformUpdateAsync(
+            string owner = "muhammed-cemil-caka", 
+            string repo = "izban_temassiz_odeme_sistemi")
         {
             // Auto-update is only supported and executed on Windows platforms
             if (!OperatingSystem.IsWindows())
