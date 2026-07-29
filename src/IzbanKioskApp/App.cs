@@ -12,6 +12,7 @@ namespace IzbanKioskApp
     {
         public static INfcReaderService NfcReader { get; set; } = null!;
         public static IPosTerminalService PosTerminal { get; set; } = null!;
+        public static bool IsUserActive { get; set; } = false;
     }
 
     public class App : Application
@@ -36,21 +37,31 @@ namespace IzbanKioskApp
                 AppServices.PosTerminal = new RealPosTerminalService();
             }
 
-            // Arka planda donanımsal bağlantıları ve güncelleme denetimini asenkron olarak ayağa kaldır
+            // Arka planda donanımsal bağlantıları asenkron olarak ayağa kaldır
             Task.Run(async () =>
             {
                 try
                 {
-                    // UI/Ekran donmamasını sağlamak amacıyla arka planda asenkron çalışır
-                    await Services.UpdateManager.CheckAndPerformUpdateAsync("muhammedcemilcaka", "izban_temassiz_odeme_sistemi");
+                    await AppServices.NfcReader.ConnectAsync("COM3");
+                    await AppServices.PosTerminal.ConnectAsync("192.168.1.100:5000");
                 }
                 catch (System.Exception ex)
                 {
-                    Console.WriteLine($"[UPDATE FAIL] Güncelleme denetlenemedi: {ex.Message}");
+                    Console.WriteLine($"[HARDWARE FAIL] Donanım bağlantı hatası: {ex.Message}");
                 }
+            });
 
-                await AppServices.NfcReader.ConnectAsync("COM3");
-                await AppServices.PosTerminal.ConnectAsync("192.168.1.100:5000");
+            // Arka planda zamanlanmış güncelleme denetleyicisini çalıştır
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Services.UpdateManager.StartUpdateSchedulerAsync();
+                }
+                catch (System.Exception ex)
+                {
+                    Console.WriteLine($"[UPDATE FAIL] Güncelleme zamanlayıcısı başlatılamadı: {ex.Message}");
+                }
             });
         }
 

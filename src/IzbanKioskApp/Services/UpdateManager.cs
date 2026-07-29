@@ -5,15 +5,70 @@ using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Avalonia.Controls.ApplicationLifetimes;
 
 namespace IzbanKioskApp.Services
 {
     public static class UpdateManager
     {
-        // Varsayılan GitHub Bilgileriniz eklendi (Gerektiğinde parametre göndererek de değiştirebilirsiniz)
+        private const string DefaultOwner = "muhammed-cemil-caka";
+        private const string DefaultRepo = "izban_temassiz_odeme_sistemi";
+
+        /// <summary>
+        /// Kiosk açılışında 1 defaya mahsus kontrol eder ve ardından günlük 04:00 zamanlayıcı döngüsünü başlatır.
+        /// </summary>
+        public static async Task StartUpdateSchedulerAsync()
+        {
+            // İlk açılışta 1 defaya mahsus güncelleme kontrolü yap
+            Console.WriteLine("[UPDATE] Kiosk açılışında ilk güncelleme denetimi gerçekleştiriliyor...");
+            try
+            {
+                await CheckAndPerformUpdateAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[UPDATE FAIL] Açılış güncelleme denetimi başarısız: {ex.Message}");
+            }
+
+            // Günlük sabaha karşı 04:00 zamanlayıcı döngüsü
+            while (true)
+            {
+                var now = DateTime.Now;
+                var targetTime = new DateTime(now.Year, now.Month, now.Day, 4, 0, 0);
+                
+                // Eğer saat 04:00 geçmişse, bir sonraki günün 04:00'ünü bekle
+                if (now >= targetTime)
+                {
+                    targetTime = targetTime.AddDays(1);
+                }
+
+                var delay = targetTime - now;
+                Console.WriteLine($"[UPDATE] Bir sonraki otomatik güncelleme denetimi {targetTime:yyyy-MM-dd HH:mm:ss} tarihinde yapılacak. (Bekleme süresi: {delay.TotalHours:F2} saat)");
+                
+                await Task.Delay(delay);
+
+                // Zamanlayıcı tetiklendiğinde kullanıcı işlem yapıyorsa (meşgulse) güncelleme 10 dakika ertelenir
+                while (AppServices.IsUserActive)
+                {
+                    Console.WriteLine("[UPDATE] Kiosk meşgul (kullanıcı aktif işlem yapıyor). Güncelleme kontrolü 10 dakika ertelendi...");
+                    await Task.Delay(TimeSpan.FromMinutes(10));
+                }
+
+                Console.WriteLine("[UPDATE] Zamanlanmış güncelleme denetimi başlatılıyor...");
+                try
+                {
+                    await CheckAndPerformUpdateAsync();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[UPDATE FAIL] Zamanlanmış güncelleme denetimi başarısız: {ex.Message}");
+                }
+            }
+        }
+
         public static async Task CheckAndPerformUpdateAsync(
-            string owner = "muhammed-cemil-caka", 
-            string repo = "izban_temassiz_odeme_sistemi")
+            string owner = DefaultOwner, 
+            string repo = DefaultRepo)
         {
             // Auto-update is only supported and executed on Windows platforms
             if (!OperatingSystem.IsWindows())
@@ -65,7 +120,7 @@ namespace IzbanKioskApp.Services
                     return;
                 }
 
-                Console.WriteLine($"[UPDATE] New version found: {githubVersion}. Current: {currentVersion}. Downloading update...");
+                Console.WriteLine($"[UPDATE] New version found: {githubVersion}. Current: {currentVersion}. Downloading update archive...");
 
                 string downloadUrl = "";
                 if (root.TryGetProperty("assets", out var assets) && assets.ValueKind == JsonValueKind.Array)
@@ -73,7 +128,7 @@ namespace IzbanKioskApp.Services
                     foreach (var asset in assets.EnumerateArray())
                     {
                         var name = asset.GetProperty("name").GetString() ?? "";
-                        if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                        if (name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
                         {
                             downloadUrl = asset.GetProperty("browser_download_url").GetString() ?? "";
                             break;
@@ -83,59 +138,66 @@ namespace IzbanKioskApp.Services
 
                 if (string.IsNullOrEmpty(downloadUrl))
                 {
-                    Console.WriteLine("[UPDATE] No executable asset found in the latest release.");
+                    Console.WriteLine("[UPDATE] No zip asset found in the latest release. Auto-update canceled.");
                     return;
                 }
 
-                // Download the asset to temporary file
-                var tempExePath = Path.Combine(Path.GetTempPath(), "IzbanKioskApp_new.exe");
+                // C:\Temp dizinini oluştur ve dosyayı indir
+                string targetDir = @"C:\Temp";
+                if (!Directory.Exists(targetDir))
+                {
+                    Directory.CreateDirectory(targetDir);
+                }
+
+                var tempZipPath = Path.Combine(targetDir, "update.zip");
 
                 using (var downloadResponse = await client.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead))
                 {
                     downloadResponse.EnsureSuccessStatusCode();
-                    using (var fs = new FileStream(tempExePath, FileMode.Create, FileAccess.Write, FileShare.None))
+                    using (var fs = new FileStream(tempZipPath, FileMode.Create, FileAccess.Write, FileShare.None))
                     {
                         await downloadResponse.Content.CopyToAsync(fs);
                     }
                 }
 
-                // Verify the downloaded file
-                if (!File.Exists(tempExePath) || new FileInfo(tempExePath).Length == 0)
+                // İndirilen zip dosyasını doğrula
+                if (!File.Exists(tempZipPath) || new FileInfo(tempZipPath).Length == 0)
                 {
-                    throw new Exception("Downloaded file is invalid or empty.");
+                    throw new Exception("Downloaded zip file is invalid or empty.");
                 }
 
-                Console.WriteLine("[UPDATE] Download complete. Spawning bat updater script...");
+                Console.WriteLine("[UPDATE] Download complete. Spawning Updater.exe...");
 
-                // Create the updater.bat script in temporary folder
-                var updaterBatPath = Path.Combine(Path.GetTempPath(), "updater.bat");
-                var batchContent = $@"@echo off
-timeout /t 2 /nobreak > nul
-copy /y ""{tempExePath}"" ""{currentProcessPath}""
-if errorlevel 1 goto error
-start """" ""{currentProcessPath}""
-del ""{tempExePath}""
-(goto) 2>nul & del ""%~f0""
-exit
+                // Kiosk uygulamasıyla aynı dizinde duran Updater.exe uygulamasını başlat
+                string appDir = Path.GetDirectoryName(currentProcessPath) ?? AppContext.BaseDirectory;
+                string updaterPath = Path.Combine(appDir, "Updater.exe");
 
-:error
-echo Update failed. Restarting current version...
-start """" ""{currentProcessPath}""
-exit";
+                if (!File.Exists(updaterPath))
+                {
+                    Console.WriteLine($"[UPDATE FAIL] Companion updater not found at: {updaterPath}");
+                    return;
+                }
 
-                await File.WriteAllTextAsync(updaterBatPath, batchContent);
-
-                // Run batch script and close Avalonia application cleanly
                 var psi = new ProcessStartInfo
                 {
-                    FileName = "cmd.exe",
-                    Arguments = $"/c \"{updaterBatPath}\"",
-                    CreateNoWindow = true,
-                    UseShellExecute = false
+                    FileName = updaterPath,
+                    UseShellExecute = true
                 };
 
                 Process.Start(psi);
-                Environment.Exit(0);
+
+                // Ana Avalonia uygulamasını temiz bir şekilde kapat
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+                    {
+                        desktop.Shutdown();
+                    }
+                    else
+                    {
+                        Environment.Exit(0);
+                    }
+                });
             }
             catch (Exception ex)
             {

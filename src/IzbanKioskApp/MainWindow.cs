@@ -342,6 +342,9 @@ namespace IzbanKioskApp
             _numpadScreen.IsVisible = (_numpadScreen == screen);
             _paymentScreen.IsVisible = (_paymentScreen == screen);
             _successScreen.IsVisible = (_successScreen == screen);
+
+            // Eğer aktif ekran boşta (Idle) kalma ekranı dışındaysa, kullanıcı aktif/işlemde olarak işaretlenir.
+            AppServices.IsUserActive = (screen != _idleScreen);
         }
 
         // --- Localization Operations ---
