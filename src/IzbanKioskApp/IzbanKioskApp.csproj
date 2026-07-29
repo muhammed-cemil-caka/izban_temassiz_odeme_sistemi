@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <CodePage>65001</CodePage>
+    <Version>1.0.1</Version>
   </PropertyGroup>
 
   <ItemGroup>
