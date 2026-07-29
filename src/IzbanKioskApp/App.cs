@@ -1,4 +1,5 @@
-﻿using Avalonia;
+﻿using System;
+using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Themes.Fluent;
@@ -35,9 +36,19 @@ namespace IzbanKioskApp
                 AppServices.PosTerminal = new RealPosTerminalService();
             }
 
-            // Arka planda donanımsal bağlantıları asenkron olarak ayağa kaldır
+            // Arka planda donanımsal bağlantıları ve güncelleme denetimini asenkron olarak ayağa kaldır
             Task.Run(async () =>
             {
+                try
+                {
+                    // UI/Ekran donmamasını sağlamak amacıyla arka planda asenkron çalışır
+                    await Services.UpdateManager.CheckAndPerformUpdateAsync("muhammedcemilcaka", "izban_temassiz_odeme_sistemi");
+                }
+                catch (System.Exception ex)
+                {
+                    Console.WriteLine($"[UPDATE FAIL] Güncelleme denetlenemedi: {ex.Message}");
+                }
+
                 await AppServices.NfcReader.ConnectAsync("COM3");
                 await AppServices.PosTerminal.ConnectAsync("192.168.1.100:5000");
             });
