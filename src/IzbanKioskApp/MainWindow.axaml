@@ -647,7 +647,7 @@
                     </Grid>
                 </Viewbox>
 
-                <Button Grid.Row="3" x:Name="CancelNumpadBtn" Classes="action-btn" Content="VAZGEÇ" Background="#64748B" Foreground="White" Width="180" Height="50" HorizontalAlignment="Center" Margin="0,15,0,15"/>
+                <Button Grid.Row="3" x:Name="CancelNumpadBtn" Classes="action-btn" Content="VAZGEÇ" Background="#64748B" Foreground="White" Width="180" Height="50" HorizontalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,15,0,15"/>
             </Grid>
 
             <!-- 3. PAYMENT PEND STATE SCREEN -->
