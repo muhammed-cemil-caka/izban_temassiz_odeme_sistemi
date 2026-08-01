@@ -1,16 +1,13 @@
 ﻿using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Layout;
-using Avalonia.Media;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using IzbanKioskApp.Core;
+using System.ComponentModel;
 using Avalonia.Platform;
 using Avalonia.Media.Imaging;
+using Avalonia.Media;
+using IzbanKioskApp.ViewModels;
 
 namespace IzbanKioskApp
 {
@@ -85,93 +82,27 @@ namespace IzbanKioskApp
         private Button _btn200 = null!;
         private Button _btnOther = null!;
 
-        // State Machine Vars
-        private decimal _currentBalance = 45.50m;
-        private string _cardUid = "35-IZM-9921";
-        private CancellationTokenSource? _paymentCts;
-        private string _currentLang = "TR";
-        private bool _isCardPresent = false;
-        private string _numpadValue = "0";
-        private bool _isWarningModalActive = false;
-
-        // Localization Dictionary
-        private static readonly Dictionary<string, Dictionary<string, string>> LangDict = new()
-        {
-            { "TR", new() {
-                { "HeaderStation", "ALSANCAK İSTASYONU" },
-                { "HeaderKioskStatus", "Kiosk ID: #0482 / Hat Durumu: Normal" },
-                { "HelpBtnText", "YARDIM AL" },
-                { "CardBrand", "İZMİRİM KART" },
-                { "CardSubBrand", "Ulaşım & Yaşam Kartı" },
-                { "IdleHeading1", "LÜTFEN İZMİRİM KARTINIZI KART OKUYUCU" },
-                { "IdleHeading2", "BÖLGESİNE YERLEŞTİRİNİZ" },
-                { "IdleSubHeading", "Kartınızı aşağıdaki okutma yuvasına yerleştirin. Yükleme tamamlanana kadar kartınızı çekmeyin." },
-                { "CardInfoLabel", "OKUNAN İZMİRİM KART" },
-                { "BalanceLabel", "MEVCUT BAKİYE" },
-                { "SelectAmountInstruction", "LÜTFEN YÜKLEMEK İSTEDİĞİNİZ TUTARI SEÇİNİZ" },
-                { "BtnSubText", "Tutarını Yükle" },
-                { "BtnOtherText", "DİĞER TUTAR" },
-                { "BtnOtherSubText", "Klavyeden Farklı Tutar Girin" },
-                { "NumpadTitle", "LÜTFEN YÜKLEMEK İSTEDİĞİNİZ TUTARI GİRİNİZ" },
-                { "Cancel", "VAZGEÇ" },
-                { "SelectedAmount", "SEÇİLEN TUTAR" },
-                { "PaymentStatus", "📟 LÜTFEN KREDİ KARTINIZI POS CİHAZINA YAKLAŞTIRINIZ..." },
-                { "PaymentLabelDetails", "Banka POS terminali hazırlandı. Temassız ödeme işlemi için kredi kartınızı POS ünitesine okutun." },
-                { "WritingCardStatus", "Ödeme POS'tan Onaylandı! Bakiye Yazılıyor..." },
-                { "SuccessHeading", "YÜKLEME BAŞARILI!" },
-                { "FinalBalance", "Yeni Bakiyeniz" },
-                { "SuccessSub1", "İşleminiz tamamlanmıştır. İyi yolculuklar dileriz!" },
-                { "SuccessSub2", "Kartınızı okuyucudan çekebilirsiniz. Kart çekildiğinde işlem sonlanacaktır." },
-                { "FooterStatus", "Kart Okuyucu ve POS Terminali Hazır" },
-                { "FooterNfcNoCard", "NFC SENSÖR: KART YOK" },
-                { "FooterNfcCard", "NFC SENSÖR: KART VAR" },
-                { "HelpTitle", "KULLANIM KILAVUZU & YARDIM" },
-                { "Help1", "1. İzmirim Kartınızı alttaki okuyucu haznesine yerleştirin." },
-                { "Help2", "2. Yüklemek istediğiniz hazır tutarı seçin veya DİĞER TUTAR butonundan klavyeyi açarak el ile girin." },
-                { "Help3", "3. Kredi kartınızı temassız banka POS cihazına yaklaştırıp ödemeyi tamamlayın." },
-                { "Help4", "İletişim Hattı: ALO 153 / Çağrı Merkezi: 444 15 20" },
-                { "HelpClose", "Kapat" }
-            } },
-            { "EN", new() {
-                { "HeaderStation", "ALSANCAK STATION" },
-                { "HeaderKioskStatus", "Kiosk ID: #0482 / Line Status: Normal" },
-                { "HelpBtnText", "GET HELP" },
-                { "CardBrand", "IZMIRIM CARD" },
-                { "CardSubBrand", "Transit & Life Card" },
-                { "IdleHeading1", "PLEASE PLACE YOUR IZMIRIM CARD" },
-                { "IdleHeading2", "ON THE CARD READER AREA" },
-                { "IdleSubHeading", "Place your card inside the reading tray below. Do not remove until transit load is complete." },
-                { "CardInfoLabel", "READ IZMIRIM CARD" },
-                { "BalanceLabel", "CURRENT BALANCE" },
-                { "SelectAmountInstruction", "PLEASE SELECT THE AMOUNT YOU WANT TO LOAD" },
-                { "BtnSubText", "Load Amount" },
-                { "BtnOtherText", "OTHER AMOUNT" },
-                { "BtnOtherSubText", "Type Custom Amount on Keyboard" },
-                { "NumpadTitle", "PLEASE ENTER THE AMOUNT YOU WANT TO LOAD" },
-                { "Cancel", "CANCEL" },
-                { "SelectedAmount", "SELECTED AMOUNT" },
-                { "PaymentStatus", "📟 PLEASE TAP YOUR CREDIT CARD ON THE POS TERMINAL..." },
-                { "PaymentLabelDetails", "Bank POS terminal ready. Tap your credit card to complete the contactless payment." },
-                { "WritingCardStatus", "Payment Approved by POS! Writing to Izmirim Card..." },
-                { "SuccessHeading", "LOAD SUCCESSFUL!" },
-                { "FinalBalance", "Your New Balance" },
-                { "SuccessSub1", "Your transaction is complete. Have a nice trip!" },
-                { "SuccessSub2", "You can now remove your card from the reader. System will reset on card pull." },
-                { "FooterStatus", "Card Reader and POS Terminal Ready" },
-                { "FooterNfcNoCard", "NFC SENSOR: NO CARD" },
-                { "FooterNfcCard", "NFC SENSOR: CARD PRESENT" },
-                { "HelpTitle", "USER GUIDE & HELP" },
-                { "Help1", "1. Place your Izmirim Card in the reader slot at the bottom." },
-                { "Help2", "2. Choose a preselected amount or tap OTHER AMOUNT to input a custom balance." },
-                { "Help3", "3. Tap your credit card on the contactless POS keypad to proceed with payment." },
-                { "Help4", "Hotline: ALO 153 / Calls Center: 444 15 20" },
-                { "HelpClose", "Close" }
-            } }
-        };
+        public MainWindowViewModel ViewModel => (MainWindowViewModel)DataContext!;
 
         public MainWindow()
         {
             InitializeComponent();
+        }
+
+        public MainWindow(MainWindowViewModel viewModel) : this()
+        {
+            DataContext = viewModel;
+            viewModel.PropertyChanged += OnViewModelPropertyChanged;
+            
+            // Initial sync of properties
+            SyncUIFromViewModel();
+
+            // Start clock timer to tick ViewModel
+            var timer = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Normal, (s, e) =>
+            {
+                viewModel.UpdateClock();
+            });
+            timer.Start();
         }
 
         private void InitializeComponent()
@@ -232,7 +163,7 @@ namespace IzbanKioskApp
             _izmirimCardImage = this.FindControl<Image>("IzmirimCardImage") ?? throw new Exception("IzmirimCardImage not found");
             _fallbackCardGraphic = this.FindControl<Grid>("FallbackCardGraphic") ?? throw new Exception("FallbackCardGraphic not found");
 
-            // Try loading logo securely
+            // Load static assets
             try
             {
                 var stream = AssetLoader.Open(new Uri("avares://IzbanKioskApp/Assets/izban_logo.png"));
@@ -248,15 +179,13 @@ namespace IzbanKioskApp
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[LOGO LOAD WARN] Using fallback concentric vector logo. Details: {ex.Message}");
+                Console.WriteLine($"[LOGO LOAD WARN] Fallback concentric vector logo. Details: {ex.Message}");
                 _izbanLogoImage.IsVisible = false;
                 _fallbackLogo.IsVisible = true;
-
                 _posLogoImage.IsVisible = false;
                 _posFallbackText.IsVisible = true;
             }
 
-            // Try loading İzmirim Card image securely
             try
             {
                 var cardStream = AssetLoader.Open(new Uri("avares://IzbanKioskApp/Assets/izmirim_kart.png"));
@@ -267,12 +196,12 @@ namespace IzbanKioskApp
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[CARD IMAGE LOAD WARN] Using fallback vector card layout. Details: {ex.Message}");
+                Console.WriteLine($"[CARD IMAGE LOAD WARN] Fallback vector card. Details: {ex.Message}");
                 _izmirimCardImage.IsVisible = false;
                 _fallbackCardGraphic.IsVisible = true;
             }
 
-            // Bind Screens Binds
+            // Bind Screens
             _idleScreen = this.FindControl<Grid>("IdleScreen") ?? throw new Exception("IdleScreen not found");
             _amountScreen = this.FindControl<Grid>("AmountScreen") ?? throw new Exception("AmountScreen not found");
             _numpadScreen = this.FindControl<Grid>("NumpadScreen") ?? throw new Exception("NumpadScreen not found");
@@ -281,7 +210,7 @@ namespace IzbanKioskApp
             _helpModal = this.FindControl<Grid>("HelpModal") ?? throw new Exception("HelpModal not found");
             _warningModal = this.FindControl<Grid>("WarningModal") ?? throw new Exception("WarningModal not found");
 
-            // Bind Action Grid Buttons
+            // Bind Buttons
             _btn20 = this.FindControl<Button>("Btn20") ?? throw new Exception("Btn20 not found");
             _btn50 = this.FindControl<Button>("Btn50") ?? throw new Exception("Btn50 not found");
             _btn100 = this.FindControl<Button>("Btn100") ?? throw new Exception("Btn100 not found");
@@ -293,409 +222,244 @@ namespace IzbanKioskApp
             SystemDecorations = SystemDecorations.None;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
 
-            // Start Live Clock Ticker
-            _clockText.Text = DateTime.Now.ToString("dd.MM.yyyy - HH:mm:ss");
-            var timer = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Normal, (s, e) =>
-            {
-                _clockText.Text = DateTime.Now.ToString("dd.MM.yyyy - HH:mm:ss");
-            });
-            timer.Start();
-
-            // Set up Event Listeners
-            _languageToggleBtn.Click += OnLanguageToggleClick;
-            _helpBtn.Click += OnHelpBtnClick;
-            _closeHelpBtn.Click += OnCloseHelpBtnClick;
-            _toggleCardBtn.Click += OnToggleCardClick;
+            // Forward Clicks to ViewModel
+            _languageToggleBtn.Click += (s, e) => ViewModel.ToggleLanguage();
+            _helpBtn.Click += (s, e) => ViewModel.ToggleHelp();
+            _closeHelpBtn.Click += (s, e) => ViewModel.CloseHelp();
+            _toggleCardBtn.Click += async (s, e) => await ViewModel.ToggleSimulatedCardAsync();
             
-            _btn20.Click += async (s, e) => await StartPaymentFlow(20);
-            _btn50.Click += async (s, e) => await StartPaymentFlow(50);
-            _btn100.Click += async (s, e) => await StartPaymentFlow(100);
-            _btn200.Click += async (s, e) => await StartPaymentFlow(200);
+            _btn20.Click += async (s, e) => await ViewModel.SelectAmountAsync(20);
+            _btn50.Click += async (s, e) => await ViewModel.SelectAmountAsync(50);
+            _btn100.Click += async (s, e) => await ViewModel.SelectAmountAsync(100);
+            _btn200.Click += async (s, e) => await ViewModel.SelectAmountAsync(200);
             
-            _btnOther.Click += OnBtnOtherClick;
-            _cancelNumpadBtn.Click += OnCancelNumpadBtnClick;
-
-            // Load Initial State
-            ApplyLanguage();
-            ResetKioskToDefault();
+            _btnOther.Click += (s, e) => ViewModel.SelectOtherAmount();
+            _cancelNumpadBtn.Click += (s, e) => ViewModel.CancelNumpad();
         }
 
-        private void ResetKioskToDefault()
-        {
-            _isCardPresent = false;
-            _numpadValue = "0";
-            _numpadValueText.Text = "0 TL";
-            
-            // Sync Footer simulator trigger to green Placing card
-            _toggleCardBtn.Content = _currentLang == "TR" ? "📥 KART YAKLAŞTIR" : "📥 PLACE CARD";
-            _toggleCardBtn.Background = SolidColorBrush.Parse("#10B981");
-            _footerNfcLabel.Text = GetText("FooterNfcNoCard");
-            _footerNfcLabel.Foreground = SolidColorBrush.Parse("#EF4444");
-
-            SetCurrentScreen(_idleScreen);
-        }
-
-        private void SetCurrentScreen(Grid screen)
-        {
-            _idleScreen.IsVisible = (_idleScreen == screen);
-            _amountScreen.IsVisible = (_amountScreen == screen);
-            _numpadScreen.IsVisible = (_numpadScreen == screen);
-            _paymentScreen.IsVisible = (_paymentScreen == screen);
-            _successScreen.IsVisible = (_successScreen == screen);
-
-            // Eğer aktif ekran boşta (Idle) kalma ekranı dışındaysa, kullanıcı aktif/işlemde olarak işaretlenir.
-            AppServices.IsUserActive = (screen != _idleScreen);
-        }
-
-        // --- Localization Operations ---
-        private string GetText(string key)
-        {
-            if (LangDict.TryGetValue(_currentLang, out var section) && section.TryGetValue(key, out var val))
-            {
-                return val;
-            }
-            return key;
-        }
-
-        private void ApplyLanguage()
-        {
-            // Toggle Button Context
-            _languageToggleText.Text = _currentLang == "TR" ? "🌍 EN" : "🌍 TR";
-
-            // Headers
-            _headerStationText.Text = GetText("HeaderStation");
-            _headerKioskStatusText.Text = GetText("HeaderKioskStatus");
-            _helpBtnText.Text = GetText("HelpBtnText");
-
-            // Idle Screen
-            _cardBrandText.Text = GetText("CardBrand");
-            _cardSubBrandText.Text = GetText("CardSubBrand");
-            _idleHeadingText1.Text = GetText("IdleHeading1");
-            _idleHeadingText2.Text = GetText("IdleHeading2");
-            _idleSubHeadingText.Text = GetText("IdleSubHeading");
-
-            // Amount Select Screen
-            _cardInfoLabel.Text = GetText("CardInfoLabel");
-            _balanceLabel.Text = GetText("BalanceLabel");
-            _selectAmountInstruction.Text = GetText("SelectAmountInstruction");
-            _btn20SubText.Text = GetText("BtnSubText");
-            _btn50SubText.Text = GetText("BtnSubText");
-            _btn100SubText.Text = GetText("BtnSubText");
-            _btn200SubText.Text = GetText("BtnSubText");
-            _btnOtherText.Text = GetText("BtnOtherText");
-            _btnOtherSubText.Text = GetText("BtnOtherSubText");
-
-            // Keypad Screen
-            _numpadTitleText.Text = GetText("NumpadTitle");
-            _cancelNumpadBtn.Content = GetText("Cancel");
-
-            // Payment Screen
-            _selectedAmountText.Text = $"{GetText("SelectedAmount")}: 0 TL";
-            _paymentStatusText.Text = GetText("PaymentStatus");
-            _paymentLabelDetails.Text = GetText("PaymentLabelDetails");
-
-            // Success Screen
-            _successHeadingText.Text = GetText("SuccessHeading");
-            _successSubHeadingText1.Text = GetText("SuccessSub1");
-            _successSubHeadingText2.Text = GetText("SuccessSub2");
-
-            // Footer
-            _footerStatusText.Text = GetText("FooterStatus");
-            
-            // NFC Card indicator text
-            if (_isCardPresent)
-            {
-                _toggleCardBtn.Content = _currentLang == "TR" ? "📤 KARTI ÇEK" : "📤 REMOVE CARD";
-                _footerNfcLabel.Text = GetText("FooterNfcCard");
-            }
-            else
-            {
-                _toggleCardBtn.Content = _currentLang == "TR" ? "📥 KART YAKLAŞTIR" : "📥 PLACE CARD";
-                _footerNfcLabel.Text = GetText("FooterNfcNoCard");
-            }
-
-            // Modals
-            var helpModalTitle = this.FindControl<TextBlock>("HelpModalTitle");
-            if (helpModalTitle != null) helpModalTitle.Text = GetText("HelpTitle");
-            var helpBodyText1 = this.FindControl<TextBlock>("HelpBodyText1");
-            if (helpBodyText1 != null) helpBodyText1.Text = GetText("Help1");
-            var helpBodyText2 = this.FindControl<TextBlock>("HelpBodyText2");
-            if (helpBodyText2 != null) helpBodyText2.Text = GetText("Help2");
-            var helpBodyText3 = this.FindControl<TextBlock>("HelpBodyText3");
-            if (helpBodyText3 != null) helpBodyText3.Text = GetText("Help3");
-            var helpBodyText4 = this.FindControl<TextBlock>("HelpBodyText4");
-            if (helpBodyText4 != null) helpBodyText4.Text = GetText("Help4");
-            var closeHelpBtnText = this.FindControl<Button>("CloseHelpBtn");
-            if (closeHelpBtnText != null) closeHelpBtnText.Content = GetText("HelpClose");
-            
-            var warnTitleText = this.FindControl<TextBlock>("WarnTitleText");
-            var warnBodyText = this.FindControl<TextBlock>("WarnBodyText");
-            if (warnTitleText != null) warnTitleText.Text = _currentLang == "TR" ? "UYARI: KART ERKEN ÇEKİLDİ!" : "WARNING: CARD REMOVED EARLY!";
-            if (warnBodyText != null) warnBodyText.Text = _currentLang == "TR" ? "İşlem iptal edilmiştir. Kartınızdan ücret alınmadı." : "Transaction cancelled. No charges were made to your account.";
-        }
-
-        private void OnLanguageToggleClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-        {
-            _currentLang = _currentLang == "TR" ? "EN" : "TR";
-            ApplyLanguage();
-        }
-
-        // --- Modals Triggers ---
-        private void OnHelpBtnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-        {
-            _helpModal.IsVisible = true;
-        }
-
-        private void OnCloseHelpBtnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-        {
-            _helpModal.IsVisible = false;
-        }
-
-        // --- NFC Card Presence Operations ---
-        private async void OnToggleCardClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-        {
-            if (!_isCardPresent)
-            {
-                // Put Card
-                _isCardPresent = true;
-                try { Console.Beep(1200, 150); } catch { }
-
-                _toggleCardBtn.Content = _currentLang == "TR" ? "📤 KARTI ÇEK" : "📤 REMOVE CARD";
-                _toggleCardBtn.Background = SolidColorBrush.Parse("#EF4444");
-                _footerNfcLabel.Text = GetText("FooterNfcCard");
-                _footerNfcLabel.Foreground = SolidColorBrush.Parse("#10B981");
-
-                try
-                {
-                    // Asenkron olarak NFC kart okuma servisini çağır
-                    var (cardUid, balance) = await AppServices.NfcReader.ReadCardAsync();
-                    _cardUid = cardUid;
-                    _currentBalance = balance;
-
-                    _cardUidText.Text = $"Card UID: {DatabaseService.MaskCardUid(_cardUid)}";
-                    _currentBalanceText.Text = $"{_currentBalance:F2} TL";
-                    SetCurrentScreen(_amountScreen);
-                }
-                catch (Exception ex)
-                {
-                    _paymentStatusText.Text = _currentLang == "TR" ? "Kart Okuma Hatası!" : "Card Reading Error!";
-                    Console.WriteLine($"[NFC READ ERROR] {ex.Message}");
-                }
-            }
-            else
-            {
-                // Pulled card
-                _isCardPresent = false;
-                
-                _toggleCardBtn.Content = _currentLang == "TR" ? "📥 KART YAKLAŞTIR" : "📥 PLACE CARD";
-                _toggleCardBtn.Background = SolidColorBrush.Parse("#10B981");
-                _footerNfcLabel.Text = GetText("FooterNfcNoCard");
-                _footerNfcLabel.Foreground = SolidColorBrush.Parse("#EF4444");
-
-                EvaluateCardRemoval();
-            }
-        }
-
-        private void EvaluateCardRemoval()
-        {
-            // If card is removed during ongoing selection or POS waiting
-            if (_amountScreen.IsVisible || _numpadScreen.IsVisible || _paymentScreen.IsVisible)
-            {
-                // Erken Kart Çekme - Cancel immediately!
-                _paymentCts?.Cancel();
-                TriggerEarlyRemovalWarning();
-            }
-            else if (_successScreen.IsVisible)
-            {
-                // Normal complete route, user removed card after success.
-                // Cancel pending waiting task immediately and reset.
-                _paymentCts?.Cancel();
-                ResetKioskToDefault();
-            }
-        }
-
-        private void TriggerEarlyRemovalWarning()
-        {
-            if (_isWarningModalActive) return;
-            _isWarningModalActive = true;
-
-            try { Console.Beep(800, 500); } catch { }
-            
-            _warningModal.IsVisible = true;
-            
-            // Lock and reset
-            _numpadValue = "0";
-            _numpadValueText.Text = "0 TL";
-
-            var resetTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(2500), DispatcherPriority.Normal, (s, e) =>
-            {
-                _warningModal.IsVisible = false;
-                _isWarningModalActive = false;
-                ResetKioskToDefault();
-                ((DispatcherTimer)s!).Stop();
-            });
-            resetTimer.Start();
-        }
-
-        // --- Other amount button ---
-        private void OnBtnOtherClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-        {
-            _numpadValue = "0";
-            _numpadValueText.Text = "0 TL";
-            SetCurrentScreen(_numpadScreen);
-        }
-
-        private void OnCancelNumpadBtnClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
-        {
-            SetCurrentScreen(_amountScreen);
-        }
-
-        // --- Keypad Buttons Events called by XAML ---
+        // --- Keyboard Events Forwarding ---
         public void OnNumpadKeyClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
             if (sender is Button btn && btn.Content is string key)
             {
-                if (_numpadValue == "0")
-                {
-                    _numpadValue = key;
-                }
-                else
-                {
-                    string nextVal = _numpadValue + key;
-                    // Clamp to maximum 500 TL limit
-                    if (int.TryParse(nextVal, out int val) && val <= 500)
-                    {
-                        _numpadValue = nextVal;
-                    }
-                }
-                _numpadValueText.Text = $"{_numpadValue} TL";
+                ViewModel.ProcessNumpadKey(key);
             }
         }
 
         public void OnNumpadDeleteClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
-            if (_numpadValue.Length > 1)
-            {
-                _numpadValue = _numpadValue.Substring(0, _numpadValue.Length - 1);
-            }
-            else
-            {
-                _numpadValue = "0";
-            }
-            _numpadValueText.Text = $"{_numpadValue} TL";
+            ViewModel.DeleteNumpadChar();
         }
 
-        public void OnNumpadConfirmClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+        public async void OnNumpadConfirmClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
-            if (decimal.TryParse(_numpadValue, out decimal val) && val > 0)
-            {
-                _ = StartPaymentFlow(val);
-            }
+            await ViewModel.ConfirmNumpadAsync();
         }
 
-        // --- Payment State Logic ---
-        private async Task StartPaymentFlow(decimal amount)
+        private void SyncUIFromViewModel()
         {
-            _paymentCts = new CancellationTokenSource();
-            var token = _paymentCts.Token;
+            if (DataContext == null) return;
+            
+            _clockText.Text = ViewModel.ClockText;
+            _headerStationText.Text = ViewModel.StationText;
+            _headerKioskStatusText.Text = ViewModel.KioskStatusText;
+            _languageToggleText.Text = ViewModel.LanguageToggleText;
+            _helpBtnText.Text = ViewModel.HelpBtnText;
 
-            _selectedAmountText.Text = $"{GetText("SelectedAmount")}: {amount:F2} TL";
-            _paymentStatusText.Text = GetText("PaymentStatus");
-            _paymentStatusText.Foreground = SolidColorBrush.Parse("#EF4444");
+            _cardBrandText.Text = ViewModel.CardBrandText;
+            _cardSubBrandText.Text = ViewModel.CardSubBrandText;
+            _idleHeadingText1.Text = ViewModel.IdleHeadingText1;
+            _idleHeadingText2.Text = ViewModel.IdleHeadingText2;
+            _idleSubHeadingText.Text = ViewModel.IdleSubHeadingText;
 
-            SetCurrentScreen(_paymentScreen);
+            _cardInfoLabel.Text = ViewModel.CardInfoLabel;
+            _cardUidText.Text = ViewModel.CardUidText;
+            _balanceLabel.Text = ViewModel.BalanceLabel;
+            _currentBalanceText.Text = ViewModel.CurrentBalanceText;
 
-            try
+            _selectAmountInstruction.Text = ViewModel.SelectAmountInstruction;
+            _btn20SubText.Text = ViewModel.BtnSubText;
+            _btn50SubText.Text = ViewModel.BtnSubText;
+            _btn100SubText.Text = ViewModel.BtnSubText;
+            _btn200SubText.Text = ViewModel.BtnSubText;
+            _btnOtherText.Text = ViewModel.BtnOtherText;
+            _btnOtherSubText.Text = ViewModel.BtnOtherSubText;
+
+            _numpadTitleText.Text = ViewModel.NumpadTitleText;
+            _numpadValueText.Text = ViewModel.NumpadValueText;
+            _cancelNumpadBtn.Content = ViewModel.CancelNumpadBtnText;
+
+            _selectedAmountText.Text = ViewModel.SelectedAmountText;
+            _paymentStatusText.Text = ViewModel.PaymentStatusText;
+            _paymentStatusText.Foreground = SolidColorBrush.Parse(ViewModel.PaymentStatusColor);
+            _paymentLabelDetails.Text = ViewModel.PaymentLabelDetails;
+
+            _successHeadingText.Text = ViewModel.SuccessHeadingText;
+            _finalBalanceText.Text = ViewModel.FinalBalanceText;
+            _successSubHeadingText1.Text = ViewModel.SuccessSubHeadingText1;
+            _successSubHeadingText2.Text = ViewModel.SuccessSubHeadingText2;
+
+            _footerStatusText.Text = ViewModel.FooterStatusText;
+            _footerNfcLabel.Text = ViewModel.FooterNfcLabelText;
+            _footerNfcLabel.Foreground = SolidColorBrush.Parse(ViewModel.FooterNfcLabelColor);
+
+            _toggleCardBtn.Content = ViewModel.ToggleCardBtnText;
+            _toggleCardBtn.Background = SolidColorBrush.Parse(ViewModel.ToggleCardBtnColor);
+
+            _idleScreen.IsVisible = ViewModel.IsIdleScreenVisible;
+            _amountScreen.IsVisible = ViewModel.IsAmountScreenVisible;
+            _numpadScreen.IsVisible = ViewModel.IsNumpadScreenVisible;
+            _paymentScreen.IsVisible = ViewModel.IsPaymentScreenVisible;
+            _successScreen.IsVisible = ViewModel.IsSuccessScreenVisible;
+            _helpModal.IsVisible = ViewModel.IsHelpModalVisible;
+            _warningModal.IsVisible = ViewModel.IsWarningModalVisible;
+        }
+
+        private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            Dispatcher.UIThread.Post(() =>
             {
-                // Banka POS Cihazı ile Ödeme Alma İşlemi (Asenkron Servis Çağrısı)
-                var (paySuccess, approvalCode, errMsg) = await AppServices.PosTerminal.ProcessPaymentAsync(amount);
-                
-                if (token.IsCancellationRequested) return;
-
-                if (!paySuccess)
+                switch (e.PropertyName)
                 {
-                    await DatabaseService.LogTransactionAsync(_cardUid, amount, "FAILED_PROV", "FAILED");
-                    throw new Exception(errMsg ?? (string)(_currentLang == "TR" ? "Banka POS ödemeyi reddetti." : "Bank POS declined the card payment."));
-                }
-
-                // Beep confirmation sound
-                try { Console.Beep(1800, 250); } catch { }
-
-                // Double check if card was removed in exact microsecond
-                if (!_isCardPresent)
-                {
-                    TriggerEarlyRemovalWarning();
-                    return;
-                }
-
-                _paymentStatusText.Text = GetText("WritingCardStatus");
-                _paymentStatusText.Foreground = SolidColorBrush.Parse("#0F172A");
-
-                // Asenkron olarak karta yeni bakiyeyi yaz (NFC Sektör Güncellemesi)
-                bool writeSuccess = await AppServices.NfcReader.WriteBalanceAsync(_cardUid, _currentBalance + amount);
-                
-                if (token.IsCancellationRequested) return;
-
-                if (!writeSuccess)
-                {
-                    throw new Exception((string)(_currentLang == "TR" ? "İzmirim Kart'a bakiye yazılamadı." : "Failed to write balance to Izmirim Kart."));
-                }
-
-                if (!_isCardPresent)
-                {
-                    TriggerEarlyRemovalWarning();
-                    return;
-                }
-
-                // Log SQLite transaction asynchronously
-                await DatabaseService.LogTransactionAsync(_cardUid, amount, approvalCode, "SUCCESS");
-
-                _currentBalance += amount;
-
-                // Move visual success
-                _finalBalanceText.Text = $"{GetText("FinalBalance")}: {_currentBalance:F2} TL";
-                SetCurrentScreen(_successScreen);
-                
-                // Do not auto-reset in 4 seconds unconditionally. Let the user pull the card.
-                // In case they leave the kiosk, we can auto reset after 15 seconds.
-                var timeoutTask = Task.Delay(15000, token);
-                
-                // We will wait for either card removal OR timeout!
-                while (_isCardPresent && !token.IsCancellationRequested)
-                {
-                    if (timeoutTask.IsCompleted)
-                    {
+                    case nameof(ViewModel.ClockText):
+                        _clockText.Text = ViewModel.ClockText;
                         break;
-                    }
-                    await Task.Delay(100, token);
+                    case nameof(ViewModel.StationText):
+                        _headerStationText.Text = ViewModel.StationText;
+                        break;
+                    case nameof(ViewModel.KioskStatusText):
+                        _headerKioskStatusText.Text = ViewModel.KioskStatusText;
+                        break;
+                    case nameof(ViewModel.LanguageToggleText):
+                        _languageToggleText.Text = ViewModel.LanguageToggleText;
+                        break;
+                    case nameof(ViewModel.HelpBtnText):
+                        _helpBtnText.Text = ViewModel.HelpBtnText;
+                        break;
+                    case nameof(ViewModel.CardBrandText):
+                        _cardBrandText.Text = ViewModel.CardBrandText;
+                        break;
+                    case nameof(ViewModel.CardSubBrandText):
+                        _cardSubBrandText.Text = ViewModel.CardSubBrandText;
+                        break;
+                    case nameof(ViewModel.IdleHeadingText1):
+                        _idleHeadingText1.Text = ViewModel.IdleHeadingText1;
+                        break;
+                    case nameof(ViewModel.IdleHeadingText2):
+                        _idleHeadingText2.Text = ViewModel.IdleHeadingText2;
+                        break;
+                    case nameof(ViewModel.IdleSubHeadingText):
+                        _idleSubHeadingText.Text = ViewModel.IdleSubHeadingText;
+                        break;
+                    case nameof(ViewModel.CardInfoLabel):
+                        _cardInfoLabel.Text = ViewModel.CardInfoLabel;
+                        break;
+                    case nameof(ViewModel.CardUidText):
+                        _cardUidText.Text = ViewModel.CardUidText;
+                        break;
+                    case nameof(ViewModel.BalanceLabel):
+                        _balanceLabel.Text = ViewModel.BalanceLabel;
+                        break;
+                    case nameof(ViewModel.CurrentBalanceText):
+                        _currentBalanceText.Text = ViewModel.CurrentBalanceText;
+                        break;
+                    case nameof(ViewModel.SelectAmountInstruction):
+                        _selectAmountInstruction.Text = ViewModel.SelectAmountInstruction;
+                        break;
+                    case nameof(ViewModel.BtnSubText):
+                        _btn20SubText.Text = ViewModel.BtnSubText;
+                        _btn50SubText.Text = ViewModel.BtnSubText;
+                        _btn100SubText.Text = ViewModel.BtnSubText;
+                        _btn200SubText.Text = ViewModel.BtnSubText;
+                        break;
+                    case nameof(ViewModel.BtnOtherText):
+                        _btnOtherText.Text = ViewModel.BtnOtherText;
+                        break;
+                    case nameof(ViewModel.BtnOtherSubText):
+                        _btnOtherSubText.Text = ViewModel.BtnOtherSubText;
+                        break;
+                    case nameof(ViewModel.NumpadTitleText):
+                        _numpadTitleText.Text = ViewModel.NumpadTitleText;
+                        break;
+                    case nameof(ViewModel.NumpadValueText):
+                        _numpadValueText.Text = ViewModel.NumpadValueText;
+                        break;
+                    case nameof(ViewModel.CancelNumpadBtnText):
+                        _cancelNumpadBtn.Content = ViewModel.CancelNumpadBtnText;
+                        break;
+                    case nameof(ViewModel.SelectedAmountText):
+                        _selectedAmountText.Text = ViewModel.SelectedAmountText;
+                        break;
+                    case nameof(ViewModel.PaymentStatusText):
+                        _paymentStatusText.Text = ViewModel.PaymentStatusText;
+                        break;
+                    case nameof(ViewModel.PaymentStatusColor):
+                        _paymentStatusText.Foreground = SolidColorBrush.Parse(ViewModel.PaymentStatusColor);
+                        break;
+                    case nameof(ViewModel.PaymentLabelDetails):
+                        _paymentLabelDetails.Text = ViewModel.PaymentLabelDetails;
+                        break;
+                    case nameof(ViewModel.SuccessHeadingText):
+                        _successHeadingText.Text = ViewModel.SuccessHeadingText;
+                        break;
+                    case nameof(ViewModel.FinalBalanceText):
+                        _finalBalanceText.Text = ViewModel.FinalBalanceText;
+                        break;
+                    case nameof(ViewModel.SuccessSubHeadingText1):
+                        _successSubHeadingText1.Text = ViewModel.SuccessSubHeadingText1;
+                        break;
+                    case nameof(ViewModel.SuccessSubHeadingText2):
+                        _successSubHeadingText2.Text = ViewModel.SuccessSubHeadingText2;
+                        break;
+                    case nameof(ViewModel.FooterStatusText):
+                        _footerStatusText.Text = ViewModel.FooterStatusText;
+                        break;
+                    case nameof(ViewModel.FooterNfcLabelText):
+                        _footerNfcLabel.Text = ViewModel.FooterNfcLabelText;
+                        break;
+                    case nameof(ViewModel.FooterNfcLabelColor):
+                        _footerNfcLabel.Foreground = SolidColorBrush.Parse(ViewModel.FooterNfcLabelColor);
+                        break;
+                    case nameof(ViewModel.ToggleCardBtnText):
+                        _toggleCardBtn.Content = ViewModel.ToggleCardBtnText;
+                        break;
+                    case nameof(ViewModel.ToggleCardBtnColor):
+                        _toggleCardBtn.Background = SolidColorBrush.Parse(ViewModel.ToggleCardBtnColor);
+                        break;
+                    case nameof(ViewModel.IsIdleScreenVisible):
+                        _idleScreen.IsVisible = ViewModel.IsIdleScreenVisible;
+                        break;
+                    case nameof(ViewModel.IsAmountScreenVisible):
+                        _amountScreen.IsVisible = ViewModel.IsAmountScreenVisible;
+                        break;
+                    case nameof(ViewModel.IsNumpadScreenVisible):
+                        _numpadScreen.IsVisible = ViewModel.IsNumpadScreenVisible;
+                        break;
+                    case nameof(ViewModel.IsPaymentScreenVisible):
+                        _paymentScreen.IsVisible = ViewModel.IsPaymentScreenVisible;
+                        break;
+                    case nameof(ViewModel.IsSuccessScreenVisible):
+                        _successScreen.IsVisible = ViewModel.IsSuccessScreenVisible;
+                        break;
+                    case nameof(ViewModel.IsHelpModalVisible):
+                        _helpModal.IsVisible = ViewModel.IsHelpModalVisible;
+                        break;
+                    case nameof(ViewModel.IsWarningModalVisible):
+                        _warningModal.IsVisible = ViewModel.IsWarningModalVisible;
+                        if (ViewModel.IsWarningModalVisible)
+                        {
+                            try 
+                            { 
+                                if (OperatingSystem.IsWindows())
+                                {
+                                    Console.Beep(800, 500); 
+                                }
+                            } 
+                            catch { }
+                        }
+                        break;
                 }
-
-                ResetKioskToDefault();
-            }
-            catch (TaskCanceledException)
-            {
-                // cleanly cancelled, nothing to do
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[PAYMENT LOGIC FAIL...] {ex.Message}");
-                _paymentStatusText.Text = _currentLang == "TR" 
-                    ? $"❌ HATA: {ex.Message}" 
-                    : $"❌ ERROR: {ex.Message}";
-                _paymentStatusText.Foreground = SolidColorBrush.Parse("#EF4444");
-                
-                try
-                {
-                    await Task.Delay(4000, token);
-                }
-                catch { }
-                ResetKioskToDefault();
-            }
-            finally
-            {
-                _paymentCts?.Dispose();
-                _paymentCts = null;
-            }
+            });
         }
     }
 }

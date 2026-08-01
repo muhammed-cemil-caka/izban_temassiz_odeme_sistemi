@@ -1,6 +1,5 @@
 ﻿using Avalonia;
 using System;
-using IzbanKioskApp.Core;
 
 namespace IzbanKioskApp
 {
@@ -9,9 +8,6 @@ namespace IzbanKioskApp
         [STAThread]
         static void Main(string[] args)
         {
-            // SQLite Veritabanını Başlat
-            DatabaseService.InitializeDatabaseAsync().GetAwaiter().GetResult();
-
             // Avalonia Masaüstü Pencere Uygulamasını Başlat
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }

@@ -807,7 +807,10 @@
         <Grid x:Name="WarningModal" Grid.RowSpan="3" Background="#80000000" IsVisible="False" ZIndex="101">
             <Border Classes="glass-panel" Width="460" Height="210" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#FFFBEB" BorderBrush="#D97706" BorderThickness="3">
                 <Grid RowDefinitions="*,*" Margin="25">
-                    <TextBlock Grid.Row="0" Text="⚠️" FontSize="50" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <Grid Grid.Row="0" Width="60" Height="60" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Path Data="M 20,3 L 3,37 L 37,37 Z" Fill="#F59E0B" Stroke="#D97706" StrokeThickness="3" Stretch="Uniform"/>
+                        <TextBlock Text="!" Foreground="White" FontSize="26" FontWeight="ExtraBold" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,4,0,0"/>
+                    </Grid>
                     <StackPanel Grid.Row="1" Spacing="6" VerticalAlignment="Center">
                         <TextBlock x:Name="WarnTitleText" Text="UYARI: KART ERKEN ÇEKİLDİ!" Foreground="#EF4444" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
                         <TextBlock x:Name="WarnBodyText" Text="İşlem iptal edilmiştir. Kartınızdan ücret alınmadı." Foreground="#78350F" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>

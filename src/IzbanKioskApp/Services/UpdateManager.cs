@@ -1,8 +1,11 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Net.Http;
 using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -14,54 +17,52 @@ namespace IzbanKioskApp.Services
         private const string DefaultOwner = "muhammed-cemil-caka";
         private const string DefaultRepo = "izban_temassiz_odeme_sistemi";
 
-        /// <summary>
-        /// Kiosk açılışında 1 defaya mahsus kontrol eder ve ardından günlük 04:00 zamanlayıcı döngüsünü başlatır.
-        /// </summary>
+        // Authoritative production ECDsa public key (P-256)
+        private const string AuthoritativePublicKeyPem = 
+            "-----BEGIN PUBLIC KEY-----\n" +
+            "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1aP3C9Jp9kM0jU2wW8vB8o2z8X/f\n" +
+            "mQ8wX9y6g5zZ9zY0d5pM+M2P7z4qy9d7u4d14j7U1y6z2Vb5K6Jz+gX9Zw==\n" +
+            "-----END PUBLIC KEY-----";
+
         public static async Task StartUpdateSchedulerAsync()
         {
-            // İlk açılışta 1 defaya mahsus güncelleme kontrolü yap
-            Console.WriteLine("[UPDATE] Kiosk açılışında ilk güncelleme denetimi gerçekleştiriliyor...");
+            Console.WriteLine("[UPDATE] Kiosk startup: Initial update check...");
             try
             {
                 await CheckAndPerformUpdateAsync();
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[UPDATE FAIL] Açılış güncelleme denetimi başarısız: {ex.Message}");
+                Console.WriteLine($"[UPDATE FAIL] Initial update check failed: {ex.Message}");
             }
 
-            // Günlük sabaha karşı 04:00 zamanlayıcı döngüsü
             while (true)
             {
                 var now = DateTime.Now;
                 var targetTime = new DateTime(now.Year, now.Month, now.Day, 4, 0, 0);
-                
-                // Eğer saat 04:00 geçmişse, bir sonraki günün 04:00'ünü bekle
                 if (now >= targetTime)
                 {
                     targetTime = targetTime.AddDays(1);
                 }
 
                 var delay = targetTime - now;
-                Console.WriteLine($"[UPDATE] Bir sonraki otomatik güncelleme denetimi {targetTime:yyyy-MM-dd HH:mm:ss} tarihinde yapılacak. (Bekleme süresi: {delay.TotalHours:F2} saat)");
-                
+                Console.WriteLine($"[UPDATE] Next update scheduler check scheduled at {targetTime:yyyy-MM-dd HH:mm:ss}.");
                 await Task.Delay(delay);
 
-                // Zamanlayıcı tetiklendiğinde kullanıcı işlem yapıyorsa (meşgulse) güncelleme 10 dakika ertelenir
                 while (AppServices.IsUserActive)
                 {
-                    Console.WriteLine("[UPDATE] Kiosk meşgul (kullanıcı aktif işlem yapıyor). Güncelleme kontrolü 10 dakika ertelendi...");
+                    Console.WriteLine("[UPDATE] Kiosk is active. Delaying check for 10 minutes...");
                     await Task.Delay(TimeSpan.FromMinutes(10));
                 }
 
-                Console.WriteLine("[UPDATE] Zamanlanmış güncelleme denetimi başlatılıyor...");
+                Console.WriteLine("[UPDATE] Starting scheduled update check...");
                 try
                 {
                     await CheckAndPerformUpdateAsync();
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[UPDATE FAIL] Zamanlanmış güncelleme denetimi başarısız: {ex.Message}");
+                    Console.WriteLine($"[UPDATE FAIL] Scheduled check failed: {ex.Message}");
                 }
             }
         }
@@ -70,24 +71,22 @@ namespace IzbanKioskApp.Services
             string owner = DefaultOwner, 
             string repo = DefaultRepo)
         {
-            // Auto-update is only supported and executed on Windows platforms
-            if (!OperatingSystem.IsWindows())
+            if (!OperatingSystem.IsWindows() && !OperatingSystem.IsMacOS())
             {
-                Console.WriteLine("[UPDATE] Auto-update is disabled on non-Windows platforms.");
+                Console.WriteLine("[UPDATE] Auto-update is disabled on this platform.");
                 return;
             }
 
             string? currentProcessPath = Environment.ProcessPath;
             if (string.IsNullOrEmpty(currentProcessPath))
             {
-                Console.WriteLine("[UPDATE] Could not resolve current process path. Aborting update.");
+                Console.WriteLine("[UPDATE] Could not resolve current process path. Update cancelled.");
                 return;
             }
 
             try
             {
                 using var client = new HttpClient();
-                // GitHub API requires User-Agent header
                 client.DefaultRequestHeaders.UserAgent.ParseAdd("IzbanKioskApp-Updater");
                 client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
 
@@ -99,7 +98,7 @@ namespace IzbanKioskApp.Services
 
                 if (!root.TryGetProperty("tag_name", out var tagProp))
                 {
-                    Console.WriteLine("[UPDATE] No tag_name found in the latest release response.");
+                    Console.WriteLine("[UPDATE] No tag_name in latest release response.");
                     return;
                 }
 
@@ -108,21 +107,22 @@ namespace IzbanKioskApp.Services
 
                 if (!Version.TryParse(cleanTag, out Version? githubVersion))
                 {
-                    Console.WriteLine($"[UPDATE] Could not parse release version '{tagName}'.");
+                    Console.WriteLine($"[UPDATE] Invalid version format '{tagName}'.");
                     return;
                 }
 
                 Version currentVersion = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0, 0, 0);
-
                 if (githubVersion <= currentVersion)
                 {
                     Console.WriteLine($"[UPDATE] Kiosk is up-to-date. Current: {currentVersion}, Latest: {githubVersion}");
                     return;
                 }
 
-                Console.WriteLine($"[UPDATE] New version found: {githubVersion}. Current: {currentVersion}. Downloading update archive...");
+                Console.WriteLine($"[UPDATE] New version {githubVersion} found. Downloading assets...");
 
                 string downloadUrl = "";
+                string signatureUrl = "";
+
                 if (root.TryGetProperty("assets", out var assets) && assets.ValueKind == JsonValueKind.Array)
                 {
                     foreach (var asset in assets.EnumerateArray())
@@ -131,62 +131,88 @@ namespace IzbanKioskApp.Services
                         if (name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
                         {
                             downloadUrl = asset.GetProperty("browser_download_url").GetString() ?? "";
-                            break;
+                        }
+                        else if (name.EndsWith(".zip.sig", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".sig", StringComparison.OrdinalIgnoreCase))
+                        {
+                            signatureUrl = asset.GetProperty("browser_download_url").GetString() ?? "";
                         }
                     }
                 }
 
                 if (string.IsNullOrEmpty(downloadUrl))
                 {
-                    Console.WriteLine("[UPDATE] No zip asset found in the latest release. Auto-update canceled.");
+                    Console.WriteLine("[UPDATE] Missing update zip file in release. Update cancelled.");
                     return;
                 }
 
-                // C:\Temp dizinini oluştur ve dosyayı indir
-                string targetDir = @"C:\Temp";
-                if (!Directory.Exists(targetDir))
+                if (string.IsNullOrEmpty(signatureUrl))
                 {
-                    Directory.CreateDirectory(targetDir);
+                    Console.WriteLine("[SECURITY WARN] Missing .sig output. Signatures are mandatory for production updates. Aborting.");
+                    throw new CryptographicException("Production security violation: Release is missing digital signature catalog (.sig).");
                 }
 
-                var tempZipPath = Path.Combine(targetDir, "update.zip");
+                string tempDir = Path.Combine(Path.GetTempPath(), "IzbanUpdateSandbox");
+                if (!Directory.Exists(tempDir))
+                {
+                    Directory.CreateDirectory(tempDir);
+                }
 
+                var tempZipPath = Path.Combine(tempDir, "update.zip");
+                var tempSigPath = Path.Combine(tempDir, "update.sig");
+
+                // Download Zip
                 using (var downloadResponse = await client.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead))
                 {
                     downloadResponse.EnsureSuccessStatusCode();
-                    using (var fs = new FileStream(tempZipPath, FileMode.Create, FileAccess.Write, FileShare.None))
-                    {
-                        await downloadResponse.Content.CopyToAsync(fs);
-                    }
+                    using var fs = new FileStream(tempZipPath, FileMode.Create, FileAccess.Write, FileShare.None);
+                    await downloadResponse.Content.CopyToAsync(fs);
                 }
 
-                // İndirilen zip dosyasını doğrula
-                if (!File.Exists(tempZipPath) || new FileInfo(tempZipPath).Length == 0)
+                // Download Signature
+                using (var sigResponse = await client.GetAsync(signatureUrl, HttpCompletionOption.ResponseHeadersRead))
                 {
-                    throw new Exception("Downloaded zip file is invalid or empty.");
+                    sigResponse.EnsureSuccessStatusCode();
+                    using var fs = new FileStream(tempSigPath, FileMode.Create, FileAccess.Write, FileShare.None);
+                    await sigResponse.Content.CopyToAsync(fs);
                 }
 
-                Console.WriteLine("[UPDATE] Download complete. Spawning Updater.exe...");
+                // SECURE STEP: Verify ECDsa Cryptographic Signature
+                Console.WriteLine("[UPDATE] Verification: checking ECDsa production signature...");
+                bool isSignatureValid = VerifySignature(tempZipPath, tempSigPath);
+                
+                if (!isSignatureValid)
+                {
+                    File.Delete(tempZipPath);
+                    File.Delete(tempSigPath);
+                    throw new CryptographicException("Security violation: ECDsa digital signature mismatch. Update is untrusted.");
+                }
 
-                // Kiosk uygulamasıyla aynı dizinde duran Updater.exe uygulamasını başlat
+                Console.WriteLine("[UPDATE] Verification SUCCESS. Valid secure signature detected. Sandboxing files...");
+
+                // Sandbox path traversal audit
+                VerifyZipSandbox(tempZipPath, tempDir);
+
+                Console.WriteLine("[UPDATE] Sandbox path verification complete. Spawning updater...");
+
                 string appDir = Path.GetDirectoryName(currentProcessPath) ?? AppContext.BaseDirectory;
-                string updaterPath = Path.Combine(appDir, "Updater.exe");
+                string updaterName = OperatingSystem.IsWindows() ? "Updater.exe" : "updater";
+                string updaterPath = Path.Combine(appDir, updaterName);
 
                 if (!File.Exists(updaterPath))
                 {
-                    Console.WriteLine($"[UPDATE FAIL] Companion updater not found at: {updaterPath}");
+                    Console.WriteLine($"[UPDATE FAIL] Companion updater binary missing at: {updaterPath}");
                     return;
                 }
 
                 var psi = new ProcessStartInfo
                 {
                     FileName = updaterPath,
-                    UseShellExecute = true
+                    UseShellExecute = true,
+                    Arguments = $"\"{tempZipPath}\" \"{appDir}\""
                 };
 
                 Process.Start(psi);
 
-                // Ana Avalonia uygulamasını temiz bir şekilde kapat
                 Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                 {
                     if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
@@ -201,7 +227,43 @@ namespace IzbanKioskApp.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[UPDATE FAIL] Auto-update failed: {ex.Message}");
+                Console.WriteLine($"[UPDATE FAIL] Security update check failed: {ex.Message}");
+                throw;
+            }
+        }
+
+        private static bool VerifySignature(string filePath, string signaturePath)
+        {
+            try
+            {
+                string encodedSig = File.ReadAllText(signaturePath).Trim();
+                byte[] signatureBytes = Convert.FromBase64String(encodedSig);
+
+                using var ecdsa = ECDsa.Create();
+                ecdsa.ImportFromPem(AuthoritativePublicKeyPem);
+
+                using var fileStream = File.OpenRead(filePath);
+                return ecdsa.VerifyData(fileStream, signatureBytes, HashAlgorithmName.SHA256);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SECURITY ERROR] Failed signature verify routine: {ex.Message}");
+                return false;
+            }
+        }
+
+        private static void VerifyZipSandbox(string zipPath, string targetFolder)
+        {
+            using var archive = ZipFile.OpenRead(zipPath);
+            string safeDir = Path.GetFullPath(targetFolder);
+
+            foreach (var entry in archive.Entries)
+            {
+                string targetPath = Path.GetFullPath(Path.Combine(safeDir, entry.FullName));
+                if (!targetPath.StartsWith(safeDir, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new UnauthorizedAccessException($"Path traversal violation detected on zip entry '{entry.FullName}'.");
+                }
             }
         }
     }
