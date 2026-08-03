@@ -719,6 +719,7 @@ namespace IzbanKioskApp.ViewModels
                     }
                     else if (decision == "NO")
                     {
+                        IsReceiptYesEnabled = false;
                         IsReceiptPrinting = true;
                         ReceiptStatusText = GetText("ReceiptDeclined");
                         await _receiptService.RecordDecisionAsync(result.Id.Value.ToString(), "Declined", CancellationToken.None);
@@ -726,6 +727,8 @@ namespace IzbanKioskApp.ViewModels
                     }
                     else // TIMEOUT
                     {
+                        IsReceiptYesEnabled = false;
+                        IsReceiptPrinting = true;
                         await _receiptService.RecordDecisionAsync(result.Id.Value.ToString(), "TimedOut", CancellationToken.None);
                         ReceiptStatusText = GetText("ReceiptTimeout");
                         await Task.Delay(2000);

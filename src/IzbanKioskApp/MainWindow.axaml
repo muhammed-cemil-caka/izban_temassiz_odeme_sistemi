@@ -211,6 +211,64 @@
             <Setter Property="BorderThickness" Value="0,0,0,1"/>
         </Style>
 
+        <!-- ReceiptYesBtn (Green) specificity overrides -->
+        <Style Selector="Button#ReceiptYesBtn /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#10B981"/>
+            <Setter Property="BorderBrush" Value="#059669"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0,0,0,4"/>
+        </Style>
+        <Style Selector="Button#ReceiptYesBtn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#059669"/>
+            <Setter Property="BorderBrush" Value="#047857"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0,0,0,4"/>
+        </Style>
+        <Style Selector="Button#ReceiptYesBtn:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#047857"/>
+            <Setter Property="BorderBrush" Value="#065F46"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        </Style>
+        <Style Selector="Button#ReceiptYesBtn:disabled">
+            <Setter Property="Opacity" Value="1.0"/>
+        </Style>
+        <Style Selector="Button#ReceiptYesBtn:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#10B981"/>
+            <Setter Property="BorderBrush" Value="#059669"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0,0,0,4"/>
+        </Style>
+
+        <!-- ReceiptNoBtn (Slate/Gray) specificity overrides -->
+        <Style Selector="Button#ReceiptNoBtn /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#64748B"/>
+            <Setter Property="BorderBrush" Value="#475569"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0,0,0,4"/>
+        </Style>
+        <Style Selector="Button#ReceiptNoBtn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#475569"/>
+            <Setter Property="BorderBrush" Value="#334155"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0,0,0,4"/>
+        </Style>
+        <Style Selector="Button#ReceiptNoBtn:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#334155"/>
+            <Setter Property="BorderBrush" Value="#1E293B"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        </Style>
+        <Style Selector="Button#ReceiptNoBtn:disabled">
+            <Setter Property="Opacity" Value="1.0"/>
+        </Style>
+        <Style Selector="Button#ReceiptNoBtn:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#64748B"/>
+            <Setter Property="BorderBrush" Value="#475569"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0,0,0,4"/>
+        </Style>
+
         <!-- 3D style for Amount Buttons -->
         <Style Selector="Button.amount-btn">
             <Setter Property="Background" Value="#FFFFFF"/>
