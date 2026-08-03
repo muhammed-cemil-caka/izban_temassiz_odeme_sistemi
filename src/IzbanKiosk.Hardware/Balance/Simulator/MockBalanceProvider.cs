@@ -6,7 +6,12 @@ namespace IzbanKiosk.Hardware.Balance.Simulator
 {
     public class MockBalanceProvider : IAuthoritativeBalanceProvider
     {
-        private long _simulatedBalanceMinor = 6250; // 62.50 TL
+        private readonly ISimulatorCardLedger _ledger;
+
+        public MockBalanceProvider(ISimulatorCardLedger ledger)
+        {
+            _ledger = ledger ?? throw new ArgumentNullException(nameof(ledger));
+        }
 
         public Task InitializeAsync()
         {
@@ -18,20 +23,22 @@ namespace IzbanKiosk.Hardware.Balance.Simulator
             return Task.FromResult(true);
         }
 
-        public Task<BalanceResult> GetAuthoritativeBalanceAsync(string cardRef)
+        public async Task<BalanceResult> GetAuthoritativeBalanceAsync(string cardRef)
         {
-            return Task.FromResult(new BalanceResult(
+            var record = await _ledger.GetOrCreateCardAsync(cardRef);
+            return new BalanceResult(
                 isAuthoritative: true,
                 isVerified: true,
-                balanceMinor: _simulatedBalanceMinor,
+                balanceMinor: record.BalanceMinor,
                 timestampUtc: DateTime.UtcNow,
                 isStale: false
-            ));
+            );
         }
 
-        public Task<bool> VerifyBalanceAsync(string cardRef, long expectedBalanceMinor)
+        public async Task<bool> VerifyBalanceAsync(string cardRef, long expectedBalanceMinor)
         {
-            return Task.FromResult(true);
+            var record = await _ledger.GetOrCreateCardAsync(cardRef);
+            return record.BalanceMinor == expectedBalanceMinor;
         }
 
         public Task<BalanceResult> RefreshBalanceAsync(string cardRef)
@@ -42,7 +49,7 @@ namespace IzbanKiosk.Hardware.Balance.Simulator
         // Helper for simulator to modify the balance
         public void SetSimulatedBalance(long balanceMinor)
         {
-            _simulatedBalanceMinor = balanceMinor;
+            // Deprecated - balance is managed via ledger
         }
     }
 }

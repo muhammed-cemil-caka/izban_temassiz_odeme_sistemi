@@ -191,7 +191,7 @@ namespace IzbanKiosk.Application.Services
 
             long expectedBalance = tx.PreviousBalanceMinor + (tx.Amount?.AmountMinor ?? 0);
 
-            if (cardBalance >= expectedBalance)
+            if (cardBalance == expectedBalance)
             {
                 _logger.LogInformation("NFC Load detected SUCCESS via bakiye check.");
                 tx.RegisterLoadDetails(tx.LoadVendorReference, cardBalance);

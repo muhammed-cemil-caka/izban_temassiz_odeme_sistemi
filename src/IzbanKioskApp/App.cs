@@ -76,6 +76,7 @@ namespace IzbanKioskApp
                     // Hardware configurations
                     if (useMock)
                     {
+                        services.AddSingleton<ISimulatorCardLedger, SimulatorCardLedger>();
                         services.AddSingleton<INfcReader, MockNfcReader>();
                         services.AddSingleton<IPosTerminal, MockPosTerminal>();
                         services.AddSingleton<IAuthoritativeBalanceProvider, MockBalanceProvider>();

@@ -3,19 +3,25 @@ using System.Threading;
 using System.Threading.Tasks;
 using IzbanKiosk.Domain;
 using IzbanKiosk.Application.Hardware.Nfc;
+using IzbanKiosk.Application.Hardware.Balance;
 
 namespace IzbanKiosk.Hardware.Nfc.Simulator
 {
     public class MockNfcReader : INfcReader
     {
-        private long _cardBalanceMinor = 6250; // starts at 62.50 TRY
-        private int _transactionCounter = 42;
+        private readonly ISimulatorCardLedger _ledger;
         private string _cardUidSimulated = "35-IZM-9921";
 
         // Simulator controls
         public string NextLoadResult { get; set; } = "Success"; // "Success", "Failure", "Timeout", "OutcomeUnknown"
         public string NextWaitCardResult { get; set; } = "Detected"; // "Detected", "Timeout", "None"
         public bool NextValidateResult { get; set; } = true;
+        public long? CustomVerifiedBalance { get; set; }
+
+        public MockNfcReader(ISimulatorCardLedger ledger)
+        {
+            _ledger = ledger ?? throw new ArgumentNullException(nameof(ledger));
+        }
 
         public Task InitializeAsync(CancellationToken cancellationToken)
         {
@@ -61,17 +67,18 @@ namespace IzbanKiosk.Hardware.Nfc.Simulator
             return Task.FromResult(NextValidateResult);
         }
 
-        public Task<CardSnapshot> ReadCardSnapshotAsync(
+        public async Task<CardSnapshot> ReadCardSnapshotAsync(
             TransactionId transactionId, 
             CardReference cardRef, 
             CancellationToken cancellationToken)
         {
-            return Task.FromResult(new CardSnapshot(
+            var record = await _ledger.GetOrCreateCardAsync(cardRef.Hash);
+            return new CardSnapshot(
                 cardRef: cardRef,
-                balanceMinor: _cardBalanceMinor,
-                transactionCounter: _transactionCounter,
+                balanceMinor: record.BalanceMinor,
+                transactionCounter: record.CardTransactionCounter,
                 isValid: true
-            ));
+            );
         }
 
         public async Task<bool> LoadAmountAsync(
@@ -101,37 +108,48 @@ namespace IzbanKiosk.Hardware.Nfc.Simulator
             }
 
             // Success
-            _cardBalanceMinor += amount.AmountMinor;
-            _transactionCounter++;
-            return true;
+            var record = await _ledger.GetOrCreateCardAsync(cardRef.Hash);
+            bool updated = await _ledger.UpdateBalanceAsync(
+                cardRef.Hash,
+                record.BalanceMinor,
+                record.BalanceMinor + amount.AmountMinor,
+                idempotencyKey,
+                1
+            );
+
+            return updated;
         }
 
-        public Task<bool> QueryLoadTransactionAsync(
+        public async Task<bool> QueryLoadTransactionAsync(
             TransactionId transactionId, 
             string loadVendorReference, 
             CancellationToken cancellationToken, 
             Guid correlationId)
         {
-            // If we are in outcome unknown but actually succeeded:
-            return Task.FromResult(NextLoadResult == "Success" || NextLoadResult == "OutcomeUnknown");
+            return await _ledger.IsLoadReferenceProcessedAsync(loadVendorReference);
         }
 
-        public Task<bool> VerifyLoadAsync(
+        public async Task<bool> VerifyLoadAsync(
             TransactionId transactionId, 
             CardReference cardRef, 
             Money amount, 
             CancellationToken cancellationToken)
         {
-            // Verify if load occurred
-            return Task.FromResult(true);
+            var record = await _ledger.GetOrCreateCardAsync(cardRef.Hash);
+            return record.LastLoadReference != null;
         }
 
-        public Task<long> ReadVerifiedBalanceAsync(
+        public async Task<long> ReadVerifiedBalanceAsync(
             TransactionId transactionId, 
             CardReference cardRef, 
             CancellationToken cancellationToken)
         {
-            return Task.FromResult(_cardBalanceMinor);
+            if (CustomVerifiedBalance.HasValue)
+            {
+                return CustomVerifiedBalance.Value;
+            }
+            var record = await _ledger.GetOrCreateCardAsync(cardRef.Hash);
+            return record.BalanceMinor;
         }
 
         public async Task WaitForCardRemovalAsync(
@@ -144,11 +162,15 @@ namespace IzbanKiosk.Hardware.Nfc.Simulator
         }
 
         // Helper to override simulated values
+        public void SetSimulatedCardUid(string uid)
+        {
+            _cardUidSimulated = uid;
+        }
+
+        [Obsolete("Use SetSimulatedCardUid, balance is managed by the ledger")]
         public void SetSimulatedCard(string cardUid, long balanceMinor, int transactionCounter = 42)
         {
             _cardUidSimulated = cardUid;
-            _cardBalanceMinor = balanceMinor;
-            _transactionCounter = transactionCounter;
         }
     }
 }

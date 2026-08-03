@@ -214,7 +214,7 @@ namespace IzbanKiosk.Application.Services
                 await _txRepository.SaveAsync(tx, "LoadVerificationPending");
 
                 var verifiedBalance = await _nfcReader.ReadVerifiedBalanceAsync(tx.Id, tx.CardRef!, cancellationToken);
-                if (verifiedBalance >= newBalance)
+                if (verifiedBalance == newBalance)
                 {
                     tx.TransitionTo(KioskTransactionState.LoadVerified);
                     tx.TransitionTo(KioskTransactionState.Completed);

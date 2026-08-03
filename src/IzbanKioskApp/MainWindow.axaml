@@ -859,6 +859,8 @@
                     <Border BorderBrush="#CBD5E1" BorderThickness="1.5" CornerRadius="6" Background="White" Padding="6,3" VerticalAlignment="Center">
                         <TextBlock x:Name="FooterNfcLabel" Text="NFC SENSÖR: KART YOK" Foreground="#EF4444" FontSize="10" FontWeight="Bold"/>
                     </Border>
+                    <!-- Card Select TextBox for simulator/testing -->
+                    <TextBox x:Name="SimCardUidInput" Text="{Binding SimulatedCardUid, Mode=TwoWay}" Width="110" FontSize="11" VerticalAlignment="Center" Watermark="Card UID"/>
                     <!-- Simulation Toggle Trigger -->
                     <Button x:Name="ToggleCardBtn" Content="📥 KART YAKLAŞTIR" Background="#10B981" Foreground="White" FontSize="11" FontWeight="Bold" CornerRadius="6" Padding="12,6"/>
                 </StackPanel>

@@ -490,6 +490,13 @@ namespace IzbanKioskApp.ViewModels
             SetCurrentScreen(1); // 1 = Idle Screen
         }
 
+        private string _simulatedCardUid = "35-IZM-9921";
+        public string SimulatedCardUid
+        {
+            get => _simulatedCardUid;
+            set { _simulatedCardUid = value; OnPropertyChanged(); }
+        }
+
         public async Task ToggleSimulatedCardAsync()
         {
             if (!_isCardPresent)
@@ -499,6 +506,12 @@ namespace IzbanKioskApp.ViewModels
                 ToggleCardBtnColor = "#EF4444";
                 FooterNfcLabelText = GetText("FooterNfcCard");
                 FooterNfcLabelColor = "#10B981";
+
+                var method = _nfcReader.GetType().GetMethod("SetSimulatedCardUid");
+                if (method != null)
+                {
+                    method.Invoke(_nfcReader, new object[] { string.IsNullOrWhiteSpace(_simulatedCardUid) ? "35-IZM-9921" : _simulatedCardUid });
+                }
 
                 try
                 {

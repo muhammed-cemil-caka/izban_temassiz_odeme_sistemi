@@ -167,6 +167,18 @@ namespace IzbanKiosk.Infrastructure
                         CreatedAtUtc TEXT NOT NULL,
                         LastModifiedAtUtc TEXT NOT NULL
                     );");
+
+                // 9. SimulatorCards Table
+                await ExecuteCommandAsync(connection, transaction, @"
+                    CREATE TABLE IF NOT EXISTS SimulatorCards (
+                        CardRef TEXT PRIMARY KEY,
+                        BalanceMinor INTEGER NOT NULL,
+                        Currency TEXT NOT NULL,
+                        CardTransactionCounter INTEGER NOT NULL,
+                        LastLoadReference TEXT,
+                        UpdatedAtUtc TEXT NOT NULL,
+                        RowVersion INTEGER NOT NULL
+                    );");
  
                 // Insert initial schema version if empty
                 var checkVersionCmd = new SqliteCommand("SELECT COUNT(*) FROM SchemaMigrations WHERE Version = 2;", connection, transaction);
