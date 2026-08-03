@@ -9,6 +9,7 @@ using IzbanKiosk.Application.Services;
 using IzbanKiosk.Application.Hardware.Pos;
 using IzbanKiosk.Application.Hardware.Nfc;
 using IzbanKiosk.Application.Hardware.Balance;
+using IzbanKiosk.Application.Hardware.Receipt;
 
 namespace IzbanKioskApp.ViewModels
 {
@@ -19,6 +20,24 @@ namespace IzbanKioskApp.ViewModels
         private readonly IPosTerminal _posTerminal;
         private readonly IAuthoritativeBalanceProvider _balanceProvider;
         private readonly RecoveryService _recoveryService;
+        private readonly ReceiptService _receiptService;
+        private readonly IReceiptPrinter _receiptPrinter;
+        private readonly ReceiptPrinterOptions _receiptPrinterOptions;
+
+        private bool _isReceiptPromptVisible;
+        private bool _isReceiptPrinting;
+        private bool _isReceiptYesEnabled;
+        private string _receiptPromptText = "";
+        private string _receiptYesButtonText = "";
+        private string _receiptNoButtonText = "";
+        private string _receiptStatusText = "";
+        private bool _printerReady;
+        private bool _receiptDecisionTaken;
+        private TaskCompletionSource<string>? _receiptDecisionTcs;
+        private CancellationTokenSource? _receiptDecisionTimeoutCts;
+        private readonly SemaphoreSlim _receiptDecisionLock = new SemaphoreSlim(1, 1);
+        private bool _isPrinterWarningVisible;
+        private string _printerWarningText = "";
 
         private CancellationTokenSource? _transactionCts;
         private bool _isCardPresent;
@@ -85,17 +104,38 @@ namespace IzbanKioskApp.ViewModels
             INfcReader nfcReader,
             IPosTerminal posTerminal,
             IAuthoritativeBalanceProvider balanceProvider,
-            RecoveryService recoveryService)
+            RecoveryService recoveryService,
+            ReceiptService receiptService,
+            IReceiptPrinter receiptPrinter,
+            ReceiptPrinterOptions receiptPrinterOptions)
         {
             _transactionCoordinator = transactionCoordinator;
             _nfcReader = nfcReader;
             _posTerminal = posTerminal;
             _balanceProvider = balanceProvider;
             _recoveryService = recoveryService;
+            _receiptService = receiptService;
+            _receiptPrinter = receiptPrinter;
+            _receiptPrinterOptions = receiptPrinterOptions;
 
             UpdateClock();
             ApplyLanguage();
             ResetKioskToDefault();
+
+            // Run async status check
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var status = await _receiptPrinter.HealthCheckAsync(CancellationToken.None);
+                    _printerReady = (status.Code == ReceiptPrinterStatusCode.Ready || status.Code == ReceiptPrinterStatusCode.PaperLow);
+                }
+                catch
+                {
+                    _printerReady = false;
+                }
+                ApplyFooterStatusText();
+            });
         }
 
         // --- Properties to Bind ---
@@ -139,6 +179,60 @@ namespace IzbanKioskApp.ViewModels
         {
             get => _isWarningModalVisible;
             set { _isWarningModalVisible = value; OnPropertyChanged(); }
+        }
+
+        public bool IsReceiptPromptVisible
+        {
+            get => _isReceiptPromptVisible;
+            set { _isReceiptPromptVisible = value; OnPropertyChanged(); }
+        }
+
+        public bool IsReceiptPrinting
+        {
+            get => _isReceiptPrinting;
+            set { _isReceiptPrinting = value; OnPropertyChanged(); }
+        }
+
+        public bool IsReceiptYesEnabled
+        {
+            get => _isReceiptYesEnabled;
+            set { _isReceiptYesEnabled = value; OnPropertyChanged(); }
+        }
+
+        public string ReceiptPromptText
+        {
+            get => _receiptPromptText;
+            set { _receiptPromptText = value; OnPropertyChanged(); }
+        }
+
+        public string ReceiptYesButtonText
+        {
+            get => _receiptYesButtonText;
+            set { _receiptYesButtonText = value; OnPropertyChanged(); }
+        }
+
+        public string ReceiptNoButtonText
+        {
+            get => _receiptNoButtonText;
+            set { _receiptNoButtonText = value; OnPropertyChanged(); }
+        }
+
+        public string ReceiptStatusText
+        {
+            get => _receiptStatusText;
+            set { _receiptStatusText = value; OnPropertyChanged(); }
+        }
+
+        public bool IsPrinterWarningVisible
+        {
+            get => _isPrinterWarningVisible;
+            set { _isPrinterWarningVisible = value; OnPropertyChanged(); }
+        }
+
+        public string PrinterWarningText
+        {
+            get => _printerWarningText;
+            set { _printerWarningText = value; OnPropertyChanged(); }
         }
 
         public string ClockText
@@ -380,6 +474,19 @@ namespace IzbanKioskApp.ViewModels
             FooterNfcLabelText = GetText("FooterNfcNoCard");
             FooterNfcLabelColor = "#EF4444";
 
+            IsReceiptPromptVisible = false;
+            IsReceiptPrinting = false;
+            ReceiptStatusText = "";
+            _receiptDecisionTaken = false;
+            _receiptDecisionTcs = null;
+
+            if (_receiptDecisionTimeoutCts != null)
+            {
+                try { _receiptDecisionTimeoutCts.Cancel(); } catch { }
+                try { _receiptDecisionTimeoutCts.Dispose(); } catch { }
+                _receiptDecisionTimeoutCts = null;
+            }
+
             SetCurrentScreen(1); // 1 = Idle Screen
         }
 
@@ -435,8 +542,12 @@ namespace IzbanKioskApp.ViewModels
             }
             else if (IsSuccessScreenVisible)
             {
-                _transactionCts?.Cancel();
-                ResetKioskToDefault();
+                if (!IsReceiptPromptVisible)
+                {
+                    _transactionCts?.Cancel();
+                    ResetKioskToDefault();
+                }
+                // If IsReceiptPromptVisible is true, keep screen open on card removal
             }
         }
 
@@ -540,17 +651,86 @@ namespace IzbanKioskApp.ViewModels
 
                 if (result.State == KioskTransactionState.Completed)
                 {
-                    _currentBalanceMinor += chargeMoney.AmountMinor;
+                    // Use result.NewBalanceMinor instead of adding client-side
+                    _currentBalanceMinor = result.NewBalanceMinor;
                     FinalBalanceText = $"{GetText("FinalBalance")}: {(_currentBalanceMinor / 100.0):F2} TL";
+                    
                     SetCurrentScreen(5); // 5 = Success Screen
+                    
+                    IsReceiptPromptVisible = true;
+                    IsReceiptPrinting = false;
+                    IsReceiptYesEnabled = _printerReady;
+                    ReceiptStatusText = "";
+                    ApplyLanguage(); // refresh texts
 
-                    // Wait for card removal or 15 second timeout
-                    var timeoutTask = Task.Delay(15000, token);
-                    while (_isCardPresent && !token.IsCancellationRequested)
+                    _receiptDecisionTcs = new TaskCompletionSource<string>();
+                    _receiptDecisionTaken = false;
+
+                    int timeoutSecs = _receiptPrinterOptions?.DecisionTimeoutSeconds ?? 20;
+                    var timeoutCts = new CancellationTokenSource();
+                    _receiptDecisionTimeoutCts = timeoutCts;
+
+                    _ = Task.Run(async () =>
                     {
-                        if (timeoutTask.IsCompleted) break;
-                        await Task.Delay(100, token);
+                        try
+                        {
+                            await Task.Delay(timeoutSecs * 1000, timeoutCts.Token);
+                            _receiptDecisionTcs.TrySetResult("TIMEOUT");
+                        }
+                        catch (TaskCanceledException) { }
+                    });
+
+                    // Wait for decision
+                    string decision = await _receiptDecisionTcs.Task;
+                    _receiptDecisionTaken = true;
+                    timeoutCts.Cancel();
+
+                    if (decision == "YES")
+                    {
+                        IsReceiptYesEnabled = false;
+                        IsReceiptPrinting = true;
+                        ReceiptStatusText = GetText("ReceiptPrinting");
+
+                        // Record Requested and print
+                        await _receiptService.RecordDecisionAsync(result.Id.Value.ToString(), "Requested", CancellationToken.None);
+                        var printRes = await _receiptService.PrintReceiptAsync(result.Id.Value.ToString(), "ALSANCAK İSTASYONU", "K-082", CancellationToken.None);
+
+                        if (printRes.Success)
+                        {
+                            ReceiptStatusText = GetText("ReceiptPrinted");
+                            await Task.Delay(3000);
+                        }
+                        else
+                        {
+                            if (printRes.Outcome == ReceiptPrintOutcome.PaperOut)
+                            {
+                                ReceiptStatusText = GetText("ReceiptFailed") + " (" + GetText("PaperOut") + ")";
+                            }
+                            else if (printRes.Outcome == ReceiptPrintOutcome.Offline)
+                            {
+                                ReceiptStatusText = GetText("ReceiptUnavailable");
+                            }
+                            else
+                            {
+                                ReceiptStatusText = GetText("ReceiptFailed");
+                            }
+                            await Task.Delay(4000);
+                        }
                     }
+                    else if (decision == "NO")
+                    {
+                        IsReceiptPrinting = true;
+                        ReceiptStatusText = GetText("ReceiptDeclined");
+                        await _receiptService.RecordDecisionAsync(result.Id.Value.ToString(), "Declined", CancellationToken.None);
+                        await Task.Delay(2000);
+                    }
+                    else // TIMEOUT
+                    {
+                        await _receiptService.RecordDecisionAsync(result.Id.Value.ToString(), "TimedOut", CancellationToken.None);
+                        ReceiptStatusText = GetText("ReceiptTimeout");
+                        await Task.Delay(2000);
+                    }
+
                     ResetKioskToDefault();
                 }
                 else
@@ -582,6 +762,38 @@ namespace IzbanKioskApp.ViewModels
             }
         }
 
+        public async Task RequestReceiptAsync()
+        {
+            await _receiptDecisionLock.WaitAsync();
+            try
+            {
+                if (!_receiptDecisionTaken && _receiptDecisionTcs != null)
+                {
+                    _receiptDecisionTcs.TrySetResult("YES");
+                }
+            }
+            finally
+            {
+                _receiptDecisionLock.Release();
+            }
+        }
+
+        public async Task DeclineReceiptAsync()
+        {
+            await _receiptDecisionLock.WaitAsync();
+            try
+            {
+                if (!_receiptDecisionTaken && _receiptDecisionTcs != null)
+                {
+                    _receiptDecisionTcs.TrySetResult("NO");
+                }
+            }
+            finally
+            {
+                _receiptDecisionLock.Release();
+            }
+        }
+
         private void SetCurrentScreen(int screenNumber)
         {
             IsIdleScreenVisible = (screenNumber == 1);
@@ -601,13 +813,18 @@ namespace IzbanKioskApp.ViewModels
             return uid.Substring(0, 2) + "-IZM-••••";
         }
 
-        private string GetText(string key)
+        private void ApplyFooterStatusText()
         {
-            if (LangDict.TryGetValue(_currentLang, out var section) && section.TryGetValue(key, out var val))
+            if (_printerReady)
             {
-                return val;
+                FooterStatusText = GetText("FooterPrinterReady");
+                IsPrinterWarningVisible = false;
             }
-            return key;
+            else
+            {
+                FooterStatusText = GetText("FooterStatus");
+                IsPrinterWarningVisible = true;
+            }
         }
 
         private void ApplyLanguage()
@@ -642,7 +859,13 @@ namespace IzbanKioskApp.ViewModels
             SuccessSubHeadingText1 = GetText("SuccessSub1");
             SuccessSubHeadingText2 = GetText("SuccessSub2");
 
-            FooterStatusText = GetText("FooterStatus");
+            ReceiptPromptText = GetText("ReceiptPrompt");
+            ReceiptYesButtonText = GetText("ReceiptYes");
+            ReceiptNoButtonText = GetText("ReceiptNo");
+            PrinterWarningText = GetText("FooterPrinterUnavailable");
+
+            // Apply footer text based on printer state
+            ApplyFooterStatusText();
 
             if (_isCardPresent)
             {
@@ -654,6 +877,15 @@ namespace IzbanKioskApp.ViewModels
                 ToggleCardBtnText = _currentLang == "TR" ? "📥 KART YAKLAŞTIR" : "📥 PLACE CARD";
                 FooterNfcLabelText = GetText("FooterNfcNoCard");
             }
+        }
+
+        private string GetText(string key)
+        {
+            if (LangDict.TryGetValue(_currentLang, out var dict) && dict.TryGetValue(key, out var text))
+            {
+                return text;
+            }
+            return key;
         }
 
         private static readonly Dictionary<string, Dictionary<string, string>> LangDict = new()
@@ -682,10 +914,22 @@ namespace IzbanKioskApp.ViewModels
                 { "SuccessHeading", "YÜKLEME BAŞARILI!" },
                 { "FinalBalance", "Yeni Bakiyeniz" },
                 { "SuccessSub1", "İşleminiz tamamlanmıştır. İyi yolculuklar dileriz!" },
-                { "SuccessSub2", "Kartınızı okuyucudan çekebilirsiniz. Kart çekildiğinde işlem sonlanacaktır." },
+                { "SuccessSub2", "Makbuz seçiminizi yapabilir ve kartınızı okuyucudan çekebilirsiniz." },
                 { "FooterStatus", "Kart Okuyucu ve POS Terminali Hazır" },
                 { "FooterNfcNoCard", "NFC SENSÖR: KART YOK" },
-                { "FooterNfcCard", "NFC SENSÖR: KART VAR" }
+                { "FooterNfcCard", "NFC SENSÖR: KART VAR" },
+                { "ReceiptPrompt", "MAKBUZ İSTER MİSİNİZ?" },
+                { "ReceiptYes", "EVET - MAKBUZ YAZDIR" },
+                { "ReceiptNo", "HAYIR - İSTEMİYORUM" },
+                { "ReceiptPrinting", "Makbuzunuz hazırlanıyor..." },
+                { "ReceiptPrinted", "Makbuzunuzu almayı unutmayınız." },
+                { "ReceiptDeclined", "Makbuz yazdırılmadı. İyi yolculuklar." },
+                { "ReceiptTimeout", "Seçim yapılmadığı için makbuz yazdırılmadı." },
+                { "ReceiptUnavailable", "Yükleme tamamlandı ancak makbuz hizmeti şu anda kullanılamıyor." },
+                { "ReceiptFailed", "Yükleme tamamlandı ancak makbuz yazdırılamadı." },
+                { "FooterPrinterReady", "Kart Okuyucu, POS Terminali ve Makbuz Yazıcısı Hazır" },
+                { "FooterPrinterUnavailable", "Makbuz yazıcısı kullanılamıyor" },
+                { "PaperOut", "Kağıt Bitti" }
             } },
             { "EN", new() {
                 { "HeaderStation", "ALSANCAK STATION" },
@@ -711,10 +955,22 @@ namespace IzbanKioskApp.ViewModels
                 { "SuccessHeading", "LOAD SUCCESSFUL!" },
                 { "FinalBalance", "Your New Balance" },
                 { "SuccessSub1", "Your transaction is complete. Have a nice trip!" },
-                { "SuccessSub2", "You can now remove your card from the reader. System will reset on card pull." },
+                { "SuccessSub2", "Please make your receipt selection and you can remove your card." },
                 { "FooterStatus", "Card Reader and POS Terminal Ready" },
                 { "FooterNfcNoCard", "NFC SENSOR: NO CARD" },
-                { "FooterNfcCard", "NFC SENSOR: CARD PRESENT" }
+                { "FooterNfcCard", "NFC SENSOR: CARD PRESENT" },
+                { "ReceiptPrompt", "WOULD YOU LIKE A RECEIPT?" },
+                { "ReceiptYes", "YES - PRINT RECEIPT" },
+                { "ReceiptNo", "NO - CONTINUE WITHOUT RECEIPT" },
+                { "ReceiptPrinting", "Your receipt is printing..." },
+                { "ReceiptPrinted", "Please take your receipt." },
+                { "ReceiptDeclined", "No receipt printed. Have a nice trip." },
+                { "ReceiptTimeout", "No selection made, receipt not printed." },
+                { "ReceiptUnavailable", "Transit load complete but receipt printer is currently unavailable." },
+                { "ReceiptFailed", "Transit load complete but receipt printing failed." },
+                { "FooterPrinterReady", "Card Reader, POS Terminal and Receipt Printer Ready" },
+                { "FooterPrinterUnavailable", "Receipt printer is unavailable" },
+                { "PaperOut", "Paper Out" }
             } }
         };
     }

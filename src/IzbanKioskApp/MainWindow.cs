@@ -54,6 +54,14 @@ namespace IzbanKioskApp
         private TextBlock _footerStatusText = null!;
         private TextBlock _footerNfcLabel = null!;
         private Button _toggleCardBtn = null!;
+
+        private StackPanel _receiptPromptPanel = null!;
+        private TextBlock _receiptPromptTitle = null!;
+        private Button _receiptYesBtn = null!;
+        private Button _receiptNoBtn = null!;
+        private TextBlock _receiptStatusLabel = null!;
+        private Border _printerWarningPanel = null!;
+        private TextBlock _printerWarningText = null!;
         
         private TextBlock _numpadTitleText = null!;
         private TextBlock _numpadValueText = null!;
@@ -151,6 +159,14 @@ namespace IzbanKioskApp
             _footerNfcLabel = this.FindControl<TextBlock>("FooterNfcLabel") ?? throw new Exception("FooterNfcLabel not found");
             _toggleCardBtn = this.FindControl<Button>("ToggleCardBtn") ?? throw new Exception("ToggleCardBtn not found");
 
+            _receiptPromptPanel = this.FindControl<StackPanel>("ReceiptPromptPanel") ?? throw new Exception("ReceiptPromptPanel not found");
+            _receiptPromptTitle = this.FindControl<TextBlock>("ReceiptPromptTitle") ?? throw new Exception("ReceiptPromptTitle not found");
+            _receiptYesBtn = this.FindControl<Button>("ReceiptYesBtn") ?? throw new Exception("ReceiptYesBtn not found");
+            _receiptNoBtn = this.FindControl<Button>("ReceiptNoBtn") ?? throw new Exception("ReceiptNoBtn not found");
+            _receiptStatusLabel = this.FindControl<TextBlock>("ReceiptStatusLabel") ?? throw new Exception("ReceiptStatusLabel not found");
+            _printerWarningPanel = this.FindControl<Border>("PrinterWarningPanel") ?? throw new Exception("PrinterWarningPanel not found");
+            _printerWarningText = this.FindControl<TextBlock>("PrinterWarningText") ?? throw new Exception("PrinterWarningText not found");
+
             _numpadTitleText = this.FindControl<TextBlock>("NumpadTitleText") ?? throw new Exception("NumpadTitleText not found");
             _numpadValueText = this.FindControl<TextBlock>("NumpadValueText") ?? throw new Exception("NumpadValueText not found");
             _cancelNumpadBtn = this.FindControl<Button>("CancelNumpadBtn") ?? throw new Exception("CancelNumpadBtn not found");
@@ -235,6 +251,9 @@ namespace IzbanKioskApp
             
             _btnOther.Click += (s, e) => ViewModel.SelectOtherAmount();
             _cancelNumpadBtn.Click += (s, e) => ViewModel.CancelNumpad();
+
+            _receiptYesBtn.Click += async (s, e) => await ViewModel.RequestReceiptAsync();
+            _receiptNoBtn.Click += async (s, e) => await ViewModel.DeclineReceiptAsync();
         }
 
         // --- Keyboard Events Forwarding ---
@@ -298,6 +317,16 @@ namespace IzbanKioskApp
             _finalBalanceText.Text = ViewModel.FinalBalanceText;
             _successSubHeadingText1.Text = ViewModel.SuccessSubHeadingText1;
             _successSubHeadingText2.Text = ViewModel.SuccessSubHeadingText2;
+
+            _receiptPromptPanel.IsVisible = ViewModel.IsReceiptPromptVisible;
+            _receiptPromptTitle.Text = ViewModel.ReceiptPromptText;
+            _receiptYesBtn.Content = ViewModel.ReceiptYesButtonText;
+            _receiptYesBtn.IsEnabled = ViewModel.IsReceiptYesEnabled;
+            _receiptNoBtn.Content = ViewModel.ReceiptNoButtonText;
+            _receiptNoBtn.IsEnabled = !ViewModel.IsReceiptPrinting;
+            _receiptStatusLabel.Text = ViewModel.ReceiptStatusText;
+            _printerWarningPanel.IsVisible = ViewModel.IsPrinterWarningVisible;
+            _printerWarningText.Text = ViewModel.PrinterWarningText;
 
             _footerStatusText.Text = ViewModel.FooterStatusText;
             _footerNfcLabel.Text = ViewModel.FooterNfcLabelText;
@@ -410,6 +439,33 @@ namespace IzbanKioskApp
                         break;
                     case nameof(ViewModel.SuccessSubHeadingText2):
                         _successSubHeadingText2.Text = ViewModel.SuccessSubHeadingText2;
+                        break;
+                    case nameof(ViewModel.IsReceiptPromptVisible):
+                        _receiptPromptPanel.IsVisible = ViewModel.IsReceiptPromptVisible;
+                        break;
+                    case nameof(ViewModel.ReceiptPromptText):
+                        _receiptPromptTitle.Text = ViewModel.ReceiptPromptText;
+                        break;
+                    case nameof(ViewModel.ReceiptYesButtonText):
+                        _receiptYesBtn.Content = ViewModel.ReceiptYesButtonText;
+                        break;
+                    case nameof(ViewModel.IsReceiptYesEnabled):
+                        _receiptYesBtn.IsEnabled = ViewModel.IsReceiptYesEnabled;
+                        break;
+                    case nameof(ViewModel.ReceiptNoButtonText):
+                        _receiptNoBtn.Content = ViewModel.ReceiptNoButtonText;
+                        break;
+                    case nameof(ViewModel.IsReceiptPrinting):
+                        _receiptNoBtn.IsEnabled = !ViewModel.IsReceiptPrinting;
+                        break;
+                    case nameof(ViewModel.ReceiptStatusText):
+                        _receiptStatusLabel.Text = ViewModel.ReceiptStatusText;
+                        break;
+                    case nameof(ViewModel.IsPrinterWarningVisible):
+                        _printerWarningPanel.IsVisible = ViewModel.IsPrinterWarningVisible;
+                        break;
+                    case nameof(ViewModel.PrinterWarningText):
+                        _printerWarningText.Text = ViewModel.PrinterWarningText;
                         break;
                     case nameof(ViewModel.FooterStatusText):
                         _footerStatusText.Text = ViewModel.FooterStatusText;

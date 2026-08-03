@@ -149,14 +149,33 @@ namespace IzbanKiosk.Infrastructure
                         Timestamp TEXT NOT NULL
                     );");
 
+                // 8. ReceiptRecords Table
+                await ExecuteCommandAsync(connection, transaction, @"
+                    CREATE TABLE IF NOT EXISTS ReceiptRecords (
+                        ReceiptId TEXT PRIMARY KEY,
+                        TransactionId TEXT NOT NULL UNIQUE,
+                        Decision TEXT NOT NULL,
+                        Status TEXT NOT NULL,
+                        RequestedAtUtc TEXT,
+                        PrintStartedAtUtc TEXT,
+                        PrintedAtUtc TEXT,
+                        PrinterJobReference TEXT,
+                        ErrorCode TEXT,
+                        ErrorMessage TEXT,
+                        RetryCount INTEGER NOT NULL DEFAULT 0,
+                        RowVersion INTEGER NOT NULL DEFAULT 1,
+                        CreatedAtUtc TEXT NOT NULL,
+                        LastModifiedAtUtc TEXT NOT NULL
+                    );");
+ 
                 // Insert initial schema version if empty
-                var checkVersionCmd = new SqliteCommand("SELECT COUNT(*) FROM SchemaMigrations WHERE Version = 1;", connection, transaction);
+                var checkVersionCmd = new SqliteCommand("SELECT COUNT(*) FROM SchemaMigrations WHERE Version = 2;", connection, transaction);
                 var count = (long)(await checkVersionCmd.ExecuteScalarAsync() ?? 0L);
                 if (count == 0)
                 {
                     await ExecuteCommandAsync(connection, transaction, @"
                         INSERT INTO SchemaMigrations (Version, AppliedAt)
-                        VALUES (1, datetime('now'));");
+                        VALUES (2, datetime('now'));");
                 }
 
                 await transaction.CommitAsync();

@@ -680,8 +680,7 @@
                 <TextBlock x:Name="PaymentLabelDetails" Grid.Row="2" Text="Banka POS terminali hazırlandı. Temassız ödeme işlemi için kredi kartınızı POS ünitesine okutun." Foreground="#475569" TextAlignment="Center" FontSize="14" HorizontalAlignment="Center" Margin="0,5,0,30" FontWeight="SemiBold"/>
             </Grid>
 
-            <!-- 4. SUCCESS SCREEN ( Tik işareti tam merkezde olacak şekilde hizalandı. ) -->
-            <Grid x:Name="SuccessScreen" Classes="screen-panel" RowDefinitions="*,Auto,Auto,Auto" IsVisible="False" RenderTransformOrigin="50%,50%">
+            <Grid x:Name="SuccessScreen" Classes="screen-panel" RowDefinitions="*,Auto,Auto,Auto,Auto" IsVisible="False" RenderTransformOrigin="50%,50%">
                 <Grid.RenderTransform>
                     <ScaleTransform ScaleX="1.0" ScaleY="1.0"/>
                 </Grid.RenderTransform>
@@ -735,10 +734,28 @@
                 </StackPanel>
 
                 <!-- Kind wishes greeting -->
-                <TextBlock x:Name="SuccessSubHeadingText1" Grid.Row="2" Text="İşleminiz tamamlanmıştır. İyi yolculuklar dileriz!" Foreground="#475569" TextAlignment="Center" FontSize="16" HorizontalAlignment="Center" Margin="0,5,0,25" FontWeight="SemiBold"/>
+                <TextBlock x:Name="SuccessSubHeadingText1" Grid.Row="2" Text="İşleminiz tamamlanmıştır. İyi yolculuklar dileriz!" Foreground="#475569" TextAlignment="Center" FontSize="16" HorizontalAlignment="Center" Margin="0,5,0,10" FontWeight="SemiBold"/>
+
+                <!-- Receipt Prompt Area -->
+                <StackPanel Grid.Row="3" x:Name="ReceiptPromptPanel" IsVisible="False" HorizontalAlignment="Center" Spacing="15" Margin="0,5,0,15">
+                    <TextBlock x:Name="ReceiptPromptTitle" Text="MAKBUZ İSTER MİSİNİZ?" Foreground="#0F172A" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" LetterSpacing="1"/>
+                    
+                    <StackPanel Orientation="Horizontal" Spacing="25" HorizontalAlignment="Center">
+                        <!-- YES Button -->
+                        <Button x:Name="ReceiptYesBtn" Classes="action-btn" Content="EVET - MAKBUZ YAZDIR" 
+                                Background="#10B981" Foreground="White" Width="220" Height="50"
+                                HorizontalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="14" FontWeight="Bold" CornerRadius="8"/>
+                        <!-- NO Button -->
+                        <Button x:Name="ReceiptNoBtn" Classes="action-btn" Content="HAYIR - İSTEMİYORUM"
+                                Background="#64748B" Foreground="White" Width="220" Height="50"
+                                HorizontalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="14" FontWeight="Bold" CornerRadius="8"/>
+                    </StackPanel>
+                    
+                    <TextBlock x:Name="ReceiptStatusLabel" Text="Yazdırılıyor..." Foreground="#D97706" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center" IsVisible="True"/>
+                </StackPanel>
 
                 <!-- Auto screen close note (Card presence release instructions) -->
-                <TextBlock x:Name="SuccessSubHeadingText2" Grid.Row="3" Text="Kartınızı okuyucudan çekebilirsiniz. Kart çekildiğinde işlem sonlanacaktır." Foreground="#64748B" TextAlignment="Center" FontSize="13" HorizontalAlignment="Center" FontWeight="SemiBold"/>
+                <TextBlock x:Name="SuccessSubHeadingText2" Grid.Row="4" Text="Kartınızı okuyucudan çekebilirsiniz. Kart çekildiğinde işlem sonlanacaktır." Foreground="#64748B" TextAlignment="Center" FontSize="13" HorizontalAlignment="Center" FontWeight="SemiBold"/>
             </Grid>
         </Grid>
 
@@ -771,6 +788,9 @@
                         </Ellipse.Styles>
                     </Ellipse>
                     <TextBlock x:Name="FooterStatusText" Text="Kart Okuyucu ve POS Terminali Hazır" Foreground="#475569" FontSize="13" FontWeight="SemiBold"/>
+                    <Border x:Name="PrinterWarningPanel" IsVisible="False" Background="#FEF3C7" BorderBrush="#F59E0B" BorderThickness="1" CornerRadius="4" Padding="6,2" VerticalAlignment="Center" Margin="5,0,0,0">
+                        <TextBlock x:Name="PrinterWarningText" Text="Makbuz yazıcısı kullanılamıyor" Foreground="#D97706" FontSize="11" FontWeight="Bold"/>
+                    </Border>
                 </StackPanel>
 
                 <!-- Center: Technical support line -->

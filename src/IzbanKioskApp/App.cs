@@ -24,6 +24,9 @@ using IzbanKiosk.Hardware.Nfc.Simulator;
 using IzbanKiosk.Hardware.Nfc.Vendor;
 using IzbanKiosk.Hardware.Balance.Simulator;
 using IzbanKiosk.Hardware.Balance.Hybrid;
+using IzbanKiosk.Application.Hardware.Receipt;
+using IzbanKiosk.Hardware.Receipt.Simulator;
+using IzbanKiosk.Hardware.Receipt.Vendor;
 using IzbanKioskApp.ViewModels;
 
 namespace IzbanKioskApp
@@ -60,18 +63,47 @@ namespace IzbanKioskApp
                     services.AddSingleton(dbFactory);
                     services.AddSingleton<ITransactionRepository, SqliteTransactionRepository>();
 
+                    // Register Receipt repository & services
+                    services.AddSingleton<IReceiptRepository, SqliteReceiptRepository>();
+                    services.AddSingleton<ReceiptDocumentFactory>();
+                    services.AddSingleton<ReceiptService>();
+
+                    // Bind ReceiptPrinterOptions from configuration
+                    var printerOptions = new ReceiptPrinterOptions();
+                    context.Configuration.GetSection("Hardware:ReceiptPrinter").Bind(printerOptions);
+                    services.AddSingleton(printerOptions);
+
                     // Hardware configurations
                     if (useMock)
                     {
                         services.AddSingleton<INfcReader, MockNfcReader>();
                         services.AddSingleton<IPosTerminal, MockPosTerminal>();
                         services.AddSingleton<IAuthoritativeBalanceProvider, MockBalanceProvider>();
+                        
+                        var mockPrinter = new MockReceiptPrinter();
+                        // Configure MockReceiptPrinter based on settings
+                        var nextRes = (ReceiptPrintOutcome)Enum.Parse(typeof(ReceiptPrintOutcome), printerOptions.Simulator.NextResult);
+                        mockPrinter.Configure(
+                            ReceiptPrinterStatusCode.Ready,
+                            nextRes,
+                            printerOptions.Simulator.WritePreviewFile,
+                            printerOptions.Simulator.PreviewDirectory);
+                        services.AddSingleton<IReceiptPrinter>(mockPrinter);
                     }
                     else
                     {
                         services.AddSingleton<INfcReader, RealNfcReader>();
                         services.AddSingleton<IPosTerminal, RealPosTerminal>();
                         services.AddSingleton<IAuthoritativeBalanceProvider, HybridBalanceProvider>();
+                        
+                        services.AddSingleton<IReceiptPrinter>(sp => new RealReceiptPrinter(
+                            printerOptions.PrinterName,
+                            printerOptions.Port,
+                            printerOptions.BaudRate,
+                            printerOptions.PaperWidthMm,
+                            printerOptions.CodePage,
+                            printerOptions.CutAfterPrint,
+                            printerOptions.PrintTimeoutSeconds));
                     }
 
                     // Application Services
@@ -114,9 +146,22 @@ namespace IzbanKioskApp
                 {
                     var nfcReader = AppHost.Services.GetRequiredService<INfcReader>();
                     var posTerminal = AppHost.Services.GetRequiredService<IPosTerminal>();
+                    var receiptPrinter = AppHost.Services.GetRequiredService<IReceiptPrinter>();
 
                     await nfcReader.ConnectAsync(CancellationToken.None);
                     await posTerminal.ConnectAsync(CancellationToken.None);
+
+                    try
+                    {
+                        await receiptPrinter.InitializeAsync(CancellationToken.None);
+                        await receiptPrinter.ConnectAsync(CancellationToken.None);
+                        var status = await receiptPrinter.HealthCheckAsync(CancellationToken.None);
+                        Console.WriteLine($"[PRINTER INIT] Makbuz yazıcısı bağlandı. Sağlık durumu: {status.Code}");
+                    }
+                    catch (System.Exception ex)
+                    {
+                        Console.WriteLine($"[HARDWARE FAIL] Makbuz yazıcısı bağlantı/sağlık kontrolü hatası: {ex.Message}. Yazıcı devre dışı bırakılıyor.");
+                    }
                 }
                 catch (System.Exception ex)
                 {
