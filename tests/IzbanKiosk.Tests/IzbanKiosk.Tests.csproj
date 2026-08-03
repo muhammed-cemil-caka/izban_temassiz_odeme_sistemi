@@ -25,6 +25,7 @@
     <ProjectReference Include="..\..\src\IzbanKiosk.Application\IzbanKiosk.Application.csproj" />
     <ProjectReference Include="..\..\src\IzbanKiosk.Infrastructure\IzbanKiosk.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\IzbanKiosk.Hardware\IzbanKiosk.Hardware.csproj" />
+    <ProjectReference Include="..\..\src\IzbanKioskApp\IzbanKioskApp.csproj" />
   </ItemGroup>
 
 </Project>

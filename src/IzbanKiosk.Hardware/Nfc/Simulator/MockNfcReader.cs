@@ -18,6 +18,22 @@ namespace IzbanKiosk.Hardware.Nfc.Simulator
         public bool NextValidateResult { get; set; } = true;
         public long? CustomVerifiedBalance { get; set; }
 
+        private bool _isCardPresent = false;
+        private TaskCompletionSource<bool>? _removalTcs;
+        private readonly object _lock = new object();
+
+        public void SetCardPresent(bool present)
+        {
+            lock (_lock)
+            {
+                _isCardPresent = present;
+                if (!present)
+                {
+                    _removalTcs?.TrySetResult(true);
+                }
+            }
+        }
+
         public MockNfcReader(ISimulatorCardLedger ledger)
         {
             _ledger = ledger ?? throw new ArgumentNullException(nameof(ledger));
@@ -43,6 +59,7 @@ namespace IzbanKiosk.Hardware.Nfc.Simulator
             TimeSpan timeout, 
             CancellationToken cancellationToken)
         {
+            SetCardPresent(true);
             await Task.Delay(200, cancellationToken); // Simulate card tap delay
 
             if (NextWaitCardResult == "Timeout")
@@ -158,7 +175,21 @@ namespace IzbanKiosk.Hardware.Nfc.Simulator
             TimeSpan timeout, 
             CancellationToken cancellationToken)
         {
-            await Task.Delay(100, cancellationToken); // Simulate card removed
+            TaskCompletionSource<bool> tcs;
+            lock (_lock)
+            {
+                if (!_isCardPresent)
+                {
+                    return;
+                }
+                _removalTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                tcs = _removalTcs;
+            }
+
+            using (cancellationToken.Register(() => tcs.TrySetResult(false)))
+            {
+                await tcs.Task;
+            }
         }
 
         // Helper to override simulated values

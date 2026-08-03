@@ -262,12 +262,52 @@
         <Style Selector="Button#ReceiptNoBtn:disabled">
             <Setter Property="Opacity" Value="1.0"/>
         </Style>
+        <!-- ReceiptNoBtn:disabled /template/ ContentPresenter#PART_ContentPresenter -->
         <Style Selector="Button#ReceiptNoBtn:disabled /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="#64748B"/>
             <Setter Property="BorderBrush" Value="#475569"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0,0,0,4"/>
         </Style>
+
+        <!-- CancelNumpadBtn (Gray/Slate) specificity overrides -->
+        <Style Selector="Button#CancelNumpadBtn">
+            <Setter Property="Background" Value="#64748B"/>
+            <Setter Property="BorderBrush" Value="#475569"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0,0,0,4"/>
+        </Style>
+        <Style Selector="Button#CancelNumpadBtn:pointerover">
+            <Setter Property="Background" Value="#475569"/>
+            <Setter Property="BorderBrush" Value="#334155"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0,0,0,4"/>
+        </Style>
+        <Style Selector="Button#CancelNumpadBtn:pressed">
+            <Setter Property="Background" Value="#334155"/>
+            <Setter Property="BorderBrush" Value="#1E293B"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        </Style>
+        <Style Selector="Button#CancelNumpadBtn /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#64748B"/>
+            <Setter Property="BorderBrush" Value="#475569"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0,0,0,4"/>
+        </Style>
+        <Style Selector="Button#CancelNumpadBtn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#475569"/>
+            <Setter Property="BorderBrush" Value="#334155"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0,0,0,4"/>
+        </Style>
+        <Style Selector="Button#CancelNumpadBtn:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#334155"/>
+            <Setter Property="BorderBrush" Value="#1E293B"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        </Style>
+
 
         <!-- 3D style for Amount Buttons -->
         <Style Selector="Button.amount-btn">

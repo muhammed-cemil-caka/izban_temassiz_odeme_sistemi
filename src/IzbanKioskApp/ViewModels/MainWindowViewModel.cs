@@ -40,6 +40,7 @@ namespace IzbanKioskApp.ViewModels
         private string _printerWarningText = "";
 
         private CancellationTokenSource? _transactionCts;
+        private CancellationTokenSource? _cardRemovalCts;
         private bool _isCardPresent;
         private string _cardUid = "35-IZM-9921";
         private long _currentBalanceMinor = 4550; // 45.50 TL
@@ -463,8 +464,52 @@ namespace IzbanKioskApp.ViewModels
             IsHelpModalVisible = false;
         }
 
+        private void StopCardRemovalListener()
+        {
+            if (_cardRemovalCts != null)
+            {
+                try { _cardRemovalCts.Cancel(); } catch { }
+                try { _cardRemovalCts.Dispose(); } catch { }
+                _cardRemovalCts = null;
+            }
+        }
+
+        private void StartCardRemovalListener(CardReference cardRef)
+        {
+            StopCardRemovalListener();
+            _cardRemovalCts = new CancellationTokenSource();
+            var token = _cardRemovalCts.Token;
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await _nfcReader.WaitForCardRemovalAsync(
+                        new TransactionId(Guid.NewGuid()),
+                        cardRef,
+                        TimeSpan.FromHours(1),
+                        token
+                    );
+
+                    if (!token.IsCancellationRequested)
+                    {
+                        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
+                        {
+                            await HandleCardRemovedAsync();
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[CARD REMOVAL LISTENER ERROR/CANCEL] {ex.Message}");
+                }
+            }, token);
+        }
+
         public void ResetKioskToDefault()
         {
+            StopCardRemovalListener();
+
             _isCardPresent = false;
             _numpadValue = "0";
             NumpadValueText = "0 TL";
@@ -474,11 +519,23 @@ namespace IzbanKioskApp.ViewModels
             FooterNfcLabelText = GetText("FooterNfcNoCard");
             FooterNfcLabelColor = "#EF4444";
 
+            // Signal mock reader that card is gone if present
+            var method = _nfcReader.GetType().GetMethod("SetCardPresent");
+            if (method != null)
+            {
+                method.Invoke(_nfcReader, new object[] { false });
+            }
+
             IsReceiptPromptVisible = false;
             IsReceiptPrinting = false;
             ReceiptStatusText = "";
-            _receiptDecisionTaken = false;
+
+            if (_receiptDecisionTcs != null && !_receiptDecisionTcs.Task.IsCompleted)
+            {
+                _receiptDecisionTcs.TrySetResult("TIMEOUT");
+            }
             _receiptDecisionTcs = null;
+            _receiptDecisionTaken = false;
 
             if (_receiptDecisionTimeoutCts != null)
             {
@@ -507,6 +564,12 @@ namespace IzbanKioskApp.ViewModels
                 FooterNfcLabelText = GetText("FooterNfcCard");
                 FooterNfcLabelColor = "#10B981";
 
+                var setCardPresentMethod = _nfcReader.GetType().GetMethod("SetCardPresent");
+                if (setCardPresentMethod != null)
+                {
+                    setCardPresentMethod.Invoke(_nfcReader, new object[] { true });
+                }
+
                 var method = _nfcReader.GetType().GetMethod("SetSimulatedCardUid");
                 if (method != null)
                 {
@@ -526,6 +589,8 @@ namespace IzbanKioskApp.ViewModels
                         CardUidText = $"Card UID: {MaskCardUid(_cardUid)}";
                         CurrentBalanceText = $"{(_currentBalanceMinor / 100.0):F2} TL";
                         SetCurrentScreen(2); // 2 = Amount Screen
+
+                        StartCardRemovalListener(cardRef);
                     }
                 }
                 catch (Exception ex)
@@ -536,35 +601,51 @@ namespace IzbanKioskApp.ViewModels
             }
             else
             {
-                _isCardPresent = false;
-                ToggleCardBtnText = _currentLang == "TR" ? "📥 KART YAKLAŞTIR" : "📥 PLACE CARD";
-                ToggleCardBtnColor = "#10B981";
-                FooterNfcLabelText = GetText("FooterNfcNoCard");
-                FooterNfcLabelColor = "#EF4444";
-
-                await EvaluateCardRemovalAsync();
+                var setCardPresentMethod = _nfcReader.GetType().GetMethod("SetCardPresent");
+                if (setCardPresentMethod != null)
+                {
+                    setCardPresentMethod.Invoke(_nfcReader, new object[] { false });
+                }
+                else
+                {
+                    await HandleCardRemovedAsync();
+                }
             }
         }
 
-        private async Task EvaluateCardRemovalAsync()
+        public async Task HandleCardRemovedAsync()
         {
-            if (IsAmountScreenVisible || IsNumpadScreenVisible || IsPaymentScreenVisible)
+            if (!_isCardPresent) return; // Idempotent check
+
+            _isCardPresent = false;
+            ToggleCardBtnText = _currentLang == "TR" ? "📥 KART YAKLAŞTIR" : "📥 PLACE CARD";
+            ToggleCardBtnColor = "#10B981";
+            FooterNfcLabelText = GetText("FooterNfcNoCard");
+            FooterNfcLabelColor = "#EF4444";
+
+            StopCardRemovalListener();
+
+            if (IsIdleScreenVisible)
+            {
+                return;
+            }
+
+            if (IsAmountScreenVisible || IsNumpadScreenVisible)
             {
                 _transactionCts?.Cancel();
-                await TriggerEarlyRemovalWarningAsync();
+                await TriggerEarlyRemovalWarningAsync(autoReset: true);
+            }
+            else if (IsPaymentScreenVisible)
+            {
+                await TriggerEarlyRemovalWarningAsync(autoReset: false);
             }
             else if (IsSuccessScreenVisible)
             {
-                if (!IsReceiptPromptVisible)
-                {
-                    _transactionCts?.Cancel();
-                    ResetKioskToDefault();
-                }
-                // If IsReceiptPromptVisible is true, keep screen open on card removal
+                await TryResolveReceiptDecisionAsync("CARD_REMOVED");
             }
         }
 
-        private async Task TriggerEarlyRemovalWarningAsync()
+        private async Task TriggerEarlyRemovalWarningAsync(bool autoReset = true)
         {
             if (_isWarningModalActive) return;
             _isWarningModalActive = true;
@@ -577,7 +658,11 @@ namespace IzbanKioskApp.ViewModels
 
             IsWarningModalVisible = false;
             _isWarningModalActive = false;
-            ResetKioskToDefault();
+
+            if (autoReset)
+            {
+                ResetKioskToDefault();
+            }
         }
 
         public void SelectOtherAmount()
@@ -676,7 +761,7 @@ namespace IzbanKioskApp.ViewModels
                     ReceiptStatusText = "";
                     ApplyLanguage(); // refresh texts
 
-                    _receiptDecisionTcs = new TaskCompletionSource<string>();
+                    _receiptDecisionTcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
                     _receiptDecisionTaken = false;
 
                     int timeoutSecs = _receiptPrinterOptions?.DecisionTimeoutSeconds ?? 20;
@@ -688,14 +773,13 @@ namespace IzbanKioskApp.ViewModels
                         try
                         {
                             await Task.Delay(timeoutSecs * 1000, timeoutCts.Token);
-                            _receiptDecisionTcs.TrySetResult("TIMEOUT");
+                            await TryResolveReceiptDecisionAsync("TIMEOUT");
                         }
                         catch (TaskCanceledException) { }
                     });
 
                     // Wait for decision
                     string decision = await _receiptDecisionTcs.Task;
-                    _receiptDecisionTaken = true;
                     timeoutCts.Cancel();
 
                     if (decision == "YES")
@@ -729,6 +813,7 @@ namespace IzbanKioskApp.ViewModels
                             }
                             await Task.Delay(4000);
                         }
+                        ResetKioskToDefault();
                     }
                     else if (decision == "NO")
                     {
@@ -737,17 +822,28 @@ namespace IzbanKioskApp.ViewModels
                         ReceiptStatusText = GetText("ReceiptDeclined");
                         await _receiptService.RecordDecisionAsync(result.Id.Value.ToString(), "Declined", CancellationToken.None);
                         await Task.Delay(2000);
+                        ResetKioskToDefault();
                     }
-                    else // TIMEOUT
+                    else if (decision == "TIMEOUT")
                     {
                         IsReceiptYesEnabled = false;
                         IsReceiptPrinting = true;
                         await _receiptService.RecordDecisionAsync(result.Id.Value.ToString(), "TimedOut", CancellationToken.None);
                         ReceiptStatusText = GetText("ReceiptTimeout");
                         await Task.Delay(2000);
+                        ResetKioskToDefault();
                     }
-
-                    ResetKioskToDefault();
+                    else if (decision == "CARD_REMOVED")
+                    {
+                        IsReceiptYesEnabled = false;
+                        IsReceiptPrinting = true;
+                        await _receiptService.RecordDecisionAsync(result.Id.Value.ToString(), "Offered", CancellationToken.None);
+                        ResetKioskToDefault();
+                    }
+                    else
+                    {
+                        ResetKioskToDefault();
+                    }
                 }
                 else
                 {
@@ -778,15 +874,25 @@ namespace IzbanKioskApp.ViewModels
             }
         }
 
-        public async Task RequestReceiptAsync()
+        public async Task<bool> TryResolveReceiptDecisionAsync(string decision)
         {
             await _receiptDecisionLock.WaitAsync();
             try
             {
-                if (!_receiptDecisionTaken && _receiptDecisionTcs != null)
+                if (_receiptDecisionTaken || _receiptDecisionTcs == null)
                 {
-                    _receiptDecisionTcs.TrySetResult("YES");
+                    return false;
                 }
+
+                _receiptDecisionTaken = true;
+                _receiptDecisionTcs.TrySetResult(decision);
+
+                if (_receiptDecisionTimeoutCts != null)
+                {
+                    try { _receiptDecisionTimeoutCts.Cancel(); } catch { }
+                }
+
+                return true;
             }
             finally
             {
@@ -794,20 +900,14 @@ namespace IzbanKioskApp.ViewModels
             }
         }
 
+        public async Task RequestReceiptAsync()
+        {
+            await TryResolveReceiptDecisionAsync("YES");
+        }
+
         public async Task DeclineReceiptAsync()
         {
-            await _receiptDecisionLock.WaitAsync();
-            try
-            {
-                if (!_receiptDecisionTaken && _receiptDecisionTcs != null)
-                {
-                    _receiptDecisionTcs.TrySetResult("NO");
-                }
-            }
-            finally
-            {
-                _receiptDecisionLock.Release();
-            }
+            await TryResolveReceiptDecisionAsync("NO");
         }
 
         private void SetCurrentScreen(int screenNumber)
