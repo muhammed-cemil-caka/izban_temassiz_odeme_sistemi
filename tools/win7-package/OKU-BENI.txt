@@ -1,38 +1,31 @@
 IZBAN KIOSK R15 - WINDOWS 7 / EMBEDDED (x86)
 ============================================
 
-ONCE SUNU YAPIN (30 SANIYE, KOD GEREKTIRMEZ)
---------------------------------------------
-Denetim Masasi > Aygitlar ve Yazicilar > "Trentino Printer Driver 56mm"
-sag tik > Yazici ozellikleri > Genel sekmesi > "Sinama Sayfasi Yazdir"
+R15: CIHAZ VARLIGI TESPITI
+--------------------------
+C:\Tools klasorundeki usbser.sys ve ID&DC-VCom.inf dosyalari sunu gosteriyor:
+bu yazici standart bir USB yazici DEGIL. USB uzerinden kendini SANAL COM PORTU
+olarak tanitiyor. Yani dogru kuyruk USB001 degil, bir COM portu olmali.
 
-  KAGIT CIKARSA -> yazici saglam, sorun yazilim tarafinda, devam ederiz
-  KAGIT CIKMAZSA -> sorun yazicida/surucude/kabloda. Hicbir kod duzeltmesi
-                    bunu cozemez; once fiziksel tarafi halletmek gerekir.
+Windows'ta bir yazici kuyrugu, cihaz cikarilsa bile listede kalir ve "hazir"
+gorunur. R15 artik cihazin GERCEKTEN takili olup olmadigini soyluyor:
 
-Bu test problemi ikiye boler. Yapmadan devam etmeyin.
+  Windows'un gordugu seri portlar (cihaz takili mi?):
+    - COM2  (\Device\...)
+    - COM4  (\Device\...)
 
-Ayrica ayni sag tik menusunde "Yaziciyi Cevrimdisi Kullan" satirini kontrol
-edin; isaretliyse tiki kaldirin.
+Cihaz takiliyken bu listeye YENI bir COM portu eklenir. Kabloyu cikarip takarak
+hangi portun geldigini gorebilirsiniz - dogru kuyruk o porta bagli olandir.
 
+Rapora eklenen diger alanlar:
+  - Isin durumu (CIHAZ CEVRIMDISI / KUYRUK BLOKE / HATA)
+  - CEVRIMDISI MOD (Windows'ta "yaziciyi cevrimdisi kullan" isaretli mi)
 
-R15: CEVRIMDISI MOD TESPITI
----------------------------
-Windows'ta bir yazici "Cevrimdisi Kullan" moduna alinmissa:
-  - Isler kuyruga girer ve sonsuza kadar bekler
-  - Yaziciya hicbir sey gonderilmez, kagit kipirdamaz
-  - Durum bayraklari = 0, Win32 hata = 0   (hicbir sey belli olmaz!)
-
-Gordugumuz tablonun tamami bu. Bu bilgi Status alaninda degil Attributes
-alaninda durur; onu okuyor ama bakmiyorduk.
-
-R15'te:
-- Rapora "CEVRIMDISI MOD" satiri eklendi
-- Rapora "Islerin durumu" satiri eklendi (her isin PRINTING/ERROR/OFFLINE/
-  PAPEROUT/BLOCKED gibi kendi durumu)
-- Kuyruk listesinde cevrimdisi kuyruklar [CEVRIMDISI] diye isaretleniyor
-- "CEVRIMDISI MODU KAPAT" dugmesi eklendi (mavi)
-- Cevrimdisi bir kuyruk artik "hazir" sayilmiyor
+URETICI TEST ARACI
+------------------
+C:\Tools\KioskPrintTst.exe ureticinin kendi test programidir ve ayni
+KioskPrint.dll'i kullanir. Bizim yazilimimizi tamamen devre disi birakir.
+O da basmiyorsa sorun kesinlikle bizim kodumuzda degildir.
 
 NE VAR
 ------

@@ -188,7 +188,8 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
                 var diagnostics = new PrinterDiagnosticsResponse
                 {
                     ConfiguredPrinterName = configuredName,
-                    DefaultPrinterBefore = defaultBefore
+                    DefaultPrinterBefore = defaultBefore,
+                    SerialPorts = WindowsPrinterEnvironment.ListSerialPorts()
                 };
 
                 foreach (WindowsPrinterInfo queue in WindowsPrinterEnvironment.ListInstalledPrinterDetails())

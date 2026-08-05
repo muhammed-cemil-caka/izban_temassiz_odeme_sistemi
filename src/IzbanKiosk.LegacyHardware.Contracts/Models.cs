@@ -73,6 +73,12 @@ namespace IzbanKiosk.LegacyHardware.Contracts
         public uint SpoolerAttributes { get; set; }
         public bool IsWorkOffline { get; set; }
         public List<string> QueuedJobStates { get; set; } = new List<string>();
+        /// <summary>
+        /// Serial ports Windows currently exposes. A printer behind a USB-to-virtual-COM
+        /// bridge (usbser.sys) appears here only while it is plugged in and bound, so
+        /// this is the one field that distinguishes "device present" from "queue exists".
+        /// </summary>
+        public List<string> SerialPorts { get; set; } = new List<string>();
         public int Win32Error { get; set; }
         public bool VendorProbeCompleted { get; set; }
         public int VendorQueuedJobCount { get; set; } = -1;

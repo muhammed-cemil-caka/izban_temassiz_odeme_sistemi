@@ -805,6 +805,19 @@ namespace IzbanKiosk.Win7Prototype
                 builder.AppendLine("İşlerin durumu    : " + string.Join(", ", report.QueuedJobStates.ToArray()));
             }
             builder.AppendLine();
+            builder.AppendLine("Windows'un gördüğü seri portlar (cihaz takılı mı?):");
+            if (report.SerialPorts == null || report.SerialPorts.Count == 0)
+            {
+                builder.AppendLine("  (hiç yok - USB->sanal COM cihazı bağlı değil)");
+            }
+            else
+            {
+                foreach (string port in report.SerialPorts)
+                {
+                    builder.AppendLine("  • " + port);
+                }
+            }
+            builder.AppendLine();
             builder.AppendLine("Kurulu kuyruklar (port = cihazın gerçekte bağlı olduğu yer):");
             if (report.InstalledPrinterDetails == null || report.InstalledPrinterDetails.Count == 0)
             {

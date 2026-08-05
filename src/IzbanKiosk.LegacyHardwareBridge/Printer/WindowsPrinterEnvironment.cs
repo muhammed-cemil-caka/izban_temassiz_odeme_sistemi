@@ -161,6 +161,43 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
         }
 
         /// <summary>
+        /// Serial ports Windows currently has. A printer behind a USB-to-virtual-COM
+        /// bridge (usbser.sys) only has a port here while it is plugged in and its
+        /// driver is bound, so this list answers "is the device physically present?"
+        /// in a way the print queue itself never can - a queue survives unplugging.
+        /// </summary>
+        public static List<string> ListSerialPorts()
+        {
+            var ports = new List<string>();
+            try
+            {
+                using (Microsoft.Win32.RegistryKey? key =
+                    Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"HARDWARE\DEVICEMAP\SERIALCOMM"))
+                {
+                    if (key == null)
+                    {
+                        return ports;
+                    }
+
+                    foreach (string valueName in key.GetValueNames())
+                    {
+                        object? value = key.GetValue(valueName);
+                        if (value != null)
+                        {
+                            ports.Add(value.ToString() + "  (" + valueName + ")");
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Port enumeration is diagnostic only and must never break a receipt.
+            }
+            ports.Sort();
+            return ports;
+        }
+
+        /// <summary>
         /// Matches the deployment-configured printer name against the queues that
         /// actually exist. A configured name that is a driver name, or that carries
         /// a typo, is the most common reason a kiosk silently stops producing paper,
@@ -534,6 +571,7 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
         {
             public ushort Year, Month, DayOfWeek, Day, Hour, Minute, Second, Milliseconds;
         }
+
 
         [StructLayout(LayoutKind.Sequential)]
         private struct PRINTER_DEFAULTS
