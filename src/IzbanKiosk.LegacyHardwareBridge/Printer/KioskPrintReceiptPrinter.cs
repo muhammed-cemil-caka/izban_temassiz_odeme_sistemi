@@ -228,11 +228,7 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
                 diagnostics.DefaultPrinterRoutingApplied =
                     WindowsPrinterEnvironment.TryMakeDefault(resolvedName, out routingError);
                 diagnostics.DefaultPrinterAfter = WindowsPrinterEnvironment.GetDefaultPrinterName();
-                if (!diagnostics.DefaultPrinterRoutingApplied)
-                {
-                    diagnostics.StatusMessage = routingError;
-                    return diagnostics;
-                }
+                diagnostics.ReceiptRoutingDevice = WindowsPrinterEnvironment.GetProfileDeviceName();
 
                 WindowsPrinterInfo info;
                 int win32Error;
@@ -250,6 +246,12 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
                 diagnostics.VendorProbeCompleted = TryProbeVendorJobCount(out jobCount, out vendorError);
                 diagnostics.VendorQueuedJobCount = jobCount;
                 diagnostics.VendorProbeError = vendorError;
+
+                if (!diagnostics.DefaultPrinterRoutingApplied)
+                {
+                    diagnostics.StatusMessage = routingError;
+                    return diagnostics;
+                }
 
                 LegacyPrinterHealthDecision decision = LegacyPrinterHealthPolicy.Evaluate(
                     resolvedName,

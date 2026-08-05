@@ -30,8 +30,8 @@ namespace IzbanKiosk.Win7Prototype
     {
         private const string PipeName = "IzbanKiosk.LegacyHardware.v1";
         private const string BridgeExeName = "IzbanKiosk.LegacyHardwareBridge.exe";
-        private const string ExpectedBridgeVersion = "2.2.1-net40";
-        private const string PackageVersion = "R13";
+        private const string ExpectedBridgeVersion = "2.2.2-net40";
+        private const string PackageVersion = "R14";
         private const int MaxManualAmount = 500;
         private const string StationName = "ALSANCAK";
         private const string KioskId = "0482";
@@ -791,6 +791,7 @@ namespace IzbanKiosk.Win7Prototype
             builder.AppendLine();
             builder.AppendLine("Varsayılan (önce) : " + Dash(report.DefaultPrinterBefore));
             builder.AppendLine("Varsayılan (sonra): " + Dash(report.DefaultPrinterAfter));
+            builder.AppendLine("FİŞ NEREYE GİDER  : " + Dash(report.ReceiptRoutingDevice) + "   <-- KioskPrint.dll bunu okur");
             builder.AppendLine("Yönlendirme       : " + (report.DefaultPrinterRoutingApplied ? "UYGULANDI" : "UYGULANAMADI"));
             builder.AppendLine();
             builder.AppendLine("Spooler okundu    : " + (report.SpoolerStatusRead ? "EVET" : "HAYIR"));
@@ -848,22 +849,7 @@ namespace IzbanKiosk.Win7Prototype
                 return;
             }
 
-            var candidates = new List<InstalledPrinterInfo>();
-            foreach (InstalledPrinterInfo queue in report.InstalledPrinterDetails)
-            {
-                if (!string.IsNullOrEmpty(report.DriverName) &&
-                    string.Equals(queue.DriverName, report.DriverName, StringComparison.OrdinalIgnoreCase))
-                {
-                    candidates.Add(queue);
-                }
-            }
-
-            if (candidates.Count < 2)
-            {
-                QueuePickerPanel.Visibility = Visibility.Collapsed;
-                return;
-            }
-
+            var candidates = new List<InstalledPrinterInfo>(report.InstalledPrinterDetails);
             candidates.Sort(delegate(InstalledPrinterInfo left, InstalledPrinterInfo right)
             {
                 int byLikelihood = PortLikelihood(right.PortName).CompareTo(PortLikelihood(left.PortName));

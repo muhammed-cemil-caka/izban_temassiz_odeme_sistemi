@@ -257,7 +257,6 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
             error = string.Empty;
 
             string current = GetDefaultPrinterName();
-            bool alreadyDefault = string.Equals(current, printerName, StringComparison.OrdinalIgnoreCase);
 
             WindowsPrinterInfo info;
             int readError;
@@ -268,28 +267,57 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
                 return false;
             }
 
-            if (!alreadyDefault && !SetDefaultPrinter(printerName))
+            // SetDefaultPrinter is the modern API, but it is not the one that decides
+            // where our receipts go and it is not always willing: it refuses some
+            // perfectly openable queues with ERROR_INVALID_PRINTER_NAME (1801). Its
+            // failure is recorded and then ignored, because the authoritative channel
+            // for this kiosk is the next call.
+            int setDefaultError = 0;
+            if (!string.Equals(current, printerName, StringComparison.OrdinalIgnoreCase) && !SetDefaultPrinter(printerName))
             {
-                error = "Windows refused to select thermal printer '" + printerName + "' as the default queue. Win32 error=" +
-                    Marshal.GetLastWin32Error() + ". Current Windows default printer: '" + current + "'.";
-                return false;
+                setDefaultError = Marshal.GetLastWin32Error();
             }
 
-            // Delphi's TPrinter reads the default through GetProfileString('windows','device').
-            // Write the same value so the profile cache of this process cannot serve the
-            // previous default (a PDF/XPS queue on the Windows Embedded image) to the
-            // vendor DLL.
+            // This is the one that matters. KioskPrint.dll is Delphi/VCL and resolves
+            // its target with GetProfileStringA on [windows] device, so writing that
+            // value is not a fallback for SetDefaultPrinter - it is the direct route to
+            // the only setting the vendor library actually reads.
             WriteProfileString("windows", "device", info.Name + "," + info.DriverName + "," + info.PortName);
             BroadcastSettingChange();
 
-            string verified = GetDefaultPrinterName();
-            if (!string.Equals(verified, printerName, StringComparison.OrdinalIgnoreCase))
+            string profileDevice = GetProfileDeviceName();
+            if (string.Equals(profileDevice, printerName, StringComparison.OrdinalIgnoreCase))
             {
-                error = "Windows default printer stayed '" + verified + "' after selecting thermal printer '" + printerName + "'.";
-                return false;
+                return true;
             }
 
-            return true;
+            error = "Receipt routing could not be pointed at '" + printerName + "'. [windows] device is now '" + profileDevice +
+                "' and the Windows default printer is '" + GetDefaultPrinterName() + "'.";
+            if (setDefaultError != 0)
+            {
+                error += " SetDefaultPrinter Win32 error=" + setDefaultError + ".";
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// The printer name from the win.ini mapped <c>[windows] device</c> entry: the
+        /// exact value KioskPrint.dll reads to decide where a receipt goes. It can
+        /// differ from <see cref="GetDefaultPrinterName"/>, and when it does, this one
+        /// is what produces - or fails to produce - paper.
+        /// </summary>
+        public static string GetProfileDeviceName()
+        {
+            var buffer = new StringBuilder(512);
+            int length = GetProfileString("windows", "device", string.Empty, buffer, buffer.Capacity);
+            if (length <= 0)
+            {
+                return string.Empty;
+            }
+
+            string value = buffer.ToString();
+            int separator = value.IndexOf(',');
+            return separator >= 0 ? value.Substring(0, separator).Trim() : value.Trim();
         }
 
         /// <summary>
@@ -361,6 +389,9 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
 
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern bool WriteProfileString(string lpszSection, string lpszKeyName, string lpszString);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern int GetProfileString(string lpAppName, string lpKeyName, string lpDefault, StringBuilder lpReturnedString, int nSize);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern bool SendNotifyMessage(IntPtr hWnd, uint msg, IntPtr wParam, string lParam);

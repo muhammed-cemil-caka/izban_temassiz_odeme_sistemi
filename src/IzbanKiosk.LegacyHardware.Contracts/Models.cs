@@ -64,6 +64,8 @@ namespace IzbanKiosk.LegacyHardware.Contracts
         public string DefaultPrinterBefore { get; set; } = string.Empty;
         public string DefaultPrinterAfter { get; set; } = string.Empty;
         public bool DefaultPrinterRoutingApplied { get; set; }
+        /// <summary>Printer named by [windows] device - the value KioskPrint.dll actually reads.</summary>
+        public string ReceiptRoutingDevice { get; set; } = string.Empty;
         public string DriverName { get; set; } = string.Empty;
         public string PortName { get; set; } = string.Empty;
         public bool SpoolerStatusRead { get; set; }

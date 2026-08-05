@@ -1,33 +1,29 @@
-IZBAN KIOSK R13 - WINDOWS 7 / EMBEDDED (x86)
+IZBAN KIOSK R14 - WINDOWS 7 / EMBEDDED (x86)
 ============================================
 
-R13: DOGRU KUYRUGU BUL
-----------------------
-Otomattan gelen tanilama raporu sorunu buldu. Bastigimiz kuyruk COM2 seri
-portuna bagli; ayni yazicinin Windows'ta 7 kopyasi var ve her biri farkli bir
-portta:
+R14: SETDEFAULTPRINTER BYPASS
+-----------------------------
+Otomatta SetDefaultPrinter API'si kuyrugu varsayilan yapmayi reddediyor
+(Win32 hata 1801). Ayni kuyruk OpenPrinter ile sorunsuz aciliyor - yani kuyruk
+saglam, sadece bu API inatci.
 
-   >> 56mm            COM2:     <- su an kullanilan
-      56mm (Copy 1)   USB001    <- USB portu SADECE gercek cihaz varken olusur
-      56mm (Copy 2)   LPT1:
-      56mm (Copy 3)   LPT2:
-      56mm (Copy 4)   LPT3:
-      56mm (Copy 6)   LPT1:
-      56mm3           XPSPort:
+Onemli olan sey su: KioskPrint.dll SetDefaultPrinter'i HIC OKUMAZ. Delphi/VCL
+kutuphanesi hedefini GetProfileString("windows","device") ile bulur. R14 artik
+o degeri DOGRUDAN yaziyor; SetDefaultPrinter basarisiz olsa bile fis dogru
+yaziciya gider.
 
-Cihaz bu kuyruklardan YALNIZCA BIRINDE canlidir. Digerleri isi kabul eder,
-kuyrukta biriktirir, hicbir zaman basmaz. Windows hata da vermez.
+Tanilama raporunda yeni bir satir var:
 
-Windows hangisinin canli oldugunu SOYLEMEZ - denemek gerekir. Bu surumde
-tanilama ekranina kuyruk secici eklendi:
+   FIS NEREYE GIDER : <yazici adi>   <-- KioskPrint.dll bunu okur
 
-  1. YAZICI TANILA -> asagida kuyruk listesi cikar (en olasi ustte)
-  2. Bir kuyruk secip "BU KUYRUGU KULLAN VE YENIDEN BASLAT"
-  3. Uygulama kendini yeniden baslatir
-  4. YAZICI TEST FISI -> kagit cikti mi bak
-  5. Cikmadiysa 1'e don, siradaki kuyrugu dene
+Bu satir, kagidin gercekte hangi yazicidan cikacagini soyler. "Varsayilan"
+satirlari farkli olsa bile onemli olan BU satirdir.
 
-Dogru kuyrugu bulunca ayar dosyasina otomatik yazilir, bir daha ugrasmazsiniz.
+DIKKAT: Su anki varsayilan yaziciniz "Trentino Printer Driver 56mm3" ve o
+XPSPort'a bagli - yani DOSYAYA yazan sanal bir yazici. Gercek cihaz USB001'de.
+
+Kuyruk secici artik butun kuyruklari listeliyor (once yalnizca ayni surucudeki
+kuyruklari gosteriyordu ve yonlendirme basarisiz olunca hic gorunmuyordu).
 
 NE VAR
 ------
