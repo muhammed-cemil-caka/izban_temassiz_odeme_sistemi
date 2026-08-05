@@ -1,5 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!--
+    Developer-machine test host only. It never ships to the kiosk, which is why it
+    targets a modern framework the build machine already has: the code under test is
+    the net40/x86 Windows 7 stack, linked in as source so a single copy of each file
+    serves both the kiosk build and the tests.
+  -->
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -12,6 +18,7 @@
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="xunit" Version="2.5.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
   </ItemGroup>
@@ -21,11 +28,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\IzbanKiosk.Domain\IzbanKiosk.Domain.csproj" />
-    <ProjectReference Include="..\..\src\IzbanKiosk.Application\IzbanKiosk.Application.csproj" />
-    <ProjectReference Include="..\..\src\IzbanKiosk.Infrastructure\IzbanKiosk.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\src\IzbanKiosk.Hardware\IzbanKiosk.Hardware.csproj" />
-    <ProjectReference Include="..\..\src\IzbanKioskApp\IzbanKioskApp.csproj" />
+    <Compile Include="..\..\src\IzbanKiosk.LegacyHardware.Contracts\Models.cs"
+             Link="Compatibility\Models.cs" />
+    <Compile Include="..\..\src\IzbanKiosk.LegacyHardware.Contracts\NamedPipeFraming.cs"
+             Link="Compatibility\NamedPipeFraming.cs" />
+    <Compile Include="..\..\src\IzbanKiosk.LegacyHardwareBridge\Interop\EmvRdr35NativeMethods.cs"
+             Link="Compatibility\EmvRdr35NativeMethods.cs" />
+    <Compile Include="..\..\src\IzbanKiosk.LegacyHardwareBridge\Printer\LegacyPrinterHealthPolicy.cs"
+             Link="Compatibility\LegacyPrinterHealthPolicy.cs" />
+    <Compile Include="..\..\src\IzbanKiosk.Win7Prototype\ReceiptDocumentBuilder.cs"
+             Link="Compatibility\ReceiptDocumentBuilder.cs" />
   </ItemGroup>
 
 </Project>

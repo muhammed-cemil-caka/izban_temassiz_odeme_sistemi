@@ -1,0 +1,262 @@
+<Window x:Class="IzbanKiosk.Win7Prototype.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="İZBAN Kiosk Bakiye Yükleme"
+        Width="1280" Height="800"
+        WindowState="Maximized" WindowStyle="None" ResizeMode="NoResize"
+        Background="#F1F5F9" FontFamily="Segoe UI"
+        KeyDown="Window_KeyDown">
+    <Window.Resources>
+        <Style x:Key="KioskButton" TargetType="Button">
+            <Setter Property="Foreground" Value="#0F172A"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+            <Setter Property="BorderThickness" Value="0,0,0,4"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="20,12"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="14" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="BorderThickness" Value="0,3,0,1"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.55"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource KioskButton}">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="#2563EB"/>
+            <Setter Property="BorderBrush" Value="#1E40AF"/>
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="Padding" Value="28,15"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#1D4ED8"/>
+                    <Setter Property="BorderBrush" Value="#1E3A8A"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#1E40AF"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="AmountButton" TargetType="Button" BasedOn="{StaticResource KioskButton}">
+            <Setter Property="Width" Value="185"/>
+            <Setter Property="Height" Value="115"/>
+            <Setter Property="Margin" Value="9"/>
+            <Setter Property="BorderBrush" Value="#2563EB"/>
+        </Style>
+
+        <Style x:Key="KeypadButton" TargetType="Button" BasedOn="{StaticResource KioskButton}">
+            <Setter Property="Width" Value="100"/>
+            <Setter Property="Height" Value="56"/>
+            <Setter Property="Margin" Value="4"/>
+            <Setter Property="FontSize" Value="25"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="100"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="70"/>
+        </Grid.RowDefinitions>
+
+        <!-- Your original kiosk header, ported to WPF/.NET 4.0. -->
+        <Border Grid.Row="0" Margin="20,14,20,8" Background="#EEF2F6" BorderBrush="#CBD5E1" BorderThickness="0,0,0,4" CornerRadius="16">
+            <Border.Effect>
+                <DropShadowEffect Color="#7F8C9A" BlurRadius="12" ShadowDepth="3" Opacity="0.20"/>
+            </Border.Effect>
+            <Grid Margin="24,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse Width="11" Height="11" Fill="#2563EB" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                        <TextBlock Name="StationText" Text="ALSANCAK İSTASYONU" Foreground="#0F172A" FontSize="18" FontWeight="Bold"/>
+                    </StackPanel>
+                    <TextBlock Name="KioskStatusText" Text="Kiosk ID: #0482 / Donanım profili: Windows 7" Foreground="#475569" FontSize="12" Margin="1,4,0,0"/>
+                </StackPanel>
+                <Image Grid.Column="1" Source="pack://application:,,,/IZBAN-Kiosk;component/Assets/izban_logo.png" Height="58" Width="180" Stretch="Uniform" VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button Name="LanguageButton" Content="🌍 EN" Style="{StaticResource KioskButton}" FontSize="13" Padding="13,8" Margin="0,0,13,0" Click="LanguageButton_Click"/>
+                    <TextBlock Name="ClockText" Text="--.--.---- --:--" Foreground="#0F172A" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                    <Button Name="HelpButton" Content="❓ YARDIM AL" Style="{StaticResource KioskButton}" Background="#FBBF24" BorderBrush="#D97706" FontSize="12" Padding="13,8" Click="HelpButton_Click"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" Margin="40,12,40,12">
+            <Border Background="#FFFFFF" BorderBrush="#CBD5E1" BorderThickness="2" CornerRadius="26">
+                <Border.Effect>
+                    <DropShadowEffect Color="#8295AA" BlurRadius="24" ShadowDepth="5" Opacity="0.20"/>
+                </Border.Effect>
+            </Border>
+
+            <!-- Idle / actual card waiting view -->
+            <Grid Name="IdlePanel" Margin="45">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="900">
+                    <Border Width="304" Height="192" Background="#EFF6FF" BorderBrush="#2563EB" BorderThickness="3" CornerRadius="18">
+                        <Border.Effect>
+                            <DropShadowEffect Color="#2563EB" BlurRadius="22" ShadowDepth="0" Opacity="0.35"/>
+                        </Border.Effect>
+                        <Image Source="pack://application:,,,/IZBAN-Kiosk;component/Assets/izmirim_kart.jpg" Stretch="UniformToFill"/>
+                    </Border>
+                    <TextBlock Name="IdleTitleText" Text="LÜTFEN İZMİRİM KARTINIZI KART OKUYUCU" Foreground="#0F172A" FontSize="27" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,30,0,4"/>
+                    <TextBlock Name="IdleTitleAccentText" Text="BÖLGESİNE YERLEŞTİRİNİZ" Foreground="#2563EB" FontSize="27" FontWeight="Bold" HorizontalAlignment="Center"/>
+                    <TextBlock Name="IdleDescriptionText" Text="Kartınızı okuyucunun üzerinde sabit tutunuz. Gerçek bakiye SAM ile doğrulanarak okunacaktır." Foreground="#475569" FontSize="16" TextAlignment="Center" TextWrapping="Wrap" Margin="0,18,0,0"/>
+                    <ProgressBar Name="CardWaitingProgress" Width="410" Height="10" Margin="0,24,0,0" IsIndeterminate="True" Foreground="#2563EB" Background="#DCE8F5"/>
+                    <StackPanel Name="PrinterToolsPanel" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,25,0,0" Visibility="Collapsed">
+                        <Button Name="PrinterTestButton" Content="YAZICI TEST FİŞİ" Style="{StaticResource PrimaryButton}" Width="290" Click="PrinterTestButton_Click"/>
+                        <Button Name="PrinterDiagnoseButton" Content="YAZICI TANILA" Style="{StaticResource KioskButton}" Background="#FBBF24" BorderBrush="#D97706" FontSize="16" Width="220" Height="52" Margin="14,0,0,0" Click="PrinterDiagnoseButton_Click"/>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+
+            <!-- Your original amount-selection view, now fed by the real card snapshot. -->
+            <Grid Name="AmountPanel" Margin="45" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid Grid.Row="0" Width="840" HorizontalAlignment="Center" Margin="0,0,0,22">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="2" CornerRadius="18" Padding="22" Margin="0,0,9,0">
+                        <StackPanel>
+                            <TextBlock Text="OKUNAN İZMİRİM KART" Foreground="#475569" FontSize="12" FontWeight="Bold"/>
+                            <TextBlock Name="CardNumberText" Text="-" Foreground="#0F172A" FontSize="22" FontWeight="Bold" Margin="0,5,0,0"/>
+                            <TextBlock Name="CardUidText" Text="NFC UID: -" Foreground="#64748B" FontSize="13" Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="1" Background="#ECFDF5" BorderBrush="#6EE7B7" BorderThickness="2" CornerRadius="18" Padding="22" Margin="9,0,0,0">
+                        <StackPanel HorizontalAlignment="Right">
+                            <TextBlock Text="MEVCUT BAKİYE" Foreground="#059669" FontSize="12" FontWeight="Bold" HorizontalAlignment="Right"/>
+                            <TextBlock Name="BalanceText" Text="0,00 TL" Foreground="#047857" FontSize="31" FontWeight="Bold" HorizontalAlignment="Right" Margin="0,4,0,0"/>
+                            <TextBlock Name="CardVerificationText" Text="SAM doğrulaması başarılı" Foreground="#287A60" FontSize="12" HorizontalAlignment="Right" Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+                <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Name="AmountTitleText" Text="LÜTFEN YÜKLEMEK İSTEDİĞİNİZ TUTARI SEÇİNİZ" Foreground="#0F172A" FontSize="21" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,18"/>
+                    <WrapPanel Width="820" HorizontalAlignment="Center">
+                        <Button Tag="20" Style="{StaticResource AmountButton}" Click="AmountButton_Click"><StackPanel><TextBlock Text="20 TL" Foreground="#2563EB" FontSize="31" FontWeight="Bold" HorizontalAlignment="Center"/><TextBlock Name="AmountButtonSubText1" Text="Tutarını Yükle" Foreground="#475569" FontSize="12" HorizontalAlignment="Center" Margin="0,5,0,0"/></StackPanel></Button>
+                        <Button Tag="50" Style="{StaticResource AmountButton}" Click="AmountButton_Click"><StackPanel><TextBlock Text="50 TL" Foreground="#2563EB" FontSize="31" FontWeight="Bold" HorizontalAlignment="Center"/><TextBlock Name="AmountButtonSubText2" Text="Tutarını Yükle" Foreground="#475569" FontSize="12" HorizontalAlignment="Center" Margin="0,5,0,0"/></StackPanel></Button>
+                        <Button Tag="100" Style="{StaticResource AmountButton}" Click="AmountButton_Click"><StackPanel><TextBlock Text="100 TL" Foreground="#2563EB" FontSize="31" FontWeight="Bold" HorizontalAlignment="Center"/><TextBlock Name="AmountButtonSubText3" Text="Tutarını Yükle" Foreground="#475569" FontSize="12" HorizontalAlignment="Center" Margin="0,5,0,0"/></StackPanel></Button>
+                        <Button Tag="200" Style="{StaticResource AmountButton}" Click="AmountButton_Click"><StackPanel><TextBlock Text="200 TL" Foreground="#2563EB" FontSize="31" FontWeight="Bold" HorizontalAlignment="Center"/><TextBlock Name="AmountButtonSubText4" Text="Tutarını Yükle" Foreground="#475569" FontSize="12" HorizontalAlignment="Center" Margin="0,5,0,0"/></StackPanel></Button>
+                    </WrapPanel>
+                    <Button Name="OtherAmountButton" Style="{StaticResource AmountButton}" Width="390" Height="95" BorderBrush="#10B981" Margin="0,15,0,0" Click="OtherAmountButton_Click">
+                        <StackPanel><TextBlock Name="OtherAmountTitleText" Text="DİĞER TUTAR" Foreground="#059669" FontSize="26" FontWeight="Bold" HorizontalAlignment="Center"/><TextBlock Name="OtherAmountSubText" Text="Klavyeden Farklı Tutar Girin" Foreground="#475569" FontSize="12" HorizontalAlignment="Center" Margin="0,4,0,0"/></StackPanel>
+                    </Button>
+                    <Button Name="BalanceReceiptButton" Content="BAKİYE FİŞİ YAZDIR" Style="{StaticResource PrimaryButton}" Width="390" Margin="0,15,0,0" Click="BalanceReceiptButton_Click"/>
+                    <TextBlock Name="BalanceReceiptStatusText" Text="" Foreground="#475569" FontSize="13" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="620" Margin="0,10,0,0"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Your original keypad screen. -->
+            <Grid Name="NumpadPanel" Margin="20,12" Visibility="Collapsed">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Name="NumpadTitleText" Text="LÜTFEN YÜKLEMEK İSTEDİĞİNİZ TUTARI GİRİNİZ" Foreground="#0F172A" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
+                    <Border Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="2" CornerRadius="15" Padding="16,8" Margin="0,8,0,8" Width="340">
+                        <TextBlock Name="NumpadValueText" Text="0 TL" Foreground="#2563EB" FontSize="30" FontWeight="Bold" HorizontalAlignment="Center"/>
+                    </Border>
+                    <UniformGrid Rows="4" Columns="3" HorizontalAlignment="Center">
+                        <Button Content="1" Style="{StaticResource KeypadButton}" Click="NumpadKey_Click"/><Button Content="2" Style="{StaticResource KeypadButton}" Click="NumpadKey_Click"/><Button Content="3" Style="{StaticResource KeypadButton}" Click="NumpadKey_Click"/>
+                        <Button Content="4" Style="{StaticResource KeypadButton}" Click="NumpadKey_Click"/><Button Content="5" Style="{StaticResource KeypadButton}" Click="NumpadKey_Click"/><Button Content="6" Style="{StaticResource KeypadButton}" Click="NumpadKey_Click"/>
+                        <Button Content="7" Style="{StaticResource KeypadButton}" Click="NumpadKey_Click"/><Button Content="8" Style="{StaticResource KeypadButton}" Click="NumpadKey_Click"/><Button Content="9" Style="{StaticResource KeypadButton}" Click="NumpadKey_Click"/>
+                        <Button Content="⌫" Style="{StaticResource KeypadButton}" Background="#EF4444" Foreground="White" BorderBrush="#B91C1C" Click="NumpadDelete_Click"/><Button Content="0" Style="{StaticResource KeypadButton}" Click="NumpadKey_Click"/><Button Content="✔" Style="{StaticResource KeypadButton}" Background="#10B981" Foreground="White" BorderBrush="#047857" Click="NumpadConfirm_Click"/>
+                    </UniformGrid>
+                    <Button Name="CancelNumpadButton" Content="VAZGEÇ" Style="{StaticResource KioskButton}" Background="#64748B" Foreground="White" BorderBrush="#475569" FontSize="18" Width="185" Height="46" Margin="0,8,0,0" HorizontalAlignment="Center" Click="CancelNumpadButton_Click"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Payment view deliberately stays fail-closed until a real bank POS SDK is integrated. -->
+            <Grid Name="PaymentPanel" Margin="45" Visibility="Collapsed">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="830">
+                    <Border Width="132" Height="82" Background="#FFFFFF" BorderBrush="#2563EB" BorderThickness="3" CornerRadius="16" Padding="10">
+                        <Image Source="pack://application:,,,/IZBAN-Kiosk;component/Assets/izban_logo.png" Stretch="Uniform"/>
+                    </Border>
+                    <TextBlock Name="SelectedAmountText" Text="SEÇİLEN TUTAR: 0,00 TL" Foreground="#0F172A" FontSize="29" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,34,0,9"/>
+                    <TextBlock Name="PaymentStatusText" Text="POS ENTEGRASYONU BEKLENİYOR" Foreground="#DC2626" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center" TextAlignment="Center"/>
+                    <TextBlock Name="PaymentDetailsText" Text="Bu Windows 7 donanım profilinde banka POS SDK'sı henüz tanımlı değildir. Para çekilmedi ve İzmirim karta yükleme yapılmadı." Foreground="#475569" FontSize="16" TextAlignment="Center" TextWrapping="Wrap" Margin="0,16,0,25"/>
+                    <Button Name="PaymentBackButton" Content="TUTAR EKRANINA DÖN" Style="{StaticResource PrimaryButton}" Click="PaymentBackButton_Click"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Hardware / UI errors remain visible and never show simulated card data. -->
+            <Grid Name="ErrorPanel" Margin="45" Visibility="Collapsed">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="850">
+                    <Border Width="105" Height="105" Background="#FFF0F1" BorderBrush="#FFAFB6" BorderThickness="3" CornerRadius="53"><TextBlock Text="!" Foreground="#E3273F" FontSize="67" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                    <TextBlock Name="ErrorTitleText" Text="Donanım bağlantısı kurulamadı" Foreground="#B91C32" FontSize="37" FontWeight="Bold" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,22,0,9"/>
+                    <TextBlock Name="ErrorDescriptionText" Text="NFC okuyucu ve termal yazıcıyı kontrol ediniz." Foreground="#53677D" FontSize="21" TextAlignment="Center" TextWrapping="Wrap"/>
+                    <Button Name="RetryButton" Content="YENİDEN DENE" Style="{StaticResource PrimaryButton}" Margin="0,26,0,0" Click="RetryButton_Click"/>
+                    <TextBlock Name="TechnicalErrorText" Text="" Foreground="#8191A3" FontSize="13" TextAlignment="Center" TextWrapping="Wrap" Margin="0,16,0,0"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
+
+        <!-- Footer copied from the main design, but simulator controls are removed in the real-hardware profile. -->
+        <Border Grid.Row="2" Background="#FFFFFF" BorderBrush="#CBD9E8" BorderThickness="0,3,0,0">
+            <Grid Margin="46,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><Ellipse Name="FooterStatusDot" Width="13" Height="13" Fill="#F2A900" Margin="0,0,10,0"/><TextBlock Name="FooterStatusText" Text="Donanım başlatılıyor..." Foreground="#475569" FontSize="15" FontWeight="SemiBold"/></StackPanel>
+                <TextBlock Grid.Column="1" Text="İZBAN • İzmirim Kart Hizmet Noktası" Foreground="#718398" FontSize="14" VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"><Border Background="#ECFDF5" BorderBrush="#6EE7B7" BorderThickness="1" CornerRadius="7" Padding="9,4"><TextBlock Name="FooterNfcText" Text="NFC SENSÖR: KART YOK" Foreground="#DC2626" FontSize="11" FontWeight="Bold"/></Border><Border Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="7" Padding="9,4" Margin="8,0,0,0"><TextBlock Name="FooterPrinterText" Text="YAZICI: KONTROL EDİLİYOR" Foreground="#B45309" FontSize="11" FontWeight="Bold"/></Border><TextBlock Name="PackageVersionText" Text="ARAYÜZ + DONANIM • R10" Foreground="#7A8DA2" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" Margin="15,0,0,0"/></StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Help and early-card-removal overlays. -->
+        <Grid Name="HelpModal" Grid.RowSpan="3" Background="#99000000" Visibility="Collapsed" Panel.ZIndex="50">
+            <Border Width="690" Background="White" BorderBrush="#CBD5E1" BorderThickness="2" CornerRadius="20" Padding="32" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><TextBlock Name="HelpTitleText" Text="KULLANIM KILAVUZU &amp; YARDIM" Foreground="#0F172A" FontSize="22" FontWeight="Bold"/><StackPanel Grid.Row="1" Margin="0,20,0,18"><TextBlock Name="HelpLine1" Text="1. İzmirim Kartınızı okuyucu üzerinde sabit tutun." Foreground="#334155" FontSize="16" Margin="0,0,0,9"/><TextBlock Name="HelpLine2" Text="2. Gerçek bakiye SAM doğrulamasından sonra gösterilir." Foreground="#334155" FontSize="16" Margin="0,0,0,9"/><TextBlock Name="HelpLine3" Text="3. Tutar seçimi ekranı hazırdır; gerçek ödeme için POS SDK entegrasyonu gerekir." Foreground="#334155" FontSize="16" TextWrapping="Wrap"/><TextBlock Text="İletişim Hattı: ALO 153 / Çağrı Merkezi: 444 15 20" Foreground="#2563EB" FontWeight="Bold" FontSize="15" Margin="0,18,0,0"/></StackPanel><Button Grid.Row="2" Name="CloseHelpButton" Content="KAPAT" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" Click="CloseHelpButton_Click"/></Grid>
+            </Border>
+        </Grid>
+        <!-- Printer diagnostics, readable on the kiosk itself: an embedded machine has
+             no console and usually no keyboard for the technician. -->
+        <Grid Name="PrinterDiagnosticsModal" Grid.RowSpan="3" Background="#99000000" Visibility="Collapsed" Panel.ZIndex="52">
+            <Border Width="880" MaxHeight="640" Background="White" BorderBrush="#CBD5E1" BorderThickness="2" CornerRadius="20" Padding="30" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <StackPanel>
+                        <TextBlock Name="PrinterDiagnosticsTitleText" Text="TERMAL YAZICI TANILAMA" Foreground="#0F172A" FontSize="22" FontWeight="Bold"/>
+                        <TextBlock Name="PrinterDiagnosticsSummaryText" Text="" Foreground="#B45309" FontSize="15" FontWeight="Bold" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                    </StackPanel>
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,16,0,16">
+                        <TextBlock Name="PrinterDiagnosticsBodyText" Text="" Foreground="#334155" FontFamily="Consolas,Courier New" FontSize="14" TextWrapping="Wrap"/>
+                    </ScrollViewer>
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Name="PrinterRetryButton" Content="YAZICIYI YENİDEN BAŞLAT" Style="{StaticResource KioskButton}" Background="#FBBF24" BorderBrush="#D97706" FontSize="15" Height="46" Padding="18,0" Margin="0,0,12,0" Click="PrinterRetryButton_Click"/>
+                        <Button Name="ClosePrinterDiagnosticsButton" Content="KAPAT" Style="{StaticResource PrimaryButton}" Click="ClosePrinterDiagnosticsButton_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+        <Grid Name="WarningModal" Grid.RowSpan="3" Background="#99000000" Visibility="Collapsed" Panel.ZIndex="51">
+            <Border Width="650" Background="#FFFBEB" BorderBrush="#F59E0B" BorderThickness="3" CornerRadius="20" Padding="32" HorizontalAlignment="Center" VerticalAlignment="Center"><StackPanel><TextBlock Name="WarningTitleText" Text="UYARI: KART ERKEN ÇEKİLDİ" Foreground="#DC2626" FontSize="25" FontWeight="Bold" HorizontalAlignment="Center"/><TextBlock Name="WarningBodyText" Text="İşlem başlatılmadı. Para çekilmedi ve karta yükleme yapılmadı." Foreground="#78350F" FontSize="17" FontWeight="Bold" TextAlignment="Center" TextWrapping="Wrap" Margin="0,16,0,0"/></StackPanel></Border>
+        </Grid>
+    </Grid>
+</Window>

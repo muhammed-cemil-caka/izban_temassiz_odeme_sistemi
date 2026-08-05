@@ -7,3 +7,11 @@ obj/
 
 # SQLite database files
 *.db
+
+# Local Vendor Import Files (untracked by Git)
+local-vendor/
+vendor-manifest.local.json
+
+# Assembled kiosk deployment packages: they embed the vendor DLLs
+artifacts/
+
