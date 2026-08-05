@@ -1,4 +1,4 @@
-IZBAN KIOSK R10 - WINDOWS 7 / EMBEDDED (x86)
+IZBAN KIOSK R11 - WINDOWS 7 / EMBEDDED (x86)
 ============================================
 
 NE VAR

@@ -216,17 +216,21 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
             return true;
         }
 
+        /// <summary>
+        /// Tells other processes that the default printer moved.
+        ///
+        /// This must not block. A synchronous broadcast waits up to its timeout for
+        /// <em>every</em> top-level window on the machine, and on a kiosk that is also
+        /// running the legacy AUSKiosk shell that stalls the hardware process for
+        /// seconds while it holds the single named-pipe instance - long enough for the
+        /// operator's own diagnostics request to time out before it can connect.
+        /// SendNotifyMessage returns immediately for windows owned by other processes,
+        /// which is all we need: our own profile cache was already updated by the
+        /// WriteProfileString call above.
+        /// </summary>
         private static void BroadcastSettingChange()
         {
-            UIntPtr result;
-            SendMessageTimeout(
-                HwndBroadcast,
-                WmSettingChange,
-                IntPtr.Zero,
-                "windows",
-                SmtoAbortIfHung,
-                1000,
-                out result);
+            SendNotifyMessage(HwndBroadcast, WmSettingChange, IntPtr.Zero, "windows");
         }
 
         #region Win32
@@ -236,7 +240,6 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
 
         private static readonly IntPtr HwndBroadcast = new IntPtr(0xFFFF);
         private const uint WmSettingChange = 0x001A;
-        private const uint SmtoAbortIfHung = 0x0002;
 
         [DllImport("winspool.drv", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern bool OpenPrinter(string pPrinterName, out IntPtr phPrinter, IntPtr pDefault);
@@ -267,14 +270,7 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
         private static extern bool WriteProfileString(string lpszSection, string lpszKeyName, string lpszString);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern IntPtr SendMessageTimeout(
-            IntPtr hWnd,
-            uint msg,
-            IntPtr wParam,
-            string lParam,
-            uint fuFlags,
-            uint uTimeout,
-            out UIntPtr lpdwResult);
+        private static extern bool SendNotifyMessage(IntPtr hWnd, uint msg, IntPtr wParam, string lParam);
 
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
         private struct PRINTER_INFO_4

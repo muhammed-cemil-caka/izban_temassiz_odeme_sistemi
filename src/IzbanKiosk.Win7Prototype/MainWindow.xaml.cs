@@ -30,11 +30,14 @@ namespace IzbanKiosk.Win7Prototype
     {
         private const string PipeName = "IzbanKiosk.LegacyHardware.v1";
         private const string BridgeExeName = "IzbanKiosk.LegacyHardwareBridge.exe";
-        private const string ExpectedBridgeVersion = "2.1.0-net40";
-        private const string PackageVersion = "R10";
+        private const string ExpectedBridgeVersion = "2.1.1-net40";
+        private const string PackageVersion = "R11";
         private const int MaxManualAmount = 500;
         private const string StationName = "ALSANCAK";
         private const string KioskId = "0482";
+        // Printer work is a technician action behind a button, not a passenger-path
+        // poll, so it waits far longer for the shared pipe than card polling does.
+        private const int PrinterRequestConnectTimeoutMs = 20000;
 
         private static readonly Brush ReadyBrush = new SolidColorBrush(Color.FromRgb(0x00, 0xB8, 0x83));
         private static readonly Brush BusyBrush = new SolidColorBrush(Color.FromRgb(0xF2, 0xA9, 0x00));
@@ -49,6 +52,11 @@ namespace IzbanKiosk.Win7Prototype
         private volatile bool _hardwareReady;
         private volatile bool _printerReady;
         private volatile bool _printerStateKnown;
+        // The bridge serves one named-pipe client at a time, on purpose: the vendor
+        // DLLs are not thread-safe. The card-polling loop reconnects continuously, so
+        // an operator-initiated printer request has to be let through explicitly or it
+        // can fail to connect at all.
+        private volatile bool _printerOperationInFlight;
         private volatile bool _cardPresent;
         private bool _workerRunning;
         private bool _english;
@@ -252,6 +260,13 @@ namespace IzbanKiosk.Win7Prototype
         {
             while (!_shutdownRequested && _hardwareReady)
             {
+                if (_printerOperationInFlight)
+                {
+                    // Stop competing for the pipe until the printer request finishes.
+                    Thread.Sleep(200);
+                    continue;
+                }
+
                 BridgeResponse? waitResponse = SendRequest(new BridgeRequest
                 {
                     RequestId = Guid.NewGuid().ToString("N"),
@@ -618,14 +633,17 @@ namespace IzbanKiosk.Win7Prototype
 
             PrinterTestButton.IsEnabled = false;
             PrinterTestButton.Content = _english ? "SENDING TEST RECEIPT..." : "TEST FİŞİ GÖNDERİLİYOR...";
+            _printerOperationInFlight = true;
             var printThread = new Thread(new ThreadStart(delegate
             {
                 BridgeResponse? response = SendRequest(new BridgeRequest
                 {
                     RequestId = Guid.NewGuid().ToString("N"),
                     Command = "PrintTestReceipt",
-                    TimeoutMs = 8000
-                }, 4000);
+                    TimeoutMs = 20000
+                }, PrinterRequestConnectTimeoutMs);
+
+                _printerOperationInFlight = false;
 
                 bool printed = response != null && response.Success;
                 string failureDetail = printed ? string.Empty : FormatBridgeError(response);
@@ -672,14 +690,17 @@ namespace IzbanKiosk.Win7Prototype
 
             PrinterRetryButton.IsEnabled = false;
             PrinterRetryButton.Content = _english ? "REINITIALIZING..." : "YENİDEN BAŞLATILIYOR...";
+            _printerOperationInFlight = true;
             var retryThread = new Thread(new ThreadStart(delegate
             {
                 BridgeResponse? response = SendRequest(new BridgeRequest
                 {
                     RequestId = Guid.NewGuid().ToString("N"),
                     Command = "PrinterReinitialize",
-                    TimeoutMs = 8000
-                }, 4000);
+                    TimeoutMs = 20000
+                }, PrinterRequestConnectTimeoutMs);
+
+                _printerOperationInFlight = false;
 
                 bool recovered = response != null && response.Success;
                 _journal.Record("PrinterReinitialize", new { recovered, detail = recovered ? string.Empty : FormatBridgeError(response) });
@@ -698,14 +719,17 @@ namespace IzbanKiosk.Win7Prototype
 
         private void RunPrinterDiagnostics()
         {
+            _printerOperationInFlight = true;
             var diagnoseThread = new Thread(new ThreadStart(delegate
             {
                 BridgeResponse? response = SendRequest(new BridgeRequest
                 {
                     RequestId = Guid.NewGuid().ToString("N"),
                     Command = "PrinterDiagnose",
-                    TimeoutMs = 8000
-                }, 4000);
+                    TimeoutMs = 20000
+                }, PrinterRequestConnectTimeoutMs);
+
+                _printerOperationInFlight = false;
 
                 PrinterDiagnosticsResponse? report = response != null && response.Success && !string.IsNullOrWhiteSpace(response.PayloadJson)
                     ? JsonConvert.DeserializeObject<PrinterDiagnosticsResponse>(response.PayloadJson)
@@ -718,11 +742,21 @@ namespace IzbanKiosk.Win7Prototype
 
                     if (report == null)
                     {
-                        PrinterDiagnosticsSummaryText.Text = _english
-                            ? "The hardware bridge did not return a printer report."
-                            : "Donanım köprüsü yazıcı raporu döndürmedi.";
+                        bool unreachable = response == null;
+                        PrinterDiagnosticsSummaryText.Text = unreachable
+                            ? (_english
+                                ? "The hardware service could not be reached in time."
+                                : "Donanım servisine zamanında ulaşılamadı.")
+                            : (_english
+                                ? "The hardware bridge did not return a printer report."
+                                : "Donanım köprüsü yazıcı raporu döndürmedi.");
                         PrinterDiagnosticsSummaryText.Foreground = ErrorBrush;
-                        PrinterDiagnosticsBodyText.Text = FormatBridgeError(response);
+                        PrinterDiagnosticsBodyText.Text = unreachable
+                            ? "Bridge sureci " + (PrinterRequestConnectTimeoutMs / 1000) + " saniye icinde yanit vermedi.\n\n" +
+                              "Bridge calisiyorsa mesguldur; birkac saniye sonra tekrar deneyin.\n" +
+                              "Sorun surerse Bridge surecini kapatip uygulamayi yeniden baslatin.\n\n" +
+                              "Son kopru mesajlari:\n" + GetDiagnosticSummary()
+                            : FormatBridgeError(response);
                     }
                     else
                     {
@@ -835,19 +869,22 @@ namespace IzbanKiosk.Win7Prototype
             string body = ReceiptDocumentBuilder.BuildBalanceReceipt(snapshot, StationName, KioskId, timestamp, _english);
             string idempotencyKey = ReceiptDocumentBuilder.BuildIdempotencyKey(snapshot, timestamp);
 
+            _printerOperationInFlight = true;
             var printThread = new Thread(new ThreadStart(delegate
             {
                 BridgeResponse? response = SendRequest(new BridgeRequest
                 {
                     RequestId = Guid.NewGuid().ToString("N"),
                     Command = "PrintReceipt",
-                    TimeoutMs = 10000,
+                    TimeoutMs = 20000,
                     PayloadJson = JsonConvert.SerializeObject(new PrintReceiptRequest
                     {
                         Text = body,
                         IdempotencyKey = idempotencyKey
                     })
-                }, 5000);
+                }, PrinterRequestConnectTimeoutMs);
+
+                _printerOperationInFlight = false;
 
                 bool printed = response != null && response.Success;
                 string failureDetail = printed ? string.Empty : FormatBridgeError(response);
