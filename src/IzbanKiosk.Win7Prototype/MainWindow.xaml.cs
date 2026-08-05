@@ -30,8 +30,8 @@ namespace IzbanKiosk.Win7Prototype
     {
         private const string PipeName = "IzbanKiosk.LegacyHardware.v1";
         private const string BridgeExeName = "IzbanKiosk.LegacyHardwareBridge.exe";
-        private const string ExpectedBridgeVersion = "2.2.0-net40";
-        private const string PackageVersion = "R12";
+        private const string ExpectedBridgeVersion = "2.2.1-net40";
+        private const string PackageVersion = "R13";
         private const int MaxManualAmount = 500;
         private const string StationName = "ALSANCAK";
         private const string KioskId = "0482";
@@ -47,6 +47,7 @@ namespace IzbanKiosk.Win7Prototype
         private readonly Queue<string> _bridgeDiagnostics = new Queue<string>();
         private readonly DispatcherTimer _clockTimer;
         private readonly KioskJournal _journal = new KioskJournal();
+        private readonly List<string> _queueCandidates = new List<string>();
 
         private volatile bool _shutdownRequested;
         private volatile bool _hardwareReady;
@@ -590,6 +591,10 @@ namespace IzbanKiosk.Win7Prototype
             PrinterDiagnoseButton.Content = _english ? "DIAGNOSE PRINTER" : "YAZICI TANILA";
             PrinterRetryButton.Content = _english ? "REINITIALIZE PRINTER" : "YAZICIYI YENİDEN BAŞLAT";
             PrinterPurgeButton.Content = _english ? "CLEAR QUEUE" : "KUYRUĞU TEMİZLE";
+            UseSelectedQueueButton.Content = _english ? "USE THIS QUEUE AND RESTART" : "BU KUYRUĞU KULLAN VE YENİDEN BAŞLAT";
+            QueuePickerTitleText.Text = _english
+                ? "If no paper appears the device may be on another queue. Pick one and try it:"
+                : "Kâğıt çıkmıyorsa cihaz başka bir kuyrukta olabilir. Birini seçip deneyin:";
             ClosePrinterDiagnosticsButton.Content = _english ? "CLOSE" : "KAPAT";
             PrinterDiagnosticsTitleText.Text = _english ? "THERMAL PRINTER DIAGNOSTICS" : "TERMAL YAZICI TANILAMA";
             BalanceReceiptButton.Content = _english ? "PRINT BALANCE RECEIPT" : "BAKİYE FİŞİ YAZDIR";
@@ -767,6 +772,7 @@ namespace IzbanKiosk.Win7Prototype
                             : report.StatusMessage;
                         PrinterDiagnosticsSummaryText.Foreground = report.IsReady ? ReadyBrush : ErrorBrush;
                         PrinterDiagnosticsBodyText.Text = FormatPrinterDiagnostics(report);
+                        PopulateQueuePicker(report);
                     }
 
                     PrinterDiagnosticsModal.Visibility = Visibility.Visible;
@@ -824,6 +830,132 @@ namespace IzbanKiosk.Win7Prototype
             return parts.Count == 0 ? string.Empty : "  (" + string.Join(", ", parts.ToArray()) + ")";
         }
 
+        /// <summary>
+        /// Offers every queue that shares the configured driver. Which one the device
+        /// is actually behind cannot be read from Windows - it has to be tried - so
+        /// the candidates are ordered with the likeliest first: a USB port only exists
+        /// while a USB printer is enumerated on it, whereas COM and LPT ports are
+        /// always present whether or not anything is plugged in.
+        /// </summary>
+        private void PopulateQueuePicker(PrinterDiagnosticsResponse report)
+        {
+            QueuePickerList.Items.Clear();
+            _queueCandidates.Clear();
+
+            if (report.InstalledPrinterDetails == null || report.InstalledPrinterDetails.Count == 0)
+            {
+                QueuePickerPanel.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            var candidates = new List<InstalledPrinterInfo>();
+            foreach (InstalledPrinterInfo queue in report.InstalledPrinterDetails)
+            {
+                if (!string.IsNullOrEmpty(report.DriverName) &&
+                    string.Equals(queue.DriverName, report.DriverName, StringComparison.OrdinalIgnoreCase))
+                {
+                    candidates.Add(queue);
+                }
+            }
+
+            if (candidates.Count < 2)
+            {
+                QueuePickerPanel.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            candidates.Sort(delegate(InstalledPrinterInfo left, InstalledPrinterInfo right)
+            {
+                int byLikelihood = PortLikelihood(right.PortName).CompareTo(PortLikelihood(left.PortName));
+                return byLikelihood != 0 ? byLikelihood : string.Compare(left.Name, right.Name, StringComparison.OrdinalIgnoreCase);
+            });
+
+            foreach (InstalledPrinterInfo queue in candidates)
+            {
+                _queueCandidates.Add(queue.Name);
+                QueuePickerList.Items.Add(Pad(queue.Name, 40) + " " + Pad(queue.PortName, 10) +
+                    " is:" + queue.QueuedJobCount + (queue.IsConfigured ? "  [su an kullanilan]" : string.Empty));
+            }
+
+            QueuePickerList.SelectedIndex = 0;
+            QueuePickerPanel.Visibility = Visibility.Visible;
+        }
+
+        private static int PortLikelihood(string portName)
+        {
+            string port = (portName ?? string.Empty).ToUpperInvariant();
+            if (port.StartsWith("USB")) return 3;
+            if (port.StartsWith("COM")) return 2;
+            if (port.StartsWith("LPT")) return 1;
+            return 0;
+        }
+
+        private void UseSelectedQueueButton_Click(object sender, RoutedEventArgs e)
+        {
+            int index = QueuePickerList.SelectedIndex;
+            if (index < 0 || index >= _queueCandidates.Count || !UseSelectedQueueButton.IsEnabled)
+            {
+                return;
+            }
+
+            string selectedQueue = _queueCandidates[index];
+            UseSelectedQueueButton.IsEnabled = false;
+            UseSelectedQueueButton.Content = _english ? "RESTARTING..." : "YENİDEN BAŞLATILIYOR...";
+
+            try
+            {
+                KioskHardwareSettings.SaveThermalPrinterName(selectedQueue);
+            }
+            catch (Exception ex)
+            {
+                UseSelectedQueueButton.IsEnabled = true;
+                UseSelectedQueueButton.Content = _english ? "USE THIS QUEUE AND RESTART" : "BU KUYRUĞU KULLAN VE YENİDEN BAŞLAT";
+                PrinterDiagnosticsSummaryText.Text = (_english ? "Settings file could not be written: " : "Ayar dosyası yazılamadı: ") + ex.Message;
+                PrinterDiagnosticsSummaryText.Foreground = ErrorBrush;
+                PrinterDiagnosticsBodyText.Text = "KioskHardware.config.json salt okunur olabilir veya Windows Embedded write filter aciktir.\n" +
+                    "Dosyayi elle duzenleyip uygulamayi yeniden baslatin.";
+                return;
+            }
+
+            _journal.Record("ThermalPrinterQueueChanged", new { queue = selectedQueue });
+            RestartApplication();
+        }
+
+        /// <summary>
+        /// KioskPrint.dll binds to a printer on its first call and never rebinds, so a
+        /// different queue only takes effect in a fresh process. The bridge is stopped
+        /// first: a surviving one would be reused by the new instance and would still
+        /// be pointed at the old queue.
+        /// </summary>
+        private void RestartApplication()
+        {
+            SendRequest(new BridgeRequest { RequestId = Guid.NewGuid().ToString("N"), Command = "Shutdown" }, 2000);
+            for (int attempt = 0; attempt < 30; attempt++)
+            {
+                Thread.Sleep(150);
+                if (SendRequest(new BridgeRequest { RequestId = Guid.NewGuid().ToString("N"), Command = "GetBridgeVersion" }, 200) == null)
+                {
+                    break;
+                }
+            }
+
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = Process.GetCurrentProcess().MainModule.FileName,
+                    UseShellExecute = false
+                });
+            }
+            catch (Exception ex)
+            {
+                AddDiagnostic("Restart failed: " + ex.Message);
+            }
+
+            _shutdownRequested = true;
+            Application.Current.Shutdown();
+        }
+
         private static string Pad(string value, int width)
         {
             string text = value ?? string.Empty;
@@ -863,6 +995,10 @@ namespace IzbanKiosk.Win7Prototype
                 {
                     PrinterPurgeButton.IsEnabled = true;
                     PrinterPurgeButton.Content = _english ? "CLEAR QUEUE" : "KUYRUĞU TEMİZLE";
+            UseSelectedQueueButton.Content = _english ? "USE THIS QUEUE AND RESTART" : "BU KUYRUĞU KULLAN VE YENİDEN BAŞLAT";
+            QueuePickerTitleText.Text = _english
+                ? "If no paper appears the device may be on another queue. Pick one and try it:"
+                : "Kâğıt çıkmıyorsa cihaz başka bir kuyrukta olabilir. Birini seçip deneyin:";
                     if (!purged)
                     {
                         PrinterDiagnosticsSummaryText.Text = FormatBridgeError(response);

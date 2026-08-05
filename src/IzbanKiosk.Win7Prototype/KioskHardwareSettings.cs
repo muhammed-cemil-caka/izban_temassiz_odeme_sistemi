@@ -38,6 +38,30 @@ namespace IzbanKiosk.Win7Prototype
             return settings;
         }
 
+        /// <summary>
+        /// Rewrites the settings file with a new thermal printer queue.
+        ///
+        /// Needed because the live queue can only be found by trying them: a USB
+        /// printer that has been re-enumerated leaves several identically named
+        /// queues on different ports, and nothing in Windows says which one the
+        /// device is actually behind. Making that a two-tap operation on the kiosk
+        /// beats hand-editing JSON on a machine with no keyboard.
+        /// </summary>
+        internal static void SaveThermalPrinterName(string printerName)
+        {
+            string trimmed = (printerName ?? string.Empty).Trim();
+            if (trimmed.Length == 0 || trimmed.Length > 128 || trimmed.IndexOf('"') >= 0)
+            {
+                throw new InvalidDataException("ThermalPrinterName is missing or invalid.");
+            }
+
+            string settingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, SettingsFileName);
+            KioskHardwareSettings settings = LoadFromApplicationDirectory();
+            settings.ThermalPrinterName = trimmed;
+
+            File.WriteAllText(settingsPath, JsonConvert.SerializeObject(settings, Formatting.Indented));
+        }
+
         private void Validate()
         {
             NfcComPort = (NfcComPort ?? string.Empty).Trim();
