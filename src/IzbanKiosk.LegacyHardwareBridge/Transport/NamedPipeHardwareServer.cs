@@ -245,7 +245,7 @@ namespace IzbanKiosk.LegacyHardwareBridge.Transport
                     response.Success = true;
                     response.PayloadJson = JsonConvert.SerializeObject(new
                     {
-                        Version = "2.1.1-net40",
+                        Version = "2.2.0-net40",
                         Framework = ".NET Framework 4.0 Client Profile (x86)"
                     });
                     break;
@@ -318,6 +318,16 @@ namespace IzbanKiosk.LegacyHardwareBridge.Transport
                     // an unusable printer is exactly when the operator needs to read it.
                     response.Success = true;
                     response.PayloadJson = JsonConvert.SerializeObject(diagnostics);
+                    break;
+
+                case "PrinterPurgeQueue":
+                    PrinterPurgeResponse purge = _printerDevice.PurgeQueue(_options.PrinterName);
+                    response.Success = purge.Purged;
+                    response.PayloadJson = JsonConvert.SerializeObject(purge);
+                    if (!purge.Purged)
+                    {
+                        response.Error = new BridgeError { Code = "ERR_PRINTER_PURGE_FAILED", Message = purge.StatusMessage };
+                    }
                     break;
 
                 case "PrinterReinitialize":

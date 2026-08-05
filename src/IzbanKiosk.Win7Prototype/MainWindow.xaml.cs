@@ -30,8 +30,8 @@ namespace IzbanKiosk.Win7Prototype
     {
         private const string PipeName = "IzbanKiosk.LegacyHardware.v1";
         private const string BridgeExeName = "IzbanKiosk.LegacyHardwareBridge.exe";
-        private const string ExpectedBridgeVersion = "2.1.1-net40";
-        private const string PackageVersion = "R11";
+        private const string ExpectedBridgeVersion = "2.2.0-net40";
+        private const string PackageVersion = "R12";
         private const int MaxManualAmount = 500;
         private const string StationName = "ALSANCAK";
         private const string KioskId = "0482";
@@ -589,6 +589,7 @@ namespace IzbanKiosk.Win7Prototype
             PrinterTestButton.Content = _english ? "PRINTER TEST RECEIPT" : "YAZICI TEST FİŞİ";
             PrinterDiagnoseButton.Content = _english ? "DIAGNOSE PRINTER" : "YAZICI TANILA";
             PrinterRetryButton.Content = _english ? "REINITIALIZE PRINTER" : "YAZICIYI YENİDEN BAŞLAT";
+            PrinterPurgeButton.Content = _english ? "CLEAR QUEUE" : "KUYRUĞU TEMİZLE";
             ClosePrinterDiagnosticsButton.Content = _english ? "CLOSE" : "KAPAT";
             PrinterDiagnosticsTitleText.Text = _english ? "THERMAL PRINTER DIAGNOSTICS" : "TERMAL YAZICI TANILAMA";
             BalanceReceiptButton.Content = _english ? "PRINT BALANCE RECEIPT" : "BAKİYE FİŞİ YAZDIR";
@@ -791,17 +792,22 @@ namespace IzbanKiosk.Win7Prototype
             builder.AppendLine("Win32 hata kodu   : " + report.Win32Error);
             builder.AppendLine("Kuyruktaki iş     : " + (report.VendorProbeCompleted ? report.VendorQueuedJobCount.ToString() : "okunamadı " + report.VendorProbeError));
             builder.AppendLine();
-            builder.AppendLine("Kurulu yazıcılar:");
-            if (report.InstalledPrinters == null || report.InstalledPrinters.Count == 0)
+            builder.AppendLine("Kurulu kuyruklar (port = cihazın gerçekte bağlı olduğu yer):");
+            if (report.InstalledPrinterDetails == null || report.InstalledPrinterDetails.Count == 0)
             {
                 builder.AppendLine("  (hiç yok)");
             }
             else
             {
-                foreach (string name in report.InstalledPrinters)
+                foreach (InstalledPrinterInfo queue in report.InstalledPrinterDetails)
                 {
-                    builder.AppendLine("  • " + name);
+                    string marker = queue.IsConfigured ? ">> " : "   ";
+                    builder.AppendLine(marker + Pad(queue.Name, 38) + " " + Pad(queue.PortName, 10) +
+                        " is:" + queue.QueuedJobCount + (queue.IsDefault ? "  [varsayilan]" : string.Empty));
                 }
+                builder.AppendLine();
+                builder.AppendLine(">> = yapılandırılan kuyruk. Aynı yazıcının birden çok kopyası varsa,");
+                builder.AppendLine("   cihaz yalnızca BİR portta canlıdır; diğer kuyruklar işi alır ama basmaz.");
             }
             builder.AppendLine();
             builder.AppendLine("Ayar dosyası: KioskHardware.config.json -> ThermalPrinterName");
@@ -818,9 +824,55 @@ namespace IzbanKiosk.Win7Prototype
             return parts.Count == 0 ? string.Empty : "  (" + string.Join(", ", parts.ToArray()) + ")";
         }
 
+        private static string Pad(string value, int width)
+        {
+            string text = value ?? string.Empty;
+            return text.Length >= width ? text.Substring(0, width) : text.PadRight(width);
+        }
+
         private static string Dash(string value)
         {
             return string.IsNullOrWhiteSpace(value) ? "-" : value;
+        }
+
+        private void PrinterPurgeButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!PrinterPurgeButton.IsEnabled)
+            {
+                return;
+            }
+
+            PrinterPurgeButton.IsEnabled = false;
+            PrinterPurgeButton.Content = _english ? "CLEARING..." : "TEMİZLENİYOR...";
+            _printerOperationInFlight = true;
+            var purgeThread = new Thread(new ThreadStart(delegate
+            {
+                BridgeResponse? response = SendRequest(new BridgeRequest
+                {
+                    RequestId = Guid.NewGuid().ToString("N"),
+                    Command = "PrinterPurgeQueue",
+                    TimeoutMs = 20000
+                }, PrinterRequestConnectTimeoutMs);
+
+                _printerOperationInFlight = false;
+
+                bool purged = response != null && response.Success;
+                _journal.Record("PrinterPurgeQueue", new { purged, detail = purged ? string.Empty : FormatBridgeError(response) });
+
+                OnUi(delegate
+                {
+                    PrinterPurgeButton.IsEnabled = true;
+                    PrinterPurgeButton.Content = _english ? "CLEAR QUEUE" : "KUYRUĞU TEMİZLE";
+                    if (!purged)
+                    {
+                        PrinterDiagnosticsSummaryText.Text = FormatBridgeError(response);
+                        PrinterDiagnosticsSummaryText.Foreground = ErrorBrush;
+                    }
+                });
+
+                RunPrinterDiagnostics();
+            })) { IsBackground = true, Name = "IZBAN Printer Purge Worker" };
+            purgeThread.Start();
         }
 
         private void ClosePrinterDiagnosticsButton_Click(object sender, RoutedEventArgs e)

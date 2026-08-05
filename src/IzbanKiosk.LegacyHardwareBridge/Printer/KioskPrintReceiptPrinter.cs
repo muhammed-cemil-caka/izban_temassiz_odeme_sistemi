@@ -183,12 +183,28 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
         {
             lock (_sync)
             {
+                string configuredName = (printerName ?? string.Empty).Trim();
+                string defaultBefore = WindowsPrinterEnvironment.GetDefaultPrinterName();
                 var diagnostics = new PrinterDiagnosticsResponse
                 {
-                    ConfiguredPrinterName = (printerName ?? string.Empty).Trim(),
-                    InstalledPrinters = WindowsPrinterEnvironment.ListInstalledPrinters(),
-                    DefaultPrinterBefore = WindowsPrinterEnvironment.GetDefaultPrinterName()
+                    ConfiguredPrinterName = configuredName,
+                    DefaultPrinterBefore = defaultBefore
                 };
+
+                foreach (WindowsPrinterInfo queue in WindowsPrinterEnvironment.ListInstalledPrinterDetails())
+                {
+                    diagnostics.InstalledPrinters.Add(queue.Name);
+                    diagnostics.InstalledPrinterDetails.Add(new InstalledPrinterInfo
+                    {
+                        Name = queue.Name,
+                        PortName = queue.PortName,
+                        DriverName = queue.DriverName,
+                        StatusFlags = queue.Status,
+                        QueuedJobCount = queue.QueuedJobCount,
+                        IsDefault = string.Equals(queue.Name, defaultBefore, StringComparison.OrdinalIgnoreCase),
+                        IsConfigured = string.Equals(queue.Name, configuredName, StringComparison.OrdinalIgnoreCase)
+                    });
+                }
 
                 if (diagnostics.ConfiguredPrinterName.Length == 0)
                 {
@@ -248,6 +264,48 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
                 diagnostics.IsReady = decision.IsReady;
                 diagnostics.StatusMessage = decision.StatusMessage;
                 return diagnostics;
+            }
+        }
+
+        /// <summary>
+        /// Clears the configured queue on explicit operator request and lets the
+        /// printer be used again. A backlog blocks initialization by design, so
+        /// without this the kiosk could not recover from stuck jobs without a
+        /// Windows session on the machine.
+        /// </summary>
+        public PrinterPurgeResponse PurgeQueue(string printerName)
+        {
+            lock (_sync)
+            {
+                string configuredName = (printerName ?? string.Empty).Trim();
+                var response = new PrinterPurgeResponse { PrinterName = configuredName };
+
+                string resolvedName;
+                string resolveError;
+                if (!WindowsPrinterEnvironment.TryResolveInstalledPrinter(configuredName, out resolvedName, out resolveError))
+                {
+                    response.StatusMessage = resolveError;
+                    return response;
+                }
+
+                response.PrinterName = resolvedName;
+
+                int purgedJobCount;
+                string purgeError;
+                if (!WindowsPrinterEnvironment.TryPurgeQueue(resolvedName, out purgedJobCount, out purgeError))
+                {
+                    response.StatusMessage = purgeError;
+                    return response;
+                }
+
+                response.Purged = true;
+                response.PurgedJobCount = purgedJobCount;
+                response.StatusMessage = purgedJobCount + " job(s) cancelled on '" + resolvedName + "'.";
+
+                // A cleared queue may well be healthy again; re-run initialization so
+                // the operator does not have to restart anything.
+                Initialize(configuredName);
+                return response;
             }
         }
 

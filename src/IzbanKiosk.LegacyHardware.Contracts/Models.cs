@@ -60,6 +60,7 @@ namespace IzbanKiosk.LegacyHardware.Contracts
         public string ResolvedPrinterName { get; set; } = string.Empty;
         public bool IsInstalled { get; set; }
         public List<string> InstalledPrinters { get; set; } = new List<string>();
+        public List<InstalledPrinterInfo> InstalledPrinterDetails { get; set; } = new List<InstalledPrinterInfo>();
         public string DefaultPrinterBefore { get; set; } = string.Empty;
         public string DefaultPrinterAfter { get; set; } = string.Empty;
         public bool DefaultPrinterRoutingApplied { get; set; }
@@ -72,6 +73,30 @@ namespace IzbanKiosk.LegacyHardware.Contracts
         public int VendorQueuedJobCount { get; set; } = -1;
         public string VendorProbeError { get; set; } = string.Empty;
         public bool IsReady { get; set; }
+        public string StatusMessage { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// One Windows print queue. The port is the field that matters when a USB printer
+    /// has been re-enumerated into several duplicate queues: only the queue on the
+    /// port the device currently occupies can produce paper.
+    /// </summary>
+    public class InstalledPrinterInfo
+    {
+        public string Name { get; set; } = string.Empty;
+        public string PortName { get; set; } = string.Empty;
+        public string DriverName { get; set; } = string.Empty;
+        public uint StatusFlags { get; set; }
+        public int QueuedJobCount { get; set; }
+        public bool IsDefault { get; set; }
+        public bool IsConfigured { get; set; }
+    }
+
+    public class PrinterPurgeResponse
+    {
+        public string PrinterName { get; set; } = string.Empty;
+        public bool Purged { get; set; }
+        public int PurgedJobCount { get; set; }
         public string StatusMessage { get; set; } = string.Empty;
     }
 

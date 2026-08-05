@@ -22,6 +22,7 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
         public string DriverName = string.Empty;
         public string PortName = string.Empty;
         public uint Status;
+        public int QueuedJobCount;
     }
 
     public static class WindowsPrinterEnvironment
@@ -46,32 +47,61 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
         public static List<string> ListInstalledPrinters()
         {
             var names = new List<string>();
+            foreach (WindowsPrinterInfo info in ListInstalledPrinterDetails())
+            {
+                names.Add(info.Name);
+            }
+            return names;
+        }
+
+        /// <summary>
+        /// Every installed queue with the port it prints to and how many jobs are
+        /// waiting on it.
+        ///
+        /// The port matters more than the name. A USB thermal printer that has been
+        /// re-enumerated leaves behind a trail of duplicate queues - "(Copy 1)",
+        /// "(Copy 2)" and so on - and only the queue bound to the port the device is
+        /// actually on will ever produce paper. The others accept jobs and pile them
+        /// up forever, which looks exactly like a dead printer.
+        /// </summary>
+        public static List<WindowsPrinterInfo> ListInstalledPrinterDetails()
+        {
+            var printers = new List<WindowsPrinterInfo>();
 
             uint bytesNeeded;
             uint printersReturned;
-            EnumPrinters(PrinterEnumLocal | PrinterEnumConnections, null, 4, IntPtr.Zero, 0, out bytesNeeded, out printersReturned);
+            EnumPrinters(PrinterEnumLocal | PrinterEnumConnections, null, 2, IntPtr.Zero, 0, out bytesNeeded, out printersReturned);
             if (bytesNeeded == 0)
             {
-                return names;
+                return printers;
             }
 
             IntPtr buffer = Marshal.AllocHGlobal((int)bytesNeeded);
             try
             {
-                if (!EnumPrinters(PrinterEnumLocal | PrinterEnumConnections, null, 4, buffer, bytesNeeded, out bytesNeeded, out printersReturned))
+                if (!EnumPrinters(PrinterEnumLocal | PrinterEnumConnections, null, 2, buffer, bytesNeeded, out bytesNeeded, out printersReturned))
                 {
-                    return names;
+                    return printers;
                 }
 
-                int entrySize = Marshal.SizeOf(typeof(PRINTER_INFO_4));
+                int entrySize = Marshal.SizeOf(typeof(PRINTER_INFO_2));
                 for (int i = 0; i < printersReturned; i++)
                 {
                     IntPtr entry = new IntPtr(buffer.ToInt64() + (i * entrySize));
-                    var info = (PRINTER_INFO_4)Marshal.PtrToStructure(entry, typeof(PRINTER_INFO_4));
-                    if (!string.IsNullOrEmpty(info.pPrinterName))
+                    var info = (PRINTER_INFO_2)Marshal.PtrToStructure(entry, typeof(PRINTER_INFO_2));
+                    if (string.IsNullOrEmpty(info.pPrinterName))
                     {
-                        names.Add(info.pPrinterName);
+                        continue;
                     }
+
+                    printers.Add(new WindowsPrinterInfo
+                    {
+                        Name = info.pPrinterName,
+                        DriverName = info.pDriverName ?? string.Empty,
+                        PortName = info.pPortName ?? string.Empty,
+                        Status = info.Status,
+                        QueuedJobCount = (int)info.cJobs
+                    });
                 }
             }
             finally
@@ -79,7 +109,52 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
                 Marshal.FreeHGlobal(buffer);
             }
 
-            return names;
+            return printers;
+        }
+
+        /// <summary>
+        /// Cancels every job waiting on the named queue.
+        ///
+        /// Only ever called from an explicit operator action. Stuck jobs on a kiosk
+        /// thermal printer are receipts that will never be produced, and leaving them
+        /// blocks every later receipt; but discarding someone's queued work must stay
+        /// a deliberate decision, never an automatic recovery.
+        /// </summary>
+        public static bool TryPurgeQueue(string printerName, out int purgedJobCount, out string error)
+        {
+            purgedJobCount = 0;
+            error = string.Empty;
+
+            WindowsPrinterInfo info;
+            int readError;
+            if (TryReadPrinterInfo(printerName, out info, out readError))
+            {
+                purgedJobCount = info.QueuedJobCount;
+            }
+
+            var defaults = new PRINTER_DEFAULTS { DesiredAccess = PrinterAllAccess };
+            IntPtr printerHandle;
+            if (!OpenPrinterWithDefaults(printerName, out printerHandle, ref defaults))
+            {
+                error = "Queue '" + printerName + "' could not be opened for administration. Win32 error=" +
+                    Marshal.GetLastWin32Error() + ". The kiosk user may lack the Manage Documents right.";
+                return false;
+            }
+
+            try
+            {
+                if (!SetPrinter(printerHandle, 0, IntPtr.Zero, PrinterControlPurge))
+                {
+                    error = "Windows refused to purge queue '" + printerName + "'. Win32 error=" +
+                        Marshal.GetLastWin32Error() + ".";
+                    return false;
+                }
+                return true;
+            }
+            finally
+            {
+                ClosePrinter(printerHandle);
+            }
         }
 
         /// <summary>
@@ -152,6 +227,7 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
                     info.DriverName = info2.pDriverName ?? string.Empty;
                     info.PortName = info2.pPortName ?? string.Empty;
                     info.Status = info2.Status;
+                    info.QueuedJobCount = (int)info2.cJobs;
                     return true;
                 }
                 finally
@@ -238,6 +314,9 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
         private const uint PrinterEnumLocal = 0x00000002;
         private const uint PrinterEnumConnections = 0x00000004;
 
+        private const uint PrinterControlPurge = 3;
+        private const uint PrinterAllAccess = 0x000F000C;
+
         private static readonly IntPtr HwndBroadcast = new IntPtr(0xFFFF);
         private const uint WmSettingChange = 0x001A;
 
@@ -246,6 +325,20 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
 
         [DllImport("winspool.drv", SetLastError = true)]
         private static extern bool ClosePrinter(IntPtr hPrinter);
+
+        [DllImport("winspool.drv", EntryPoint = "OpenPrinter", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern bool OpenPrinterWithDefaults(string pPrinterName, out IntPtr phPrinter, ref PRINTER_DEFAULTS pDefault);
+
+        [DllImport("winspool.drv", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern bool SetPrinter(IntPtr hPrinter, uint dwLevel, IntPtr pPrinter, uint dwCommand);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct PRINTER_DEFAULTS
+        {
+            public IntPtr pDatatype;
+            public IntPtr pDevMode;
+            public uint DesiredAccess;
+        }
 
         [DllImport("winspool.drv", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern bool GetPrinter(IntPtr hPrinter, uint dwLevel, IntPtr pPrinter, int cbBuf, out int pcbNeeded);
@@ -271,14 +364,6 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern bool SendNotifyMessage(IntPtr hWnd, uint msg, IntPtr wParam, string lParam);
-
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-        private struct PRINTER_INFO_4
-        {
-            public string pPrinterName;
-            public string pServerName;
-            public uint Attributes;
-        }
 
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
         private struct PRINTER_INFO_2

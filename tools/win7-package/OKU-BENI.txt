@@ -1,5 +1,21 @@
-IZBAN KIOSK R11 - WINDOWS 7 / EMBEDDED (x86)
+IZBAN KIOSK R12 - WINDOWS 7 / EMBEDDED (x86)
 ============================================
+
+R12: KUYRUK SIKISMASI
+---------------------
+Otomatta yazicidan kagit cikmamasinin sebebi VARSAYILAN YAZICI DEGILMIS.
+Tanilama raporu varsayilanin zaten termal yazici oldugunu gosterdi.
+
+Gercek sebep: kuyrukta 4 is sikismis, cihaz almiyor. Ayrica ayni yazicinin
+Windows'ta 8 KOPYASI var (Copy 1..6, 56mm3). Bir USB yazici her farkli USB
+portunda gorulduğunde Windows yeni bir kuyruk olusturur; cihaz bu kuyruklardan
+YALNIZCA BIRINDE canlidir. Digerleri isi kabul eder ama hicbir zaman basmaz.
+
+Bu surumde:
+- Tanilama raporu her kuyrugun PORTUNU ve BEKLEYEN IS SAYISINI gosteriyor.
+  Canli kuyrugu boylece bulabilirsiniz.
+- "KUYRUGU TEMIZLE" dugmesi eklendi: sikisan isleri iptal eder ve yaziciyi
+  yeniden devreye alir.
 
 NE VAR
 ------

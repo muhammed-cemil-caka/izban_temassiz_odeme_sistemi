@@ -10,6 +10,7 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
         bool PrintTestReceipt();
         PrinterHealthResponse HealthCheck();
         PrinterDiagnosticsResponse Diagnose(string printerName);
+        PrinterPurgeResponse PurgeQueue(string printerName);
         string LastErrorMessage { get; }
     }
 }
