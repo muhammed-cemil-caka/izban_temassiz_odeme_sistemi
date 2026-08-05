@@ -30,8 +30,8 @@ namespace IzbanKiosk.Win7Prototype
     {
         private const string PipeName = "IzbanKiosk.LegacyHardware.v1";
         private const string BridgeExeName = "IzbanKiosk.LegacyHardwareBridge.exe";
-        private const string ExpectedBridgeVersion = "2.2.2-net40";
-        private const string PackageVersion = "R14";
+        private const string ExpectedBridgeVersion = "2.3.0-net40";
+        private const string PackageVersion = "R15";
         private const int MaxManualAmount = 500;
         private const string StationName = "ALSANCAK";
         private const string KioskId = "0482";
@@ -591,6 +591,7 @@ namespace IzbanKiosk.Win7Prototype
             PrinterDiagnoseButton.Content = _english ? "DIAGNOSE PRINTER" : "YAZICI TANILA";
             PrinterRetryButton.Content = _english ? "REINITIALIZE PRINTER" : "YAZICIYI YENİDEN BAŞLAT";
             PrinterPurgeButton.Content = _english ? "CLEAR QUEUE" : "KUYRUĞU TEMİZLE";
+            PrinterOnlineButton.Content = _english ? "BRING PRINTER ONLINE" : "ÇEVRİMDIŞI MODU KAPAT";
             UseSelectedQueueButton.Content = _english ? "USE THIS QUEUE AND RESTART" : "BU KUYRUĞU KULLAN VE YENİDEN BAŞLAT";
             QueuePickerTitleText.Text = _english
                 ? "If no paper appears the device may be on another queue. Pick one and try it:"
@@ -796,8 +797,13 @@ namespace IzbanKiosk.Win7Prototype
             builder.AppendLine();
             builder.AppendLine("Spooler okundu    : " + (report.SpoolerStatusRead ? "EVET" : "HAYIR"));
             builder.AppendLine("Durum bayrakları  : " + report.SpoolerStatusFlags + DescribePrinterStatus(report.SpoolerStatusFlags));
+            builder.AppendLine("ÇEVRİMDIŞI MOD    : " + (report.IsWorkOffline ? "AÇIK  <-- ISLER GONDERILMIYOR!" : "kapalı"));
             builder.AppendLine("Win32 hata kodu   : " + report.Win32Error);
             builder.AppendLine("Kuyruktaki iş     : " + (report.VendorProbeCompleted ? report.VendorQueuedJobCount.ToString() : "okunamadı " + report.VendorProbeError));
+            if (report.QueuedJobStates != null && report.QueuedJobStates.Count > 0)
+            {
+                builder.AppendLine("İşlerin durumu    : " + string.Join(", ", report.QueuedJobStates.ToArray()));
+            }
             builder.AppendLine();
             builder.AppendLine("Kurulu kuyruklar (port = cihazın gerçekte bağlı olduğu yer):");
             if (report.InstalledPrinterDetails == null || report.InstalledPrinterDetails.Count == 0)
@@ -810,7 +816,8 @@ namespace IzbanKiosk.Win7Prototype
                 {
                     string marker = queue.IsConfigured ? ">> " : "   ";
                     builder.AppendLine(marker + Pad(queue.Name, 38) + " " + Pad(queue.PortName, 10) +
-                        " is:" + queue.QueuedJobCount + (queue.IsDefault ? "  [varsayilan]" : string.Empty));
+                        " is:" + queue.QueuedJobCount + (queue.IsWorkOffline ? "  [CEVRIMDISI]" : string.Empty) +
+                        (queue.IsDefault ? "  [varsayilan]" : string.Empty));
                 }
                 builder.AppendLine();
                 builder.AppendLine(">> = yapılandırılan kuyruk. Aynı yazıcının birden çok kopyası varsa,");
@@ -953,6 +960,46 @@ namespace IzbanKiosk.Win7Prototype
             return string.IsNullOrWhiteSpace(value) ? "-" : value;
         }
 
+        private void PrinterOnlineButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!PrinterOnlineButton.IsEnabled)
+            {
+                return;
+            }
+
+            PrinterOnlineButton.IsEnabled = false;
+            PrinterOnlineButton.Content = _english ? "BRINGING ONLINE..." : "AÇILIYOR...";
+            _printerOperationInFlight = true;
+            var onlineThread = new Thread(new ThreadStart(delegate
+            {
+                BridgeResponse? response = SendRequest(new BridgeRequest
+                {
+                    RequestId = Guid.NewGuid().ToString("N"),
+                    Command = "PrinterClearOffline",
+                    TimeoutMs = 20000
+                }, PrinterRequestConnectTimeoutMs);
+
+                _printerOperationInFlight = false;
+
+                bool cleared = response != null && response.Success;
+                _journal.Record("PrinterClearOffline", new { cleared, detail = cleared ? string.Empty : FormatBridgeError(response) });
+
+                OnUi(delegate
+                {
+                    PrinterOnlineButton.IsEnabled = true;
+                    PrinterOnlineButton.Content = _english ? "BRING PRINTER ONLINE" : "ÇEVRİMDIŞI MODU KAPAT";
+                    if (!cleared)
+                    {
+                        PrinterDiagnosticsSummaryText.Text = FormatBridgeError(response);
+                        PrinterDiagnosticsSummaryText.Foreground = ErrorBrush;
+                    }
+                });
+
+                RunPrinterDiagnostics();
+            })) { IsBackground = true, Name = "IZBAN Printer Online Worker" };
+            onlineThread.Start();
+        }
+
         private void PrinterPurgeButton_Click(object sender, RoutedEventArgs e)
         {
             if (!PrinterPurgeButton.IsEnabled)
@@ -981,6 +1028,7 @@ namespace IzbanKiosk.Win7Prototype
                 {
                     PrinterPurgeButton.IsEnabled = true;
                     PrinterPurgeButton.Content = _english ? "CLEAR QUEUE" : "KUYRUĞU TEMİZLE";
+            PrinterOnlineButton.Content = _english ? "BRING PRINTER ONLINE" : "ÇEVRİMDIŞI MODU KAPAT";
             UseSelectedQueueButton.Content = _english ? "USE THIS QUEUE AND RESTART" : "BU KUYRUĞU KULLAN VE YENİDEN BAŞLAT";
             QueuePickerTitleText.Text = _english
                 ? "If no paper appears the device may be on another queue. Pick one and try it:"

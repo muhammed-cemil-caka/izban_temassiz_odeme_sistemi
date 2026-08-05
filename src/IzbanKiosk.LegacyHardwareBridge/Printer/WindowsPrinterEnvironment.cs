@@ -22,7 +22,9 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
         public string DriverName = string.Empty;
         public string PortName = string.Empty;
         public uint Status;
+        public uint Attributes;
         public int QueuedJobCount;
+        public List<string> JobStates = new List<string>();
     }
 
     public static class WindowsPrinterEnvironment
@@ -100,6 +102,7 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
                         DriverName = info.pDriverName ?? string.Empty,
                         PortName = info.pPortName ?? string.Empty,
                         Status = info.Status,
+                        Attributes = info.Attributes,
                         QueuedJobCount = (int)info.cJobs
                     });
                 }
@@ -227,7 +230,9 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
                     info.DriverName = info2.pDriverName ?? string.Empty;
                     info.PortName = info2.pPortName ?? string.Empty;
                     info.Status = info2.Status;
+                    info.Attributes = info2.Attributes;
                     info.QueuedJobCount = (int)info2.cJobs;
+                    info.JobStates = ReadJobStates(printerHandle, info.QueuedJobCount);
                     return true;
                 }
                 finally
@@ -301,6 +306,147 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
         }
 
         /// <summary>
+        /// Per-job state for the queue.
+        ///
+        /// Printer-level status hides the two faults that matter most here: a queue
+        /// set to work offline reports nothing at all, and a job the driver has given
+        /// up on carries its own error bit while the printer still looks healthy.
+        /// </summary>
+        private static List<string> ReadJobStates(IntPtr printerHandle, int jobCount)
+        {
+            var states = new List<string>();
+            if (jobCount <= 0)
+            {
+                return states;
+            }
+
+            uint bytesNeeded;
+            uint jobsReturned;
+            EnumJobs(printerHandle, 0, (uint)jobCount, 1, IntPtr.Zero, 0, out bytesNeeded, out jobsReturned);
+            if (bytesNeeded == 0)
+            {
+                return states;
+            }
+
+            IntPtr buffer = Marshal.AllocHGlobal((int)bytesNeeded);
+            try
+            {
+                if (!EnumJobs(printerHandle, 0, (uint)jobCount, 1, buffer, bytesNeeded, out bytesNeeded, out jobsReturned))
+                {
+                    return states;
+                }
+
+                int entrySize = Marshal.SizeOf(typeof(JOB_INFO_1));
+                for (int i = 0; i < jobsReturned; i++)
+                {
+                    IntPtr entry = new IntPtr(buffer.ToInt64() + (i * entrySize));
+                    var job = (JOB_INFO_1)Marshal.PtrToStructure(entry, typeof(JOB_INFO_1));
+                    states.Add(DescribeJobStatus(job.Status));
+                }
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(buffer);
+            }
+
+            return states;
+        }
+
+        private static string DescribeJobStatus(uint status)
+        {
+            var parts = new List<string>();
+            if ((status & 0x00000001) != 0) parts.Add("PAUSED");
+            if ((status & 0x00000002) != 0) parts.Add("ERROR");
+            if ((status & 0x00000004) != 0) parts.Add("DELETING");
+            if ((status & 0x00000008) != 0) parts.Add("SPOOLING");
+            if ((status & 0x00000010) != 0) parts.Add("PRINTING");
+            if ((status & 0x00000020) != 0) parts.Add("OFFLINE");
+            if ((status & 0x00000040) != 0) parts.Add("PAPEROUT");
+            if ((status & 0x00000080) != 0) parts.Add("PRINTED");
+            if ((status & 0x00000100) != 0) parts.Add("DELETED");
+            if ((status & 0x00000200) != 0) parts.Add("BLOCKED_DEVQ");
+            if ((status & 0x00000400) != 0) parts.Add("USER_INTERVENTION");
+            if ((status & 0x00000800) != 0) parts.Add("RESTART");
+            if ((status & 0x00001000) != 0) parts.Add("COMPLETE");
+            if ((status & 0x00002000) != 0) parts.Add("RETAINED");
+            return parts.Count == 0 ? "QUEUED(" + status + ")" : string.Join("+", parts.ToArray());
+        }
+
+        public static bool IsWorkOffline(uint attributes)
+        {
+            return (attributes & PrinterAttributeWorkOffline) != 0;
+        }
+
+        /// <summary>
+        /// Clears the "Use Printer Offline" flag.
+        ///
+        /// That setting is the quietest way for a Windows queue to swallow every job:
+        /// no status bit, no Win32 error, jobs simply accumulate and no paper is ever
+        /// produced. Only the Attributes field reveals it, and only an explicit write
+        /// clears it.
+        /// </summary>
+        public static bool TryClearWorkOffline(string printerName, out string error)
+        {
+            error = string.Empty;
+
+            var defaults = new PRINTER_DEFAULTS { DesiredAccess = PrinterAllAccess };
+            IntPtr printerHandle;
+            if (!OpenPrinterWithDefaults(printerName, out printerHandle, ref defaults))
+            {
+                error = "Queue '" + printerName + "' could not be opened for administration. Win32 error=" +
+                    Marshal.GetLastWin32Error() + ".";
+                return false;
+            }
+
+            try
+            {
+                int bytesNeeded;
+                GetPrinter(printerHandle, 2, IntPtr.Zero, 0, out bytesNeeded);
+                if (bytesNeeded <= 0)
+                {
+                    error = "Queue '" + printerName + "' settings could not be read. Win32 error=" + Marshal.GetLastWin32Error() + ".";
+                    return false;
+                }
+
+                IntPtr buffer = Marshal.AllocHGlobal(bytesNeeded);
+                try
+                {
+                    if (!GetPrinter(printerHandle, 2, buffer, bytesNeeded, out bytesNeeded))
+                    {
+                        error = "Queue '" + printerName + "' settings could not be read. Win32 error=" + Marshal.GetLastWin32Error() + ".";
+                        return false;
+                    }
+
+                    // Edit the two fields in the raw buffer. Round-tripping through a
+                    // managed struct would rewrite the string pointers that PRINTER_INFO_2
+                    // carries into this same block.
+                    int attributesOffset = (int)Marshal.OffsetOf(typeof(PRINTER_INFO_2), "Attributes");
+                    var attributes = (uint)Marshal.ReadInt32(buffer, attributesOffset);
+                    Marshal.WriteInt32(buffer, attributesOffset, (int)(attributes & ~PrinterAttributeWorkOffline));
+
+                    // A NULL security descriptor tells SetPrinter to leave permissions alone.
+                    Marshal.WriteIntPtr(buffer, (int)Marshal.OffsetOf(typeof(PRINTER_INFO_2), "pSecurityDescriptor"), IntPtr.Zero);
+
+                    if (!SetPrinter(printerHandle, 2, buffer, 0))
+                    {
+                        error = "Windows refused to bring queue '" + printerName + "' back online. Win32 error=" +
+                            Marshal.GetLastWin32Error() + ".";
+                        return false;
+                    }
+                    return true;
+                }
+                finally
+                {
+                    Marshal.FreeHGlobal(buffer);
+                }
+            }
+            finally
+            {
+                ClosePrinter(printerHandle);
+            }
+        }
+
+        /// <summary>
         /// The printer name from the win.ini mapped <c>[windows] device</c> entry: the
         /// exact value KioskPrint.dll reads to decide where a receipt goes. It can
         /// differ from <see cref="GetDefaultPrinterName"/>, and when it does, this one
@@ -343,6 +489,7 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
         private const uint PrinterEnumConnections = 0x00000004;
 
         private const uint PrinterControlPurge = 3;
+        private const uint PrinterAttributeWorkOffline = 0x00000400;
         private const uint PrinterAllAccess = 0x000F000C;
 
         private static readonly IntPtr HwndBroadcast = new IntPtr(0xFFFF);
@@ -359,6 +506,34 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
 
         [DllImport("winspool.drv", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern bool SetPrinter(IntPtr hPrinter, uint dwLevel, IntPtr pPrinter, uint dwCommand);
+
+        [DllImport("winspool.drv", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern bool EnumJobs(IntPtr hPrinter, uint firstJob, uint noJobs, uint level,
+            IntPtr pJob, uint cbBuf, out uint pcbNeeded, out uint pcReturned);
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        private struct JOB_INFO_1
+        {
+            public uint JobId;
+            public string pPrinterName;
+            public string pMachineName;
+            public string pUserName;
+            public string pDocument;
+            public string pDatatype;
+            public string pStatus;
+            public uint Status;
+            public uint Priority;
+            public uint Position;
+            public uint TotalPages;
+            public uint PagesPrinted;
+            public SYSTEMTIME Submitted;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct SYSTEMTIME
+        {
+            public ushort Year, Month, DayOfWeek, Day, Hour, Minute, Second, Milliseconds;
+        }
 
         [StructLayout(LayoutKind.Sequential)]
         private struct PRINTER_DEFAULTS

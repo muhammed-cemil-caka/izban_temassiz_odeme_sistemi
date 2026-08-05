@@ -70,6 +70,9 @@ namespace IzbanKiosk.LegacyHardware.Contracts
         public string PortName { get; set; } = string.Empty;
         public bool SpoolerStatusRead { get; set; }
         public uint SpoolerStatusFlags { get; set; }
+        public uint SpoolerAttributes { get; set; }
+        public bool IsWorkOffline { get; set; }
+        public List<string> QueuedJobStates { get; set; } = new List<string>();
         public int Win32Error { get; set; }
         public bool VendorProbeCompleted { get; set; }
         public int VendorQueuedJobCount { get; set; } = -1;
@@ -89,6 +92,8 @@ namespace IzbanKiosk.LegacyHardware.Contracts
         public string PortName { get; set; } = string.Empty;
         public string DriverName { get; set; } = string.Empty;
         public uint StatusFlags { get; set; }
+        public uint Attributes { get; set; }
+        public bool IsWorkOffline { get; set; }
         public int QueuedJobCount { get; set; }
         public bool IsDefault { get; set; }
         public bool IsConfigured { get; set; }

@@ -200,6 +200,8 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
                         PortName = queue.PortName,
                         DriverName = queue.DriverName,
                         StatusFlags = queue.Status,
+                        Attributes = queue.Attributes,
+                        IsWorkOffline = WindowsPrinterEnvironment.IsWorkOffline(queue.Attributes),
                         QueuedJobCount = queue.QueuedJobCount,
                         IsDefault = string.Equals(queue.Name, defaultBefore, StringComparison.OrdinalIgnoreCase),
                         IsConfigured = string.Equals(queue.Name, configuredName, StringComparison.OrdinalIgnoreCase)
@@ -239,6 +241,9 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
                     diagnostics.DriverName = info.DriverName;
                     diagnostics.PortName = info.PortName;
                     diagnostics.SpoolerStatusFlags = info.Status;
+                    diagnostics.SpoolerAttributes = info.Attributes;
+                    diagnostics.IsWorkOffline = WindowsPrinterEnvironment.IsWorkOffline(info.Attributes);
+                    diagnostics.QueuedJobStates = info.JobStates;
                 }
 
                 string vendorError;
@@ -311,6 +316,41 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
             }
         }
 
+        /// <summary>
+        /// Brings the configured queue out of "Use Printer Offline" on operator
+        /// request and re-runs initialization.
+        /// </summary>
+        public PrinterPurgeResponse ClearWorkOffline(string printerName)
+        {
+            lock (_sync)
+            {
+                string configuredName = (printerName ?? string.Empty).Trim();
+                var response = new PrinterPurgeResponse { PrinterName = configuredName };
+
+                string resolvedName;
+                string resolveError;
+                if (!WindowsPrinterEnvironment.TryResolveInstalledPrinter(configuredName, out resolvedName, out resolveError))
+                {
+                    response.StatusMessage = resolveError;
+                    return response;
+                }
+
+                response.PrinterName = resolvedName;
+
+                string clearError;
+                if (!WindowsPrinterEnvironment.TryClearWorkOffline(resolvedName, out clearError))
+                {
+                    response.StatusMessage = clearError;
+                    return response;
+                }
+
+                response.Purged = true;
+                response.StatusMessage = "'" + resolvedName + "' is online again.";
+                Initialize(configuredName);
+                return response;
+            }
+        }
+
         private PrinterHealthResponse HealthCheckCore()
         {
             var response = new PrinterHealthResponse
@@ -364,6 +404,13 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
                 // by this kiosk user. It does however expose a queue that is silently
                 // piling jobs up, which is how the legacy AUSKiosk decided whether a
                 // receipt could be promised to the passenger.
+                if (statusRead && WindowsPrinterEnvironment.IsWorkOffline(info.Attributes))
+                {
+                    response.StatusMessage = "Queue '" + _resolvedPrinterName + "' is set to Use Printer Offline. " +
+                        "Windows accepts jobs and never sends them to the device. Bring it back online.";
+                    return response;
+                }
+
                 string vendorError;
                 int vendorJobCount;
                 bool vendorProbeCompleted = TryProbeVendorJobCount(out vendorJobCount, out vendorError);

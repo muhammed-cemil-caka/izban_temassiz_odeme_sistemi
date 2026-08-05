@@ -1,29 +1,38 @@
-IZBAN KIOSK R14 - WINDOWS 7 / EMBEDDED (x86)
+IZBAN KIOSK R15 - WINDOWS 7 / EMBEDDED (x86)
 ============================================
 
-R14: SETDEFAULTPRINTER BYPASS
------------------------------
-Otomatta SetDefaultPrinter API'si kuyrugu varsayilan yapmayi reddediyor
-(Win32 hata 1801). Ayni kuyruk OpenPrinter ile sorunsuz aciliyor - yani kuyruk
-saglam, sadece bu API inatci.
+ONCE SUNU YAPIN (30 SANIYE, KOD GEREKTIRMEZ)
+--------------------------------------------
+Denetim Masasi > Aygitlar ve Yazicilar > "Trentino Printer Driver 56mm"
+sag tik > Yazici ozellikleri > Genel sekmesi > "Sinama Sayfasi Yazdir"
 
-Onemli olan sey su: KioskPrint.dll SetDefaultPrinter'i HIC OKUMAZ. Delphi/VCL
-kutuphanesi hedefini GetProfileString("windows","device") ile bulur. R14 artik
-o degeri DOGRUDAN yaziyor; SetDefaultPrinter basarisiz olsa bile fis dogru
-yaziciya gider.
+  KAGIT CIKARSA -> yazici saglam, sorun yazilim tarafinda, devam ederiz
+  KAGIT CIKMAZSA -> sorun yazicida/surucude/kabloda. Hicbir kod duzeltmesi
+                    bunu cozemez; once fiziksel tarafi halletmek gerekir.
 
-Tanilama raporunda yeni bir satir var:
+Bu test problemi ikiye boler. Yapmadan devam etmeyin.
 
-   FIS NEREYE GIDER : <yazici adi>   <-- KioskPrint.dll bunu okur
+Ayrica ayni sag tik menusunde "Yaziciyi Cevrimdisi Kullan" satirini kontrol
+edin; isaretliyse tiki kaldirin.
 
-Bu satir, kagidin gercekte hangi yazicidan cikacagini soyler. "Varsayilan"
-satirlari farkli olsa bile onemli olan BU satirdir.
 
-DIKKAT: Su anki varsayilan yaziciniz "Trentino Printer Driver 56mm3" ve o
-XPSPort'a bagli - yani DOSYAYA yazan sanal bir yazici. Gercek cihaz USB001'de.
+R15: CEVRIMDISI MOD TESPITI
+---------------------------
+Windows'ta bir yazici "Cevrimdisi Kullan" moduna alinmissa:
+  - Isler kuyruga girer ve sonsuza kadar bekler
+  - Yaziciya hicbir sey gonderilmez, kagit kipirdamaz
+  - Durum bayraklari = 0, Win32 hata = 0   (hicbir sey belli olmaz!)
 
-Kuyruk secici artik butun kuyruklari listeliyor (once yalnizca ayni surucudeki
-kuyruklari gosteriyordu ve yonlendirme basarisiz olunca hic gorunmuyordu).
+Gordugumuz tablonun tamami bu. Bu bilgi Status alaninda degil Attributes
+alaninda durur; onu okuyor ama bakmiyorduk.
+
+R15'te:
+- Rapora "CEVRIMDISI MOD" satiri eklendi
+- Rapora "Islerin durumu" satiri eklendi (her isin PRINTING/ERROR/OFFLINE/
+  PAPEROUT/BLOCKED gibi kendi durumu)
+- Kuyruk listesinde cevrimdisi kuyruklar [CEVRIMDISI] diye isaretleniyor
+- "CEVRIMDISI MODU KAPAT" dugmesi eklendi (mavi)
+- Cevrimdisi bir kuyruk artik "hazir" sayilmiyor
 
 NE VAR
 ------

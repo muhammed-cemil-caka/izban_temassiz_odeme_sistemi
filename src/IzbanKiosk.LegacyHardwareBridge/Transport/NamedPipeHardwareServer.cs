@@ -245,7 +245,7 @@ namespace IzbanKiosk.LegacyHardwareBridge.Transport
                     response.Success = true;
                     response.PayloadJson = JsonConvert.SerializeObject(new
                     {
-                        Version = "2.2.2-net40",
+                        Version = "2.3.0-net40",
                         Framework = ".NET Framework 4.0 Client Profile (x86)"
                     });
                     break;
@@ -327,6 +327,16 @@ namespace IzbanKiosk.LegacyHardwareBridge.Transport
                     if (!purge.Purged)
                     {
                         response.Error = new BridgeError { Code = "ERR_PRINTER_PURGE_FAILED", Message = purge.StatusMessage };
+                    }
+                    break;
+
+                case "PrinterClearOffline":
+                    PrinterPurgeResponse online = _printerDevice.ClearWorkOffline(_options.PrinterName);
+                    response.Success = online.Purged;
+                    response.PayloadJson = JsonConvert.SerializeObject(online);
+                    if (!online.Purged)
+                    {
+                        response.Error = new BridgeError { Code = "ERR_PRINTER_ONLINE_FAILED", Message = online.StatusMessage };
                     }
                     break;
 
