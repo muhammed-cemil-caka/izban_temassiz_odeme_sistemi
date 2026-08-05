@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net40</TargetFramework>
+    <TargetFrameworkProfile>Client</TargetFrameworkProfile>
+    <AssemblyName>IzbanKiosk.LegacyHardware.Contracts</AssemblyName>
+    <RootNamespace>IzbanKiosk.LegacyHardware.Contracts</RootNamespace>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <DefineConstants>$(DefineConstants);NET40</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\IzbanKiosk.LegacyHardware.Contracts\Models.cs" Link="Models.cs" />
+    <Compile Include="..\IzbanKiosk.LegacyHardware.Contracts\NamedPipeFraming.cs" Link="NamedPipeFraming.cs" />
+  </ItemGroup>
+</Project>
