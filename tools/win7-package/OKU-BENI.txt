@@ -1,4 +1,4 @@
-IZBAN KIOSK R20 - WINDOWS 7 / EMBEDDED (x86)
+IZBAN KIOSK R26 - WINDOWS 7 / EMBEDDED (x86)
 ============================================
 
 OTOMATIK GUNCELLEME (GITHUB RELEASES)
@@ -31,6 +31,22 @@ KORUNAN DOSYALAR
    Guncelleme sirasinda KioskHardware.config.json ve Journal klasoru korunur;
    yazici adi ve otomat kayitlari kaybolmaz. Onceki kurulumun yedegi gecici
    klasorde "previous" adiyla saklanir.
+
+KURULUMDAN SONRA GUNCELLEMEYI TEST EDIN
+   Ana ekran -> SISTEM TANILA -> "OTOMATIK GUNCELLEME" bolumu
+   -> "SIMDI KONTROL ET"
+
+   Gormeniz gerekenler:
+      Calisan surum   : 1.0.0.0
+      Zamanlayici     : kurulu, her gun 04:00
+      GitHub'a erisim : BASARILI
+      Yayindaki surum : 1.0.0  (etiket v1.0.0)
+      -> "Bu otomat en guncel surumu calistiriyor."
+
+   "GitHub'a erisim: BASARISIZ" gorurseniz asagidaki TLS maddesine bakin.
+
+   Yeni bir surum yayinlandiginda ayni ekranda "SIMDI GUNCELLE" dugmesi cikar;
+   04:00'i beklemeden kurabilirsiniz. Yolcu varken bu dugme calismaz.
 
 GEREKSINIM: TLS 1.2
    Windows 7 uzerinde GitHub'a baglanabilmek icin makinede .NET Framework 4.5
@@ -106,7 +122,7 @@ kutu kapali oldugu icin kimse duymuyordu.
 
 KAGIT CIKMIYORSA ILK BAKILACAK YER
 ----------------------------------
-TANILA ekraninda "Durum bayraklari" satiri:
+SISTEM TANILA ekraninda "Durum bayraklari" satiri:
 
    0         -> cihaz sorun bildirmiyor
    16        -> KAGIT BITTI
@@ -117,7 +133,7 @@ NE VAR
 ------
 - Termal yazici arizasi ARTIK KIOSKU DURDURMUYOR. Yazici bozuk olsa bile kart
   okuma ve bakiye gosterme calismaya devam eder.
-- Ekranda "YAZICI TANILA" dugmesi: konsol olmadan, otomatin kendi ekraninda
+- Ekranda "SISTEM TANILA" dugmesi: konsol olmadan, otomatin kendi ekraninda
   kurulu yazicilar / varsayilan yazici / spooler durumu / kuyruk raporu.
 - Tanilama ekraninda "YAZICIYI YENIDEN BASLAT": ayar dosyasini duzelttikten
   sonra uygulamayi kapatmadan yaziciyi tekrar devreye alir.
@@ -193,7 +209,7 @@ ADIM 5 -> 4-Kiosk-Arayuzunu-Ac.bat
   AUSKiosk.exe KAPALI olmalidir, aksi halde COM portu mesgul olur.
 
   Arayuz icinde:
-    - Ana ekranda "YAZICI TEST FISI" ve "YAZICI TANILA" dugmeleri
+    - Ana ekranda "YAZICI TEST FISI" ve "SISTEM TANILA" dugmeleri
     - Kart okutunca "BAKIYE FISI YAZDIR" dugmesi
     - Alt barda "YAZICI: HAZIR / HAZIR DEGIL" gostergesi
     - Yazici bozuksa bile kart okuma calismaya devam eder

@@ -8,6 +8,24 @@ using System.Threading;
 namespace IzbanKiosk.Terminal.Update
 {
     /// <summary>
+    /// What the updater knows right now, for the technician panel. Without this the
+    /// only way to learn that updates are silently failing - a Windows 7 machine
+    /// without TLS 1.2 can never reach GitHub - would be to publish a release and
+    /// come back the next day.
+    /// </summary>
+    internal sealed class UpdateStatusReport
+    {
+        internal bool Armed;
+        internal string CurrentVersion = string.Empty;
+        internal string CheckedAt = string.Empty;
+        internal bool Reachable;
+        internal string LatestTag = string.Empty;
+        internal string LatestVersion = string.Empty;
+        internal bool UpdateAvailable;
+        internal string Message = string.Empty;
+    }
+
+    /// <summary>
     /// Keeps the kiosk on the newest published release without anyone visiting it.
     ///
     /// Once a day at the configured hour the repository's latest release is compared
@@ -29,7 +47,10 @@ namespace IzbanKiosk.Terminal.Update
         private readonly Func<bool> _isBusy;
         private readonly Action<string> _log;
         private readonly ManualResetEvent _stop = new ManualResetEvent(false);
+        private readonly object _reportLock = new object();
         private Thread? _worker;
+        private UpdateStatusReport _report = new UpdateStatusReport();
+        private GitHubRelease? _pendingRelease;
 
         internal KioskUpdateService(KioskHardwareSettings settings, Func<bool> isBusy, Action<string> log)
         {
@@ -52,6 +73,10 @@ namespace IzbanKiosk.Terminal.Update
                 return;
             }
 
+            lock (_reportLock)
+            {
+                _report.Armed = true;
+            }
             _worker = new Thread(Run) { IsBackground = true, Name = "IZBAN Kiosk Updater" };
             _worker.Start();
             _log("Automatic updates armed for " + _settings.UpdateCheckHour.ToString("00") + ":00 daily.");
@@ -92,26 +117,119 @@ namespace IzbanKiosk.Terminal.Update
             return milliseconds > int.MaxValue ? int.MaxValue : (int)milliseconds;
         }
 
-        private void CheckAndApply()
+        internal UpdateStatusReport LastStatus()
         {
-            var client = new GitHubReleaseClient(_settings.UpdateRepositoryOwner, _settings.UpdateRepositoryName);
-            GitHubRelease? release = client.GetLatestRelease();
+            lock (_reportLock)
+            {
+                return _report;
+            }
+        }
+
+        /// <summary>
+        /// Contacts GitHub and reports what it finds. Deliberately installs nothing: a
+        /// diagnostic a technician runs while standing at the kiosk must not restart it
+        /// as a side effect.
+        /// </summary>
+        internal UpdateStatusReport CheckNow()
+        {
+            var report = new UpdateStatusReport
+            {
+                Armed = _worker != null,
+                CurrentVersion = CurrentVersion().ToString(),
+                CheckedAt = DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss")
+            };
+
+            if (_settings.UpdateRepositoryOwner.Length == 0 || _settings.UpdateRepositoryName.Length == 0)
+            {
+                report.Message = "No update repository is configured.";
+                return Store(report, null);
+            }
+
+            try
+            {
+                var client = new GitHubReleaseClient(_settings.UpdateRepositoryOwner, _settings.UpdateRepositoryName);
+                GitHubRelease? release = client.GetLatestRelease();
+                report.Reachable = true;
+
+                if (release == null)
+                {
+                    report.Message = "The latest release has no .zip asset.";
+                    return Store(report, null);
+                }
+
+                report.LatestTag = release.Tag;
+                if (release.Version == null)
+                {
+                    report.Message = "Release tag '" + release.Tag + "' carries no readable version, so it cannot be installed.";
+                    return Store(report, null);
+                }
+
+                report.LatestVersion = release.Version.ToString();
+                report.UpdateAvailable = release.Version > CurrentVersion();
+                report.Message = report.UpdateAvailable
+                    ? "A newer release is available."
+                    : "This kiosk is running the latest release.";
+                return Store(report, report.UpdateAvailable ? release : null);
+            }
+            catch (Exception ex)
+            {
+                report.Reachable = false;
+                report.Message = ex.GetType().Name + ": " + ex.Message;
+                return Store(report, null);
+            }
+        }
+
+        private UpdateStatusReport Store(UpdateStatusReport report, GitHubRelease? pending)
+        {
+            lock (_reportLock)
+            {
+                _report = report;
+                _pendingRelease = pending;
+            }
+            return report;
+        }
+
+        private static Version CurrentVersion()
+        {
+            return Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0);
+        }
+
+        /// <summary>
+        /// Installs the release the last check found. Separate from the check so the
+        /// restart is always something someone asked for, whether that is the operator
+        /// pressing the button or the nightly schedule.
+        /// </summary>
+        internal void ApplyPending()
+        {
+            GitHubRelease? release;
+            lock (_reportLock)
+            {
+                release = _pendingRelease;
+            }
+
             if (release == null)
             {
-                _log("No release with a .zip asset was published.");
+                throw new InvalidOperationException("No pending release. Run a check first.");
+            }
+            Apply(release);
+        }
+
+        private void CheckAndApply()
+        {
+            UpdateStatusReport report = CheckNow();
+            if (!report.UpdateAvailable)
+            {
+                _log("Update check: " + report.Message);
                 return;
             }
 
-            if (release.Version == null)
+            GitHubRelease? release;
+            lock (_reportLock)
             {
-                _log("Release tag '" + release.Tag + "' carries no readable version; nothing installed.");
-                return;
+                release = _pendingRelease;
             }
-
-            Version current = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0);
-            if (release.Version <= current)
+            if (release == null)
             {
-                _log("Kiosk is up to date (running " + current + ", latest " + release.Version + ").");
                 return;
             }
 
@@ -129,6 +247,13 @@ namespace IzbanKiosk.Terminal.Update
                 _log("A passenger stayed at the terminal; the update is postponed to the next check.");
                 return;
             }
+
+            Apply(release);
+        }
+
+        private void Apply(GitHubRelease release)
+        {
+            var client = new GitHubReleaseClient(_settings.UpdateRepositoryOwner, _settings.UpdateRepositoryName);
 
             string staging = Path.Combine(Path.GetTempPath(), "izban-kiosk-update");
             PrepareEmptyDirectory(staging);

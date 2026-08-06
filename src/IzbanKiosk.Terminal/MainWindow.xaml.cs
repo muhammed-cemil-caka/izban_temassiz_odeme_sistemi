@@ -31,8 +31,8 @@ namespace IzbanKiosk.Terminal
     {
         private const string PipeName = "IzbanKiosk.LegacyHardware.v1";
         private const string BridgeExeName = "IzbanKiosk.LegacyHardwareBridge.exe";
-        private const string ExpectedBridgeVersion = "2.4.0-net40";
-        private const string PackageVersion = "R25";
+        private const string ExpectedBridgeVersion = "2.4.1-net40";
+        private const string PackageVersion = "R26";
         private const int MaxManualAmount = 500;
         // Printer work is a technician action behind a button, not a passenger-path
         // poll, so it waits far longer for the shared pipe than card polling does.
@@ -633,7 +633,10 @@ namespace IzbanKiosk.Terminal
             NumpadTitleText.Text = _english ? "ENTER THE AMOUNT YOU WANT TO LOAD" : "LÜTFEN YÜKLEMEK İSTEDİĞİNİZ TUTARI GİRİNİZ";
             CancelNumpadButton.Content = _english ? "CANCEL" : "VAZGEÇ";
             PrinterTestButton.Content = _english ? "PRINTER TEST RECEIPT" : "YAZICI TEST FİŞİ";
-            PrinterDiagnoseButton.Content = _english ? "DIAGNOSE PRINTER" : "YAZICI TANILA";
+            PrinterDiagnoseButton.Content = _english ? "SYSTEM DIAGNOSTICS" : "SİSTEM TANILA";
+            PrinterDiagnosticsTitleText.Text = _english ? "SYSTEM DIAGNOSTICS" : "SİSTEM TANILAMA";
+            UpdateTitleText.Text = _english ? "AUTOMATIC UPDATES" : "OTOMATİK GÜNCELLEME";
+            UpdateCheckButton.Content = _english ? "CHECK NOW" : "ŞİMDİ KONTROL ET";
             PrinterRetryButton.Content = _english ? "REINITIALIZE PRINTER" : "YAZICIYI YENİDEN BAŞLAT";
             PrinterPurgeButton.Content = _english ? "CLEAR QUEUE" : "KUYRUĞU TEMİZLE";
             PrinterOnlineButton.Content = _english ? "BRING PRINTER ONLINE" : "ÇEVRİMDIŞI MODU KAPAT";
@@ -642,7 +645,6 @@ namespace IzbanKiosk.Terminal
                 ? "If no paper appears the device may be on another queue. Pick one and try it:"
                 : "Kâğıt çıkmıyorsa cihaz başka bir kuyrukta olabilir. Birini seçip deneyin:";
             ClosePrinterDiagnosticsButton.Content = _english ? "CLOSE" : "KAPAT";
-            PrinterDiagnosticsTitleText.Text = _english ? "THERMAL PRINTER DIAGNOSTICS" : "TERMAL YAZICI TANILAMA";
             BalanceReceiptButton.Content = _english ? "PRINT BALANCE RECEIPT" : "BAKİYE FİŞİ YAZDIR";
             UpdatePrinterIndicator(_printerReady, string.Empty);
             HelpTitleText.Text = _english ? "USER GUIDE & HELP" : "KULLANIM KILAVUZU & YARDIM";
@@ -790,7 +792,10 @@ namespace IzbanKiosk.Terminal
                 OnUi(delegate
                 {
                     PrinterDiagnoseButton.IsEnabled = true;
-                    PrinterDiagnoseButton.Content = _english ? "DIAGNOSE PRINTER" : "YAZICI TANILA";
+                    PrinterDiagnoseButton.Content = _english ? "SYSTEM DIAGNOSTICS" : "SİSTEM TANILA";
+            PrinterDiagnosticsTitleText.Text = _english ? "SYSTEM DIAGNOSTICS" : "SİSTEM TANILAMA";
+            UpdateTitleText.Text = _english ? "AUTOMATIC UPDATES" : "OTOMATİK GÜNCELLEME";
+            UpdateCheckButton.Content = _english ? "CHECK NOW" : "ŞİMDİ KONTROL ET";
 
                     if (report == null)
                     {
@@ -821,6 +826,10 @@ namespace IzbanKiosk.Terminal
                         PopulateQueuePicker(report);
                     }
 
+                    if (_updateService != null)
+                    {
+                        RenderUpdateStatus(_updateService.LastStatus());
+                    }
                     PrinterDiagnosticsModal.Visibility = Visibility.Visible;
                 });
             })) { IsBackground = true, Name = "IZBAN Printer Diagnose Worker" };
@@ -1105,6 +1114,111 @@ namespace IzbanKiosk.Terminal
                 RunPrinterDiagnostics();
             })) { IsBackground = true, Name = "IZBAN Printer Purge Worker" };
             purgeThread.Start();
+        }
+
+        private void UpdateCheckButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_updateService == null || !UpdateCheckButton.IsEnabled)
+            {
+                return;
+            }
+
+            UpdateCheckButton.IsEnabled = false;
+            UpdateCheckButton.Content = _english ? "CHECKING..." : "KONTROL EDİLİYOR...";
+            UpdateApplyButton.Visibility = Visibility.Collapsed;
+
+            var thread = new Thread(new ThreadStart(delegate
+            {
+                UpdateStatusReport report = _updateService.CheckNow();
+                _journal.Record("UpdateCheck", new
+                {
+                    reachable = report.Reachable,
+                    current = report.CurrentVersion,
+                    latest = report.LatestVersion,
+                    available = report.UpdateAvailable,
+                    detail = report.Message
+                });
+
+                OnUi(delegate
+                {
+                    UpdateCheckButton.IsEnabled = true;
+                    UpdateCheckButton.Content = _english ? "CHECK NOW" : "ŞİMDİ KONTROL ET";
+                    RenderUpdateStatus(report);
+                });
+            })) { IsBackground = true, Name = "IZBAN Update Check" };
+            thread.Start();
+        }
+
+        private void UpdateApplyButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_updateService == null || !UpdateApplyButton.IsEnabled)
+            {
+                return;
+            }
+
+            if (IsServingPassenger())
+            {
+                UpdateStatusText.Text = _english
+                    ? "A passenger is using the terminal; the update was not started."
+                    : "Otomatı bir yolcu kullanıyor; güncelleme başlatılmadı.";
+                return;
+            }
+
+            UpdateApplyButton.IsEnabled = false;
+            UpdateApplyButton.Content = _english ? "UPDATING..." : "GÜNCELLENİYOR...";
+            UpdateStatusText.Text = _english
+                ? "Downloading and installing. The terminal will restart."
+                : "İndiriliyor ve kuruluyor. Otomat yeniden başlayacak.";
+
+            var thread = new Thread(new ThreadStart(delegate
+            {
+                try
+                {
+                    _updateService.ApplyPending();
+                }
+                catch (Exception ex)
+                {
+                    _journal.Record("UpdateApplyFailed", new { detail = ex.Message });
+                    OnUi(delegate
+                    {
+                        UpdateApplyButton.IsEnabled = true;
+                        UpdateApplyButton.Content = _english ? "UPDATE NOW" : "ŞİMDİ GÜNCELLE";
+                        UpdateStatusText.Text = (_english ? "Update failed: " : "Güncelleme başarısız: ") + ex.Message;
+                    });
+                }
+            })) { IsBackground = true, Name = "IZBAN Update Apply" };
+            thread.Start();
+        }
+
+        private void RenderUpdateStatus(UpdateStatusReport report)
+        {
+            var builder = new System.Text.StringBuilder();
+            builder.AppendLine("Çalışan sürüm    : " + Dash(report.CurrentVersion));
+            builder.AppendLine("Zamanlayıcı      : " + (report.Armed
+                ? "kurulu, her gün " + (_hardwareSettings == null ? "04" : _hardwareSettings.UpdateCheckHour.ToString("00")) + ":00"
+                : "KURULU DEĞİL"));
+
+            if (report.CheckedAt.Length == 0)
+            {
+                builder.AppendLine("Son kontrol      : henüz yapılmadı");
+            }
+            else
+            {
+                builder.AppendLine("Son kontrol      : " + report.CheckedAt);
+                builder.AppendLine("GitHub'a erişim  : " + (report.Reachable ? "BAŞARILI" : "BAŞARISIZ"));
+                builder.AppendLine("Yayındaki sürüm  : " + Dash(report.LatestVersion) +
+                    (report.LatestTag.Length > 0 ? "  (etiket " + report.LatestTag + ")" : string.Empty));
+                builder.AppendLine();
+                builder.AppendLine(report.Message);
+            }
+
+            UpdateStatusText.Text = builder.ToString().TrimEnd();
+            UpdateStatusText.Foreground = report.CheckedAt.Length == 0 || (report.Reachable && !report.UpdateAvailable)
+                ? (Brush)new SolidColorBrush(Color.FromRgb(0x33, 0x41, 0x55))
+                : (report.Reachable ? BusyBrush : ErrorBrush);
+            UpdateApplyButton.Visibility = report.UpdateAvailable ? Visibility.Visible : Visibility.Collapsed;
+            UpdateApplyButton.IsEnabled = report.UpdateAvailable;
+            UpdateApplyButton.Content = _english ? "UPDATE NOW" : "ŞİMDİ GÜNCELLE";
         }
 
         private void ClosePrinterDiagnosticsButton_Click(object sender, RoutedEventArgs e)
