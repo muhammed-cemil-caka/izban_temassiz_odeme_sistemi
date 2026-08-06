@@ -175,6 +175,17 @@ namespace IzbanKiosk.Terminal.Update
             {
                 report.Reachable = false;
                 report.Message = ex.GetType().Name + ": " + ex.Message;
+
+                // Windows 7 keeps TLS 1.2 switched off by default and GitHub accepts
+                // nothing older, so this is the failure a kiosk hits first. The raw
+                // WebException says nothing about that, and a technician standing at
+                // the machine has no way to guess it.
+                if (ex is System.Net.WebException)
+                {
+                    report.Message += "\n\nİnternet çalışıyor ama güvenli bağlantı kurulamıyor olabilir. " +
+                        "Otomatta 5-TLS-Duzelt.bat dosyasını yönetici olarak çalıştırın ve makineyi " +
+                        "yeniden başlatın.";
+                }
                 return Store(report, null);
             }
         }

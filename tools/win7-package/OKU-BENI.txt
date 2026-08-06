@@ -48,10 +48,25 @@ KURULUMDAN SONRA GUNCELLEMEYI TEST EDIN
    Yeni bir surum yayinlandiginda ayni ekranda "SIMDI GUNCELLE" dugmesi cikar;
    04:00'i beklemeden kurabilirsiniz. Yolcu varken bu dugme calismaz.
 
-GEREKSINIM: TLS 1.2
-   Windows 7 uzerinde GitHub'a baglanabilmek icin makinede .NET Framework 4.5
-   veya ustu kurulu olmalidir. Yoksa guncelleme kontrolu ag hatasi verir ve
-   otomat mevcut surumde calismaya devam eder.
+GEREKSINIM: TLS 1.2  --  "GitHub'a erisim: BASARISIZ" GORURSENIZ
+   GitHub yalnizca TLS 1.2 kabul eder. Windows 7'de TLS 1.2 desteklenir ama
+   VARSAYILAN OLARAK KAPALIDIR, ayrica .NET 4.0 bunu hic kullanamaz.
+
+   Belirti: internet calisiyor (ping basarili) ama guncelleme kontrolu
+   "WebException: The underlying connection was closed" hatasi veriyor.
+
+   COZUM:
+     1. 5-TLS-Duzelt.bat dosyasini YONETICI OLARAK calistirin.
+        Windows'ta TLS 1.2'yi acar ve .NET'i guclu sifrelemeye ayarlar.
+        Ayrica kurulu .NET surumunu ekrana yazar.
+     2. Otomati YENIDEN BASLATIN. Kayit degisiklikleri once gecerli olmaz.
+     3. SISTEM TANILA -^> SIMDI KONTROL ET ile tekrar deneyin.
+
+     Betik ".NET Framework 4.5 veya ustu KURULU DEGIL" diyorsa once
+     .NET Framework 4.8 kurun (Windows 7 SP1 destekler), sonra 2. adima donun.
+
+   Bu ayarlar guvenligi ZAYIFLATMAZ; eski ve kirik protokoller yerine
+   gunumuzde kullanilan TLS 1.2'yi etkinlestirir.
 
 
 OTOMAT KIMLIGI - KIOSK NUMARASI OTOMATIK
@@ -170,6 +185,7 @@ KURULUM
      2-Yazici-Teshis.bat
      3-Test-Fisi-Bas.bat
      4-Kiosk-Arayuzunu-Ac.bat
+     5-TLS-Duzelt.bat               <-- guncelleme baglanamazsa
      IZBAN-Kiosk.exe
      KioskHardware.config.json      <-- yazici adi BURADA
      Bridge\                        <-- kopru + vendor DLL'leri
