@@ -13,7 +13,14 @@ namespace IzbanKiosk.Win7Prototype
     /// </summary>
     internal static class ReceiptDocumentBuilder
     {
-        private const int LineWidth = 52;
+        /// <summary>
+        /// Separator width in characters. The first physical slips printed at 52 and
+        /// the rule reached the right edge of the 56 mm roll, so it is cut back to
+        /// leave a visible margin on both sides.
+        /// </summary>
+        private const int LineWidth = 46;
+
+        private const int LabelWidth = 15;
 
         private static readonly CultureInfo Turkish = CultureInfo.GetCultureInfo("tr-TR");
 
@@ -27,28 +34,37 @@ namespace IzbanKiosk.Win7Prototype
             var builder = new StringBuilder();
             string separator = new string('-', LineWidth);
 
-            builder.AppendLine("[C]IZBAN - IZMIRIM KART");
-            builder.AppendLine(english ? "[C]BALANCE ENQUIRY RECEIPT" : "[C]BAKIYE SORGULAMA FISI");
+            builder.AppendLine("[C]İZBAN - İZMİRİM KART");
+            builder.AppendLine(english ? "[C]BALANCE ENQUIRY RECEIPT" : "[C]BAKİYE SORGULAMA FİŞİ");
             builder.AppendLine(separator);
-            AppendField(builder, english ? "Station" : "Istasyon", stationName);
+            AppendField(builder, english ? "Station" : "İstasyon", stationName);
             AppendField(builder, "Kiosk", kioskId);
             AppendField(builder, english ? "Date" : "Tarih", localTimestamp.ToString("dd.MM.yyyy HH:mm:ss", Turkish));
             builder.AppendLine(separator);
             AppendField(builder, english ? "Card No" : "Kart No", MaskCardNumber(snapshot.CardNumber));
-            AppendField(builder, english ? "Card Type" : "Kart Tipi", FallbackDash(snapshot.CardType));
+
+            // The vendor returns a bare type code. Printing "1" tells the passenger
+            // nothing, and translating it into a fare name would be a guess that could
+            // put the wrong entitlement on someone's receipt, so the line is only
+            // printed when the reader supplies an actual name.
+            string cardType = DescribeCardType(snapshot.CardType);
+            if (cardType.Length > 0)
+            {
+                AppendField(builder, english ? "Card Type" : "Kart Tipi", cardType);
+            }
+
             AppendField(builder, english ? "Balance" : "Bakiye", FormatBalance(snapshot));
-            AppendField(builder, english ? "Currency" : "Para Birimi", FallbackDash(snapshot.Currency));
             builder.AppendLine(separator);
-            AppendField(builder, english ? "SAM Check" : "SAM Dogrulama", english ? "SUCCESSFUL" : "BASARILI");
-            AppendField(builder, english ? "Reference" : "Islem Ref", ShortReference(snapshot.StoragePseudonym));
+            AppendField(builder, english ? "SAM Check" : "SAM Doğrulama", english ? "SUCCESSFUL" : "BAŞARILI");
+            AppendField(builder, english ? "Reference" : "İşlem Ref", ShortReference(snapshot.StoragePseudonym));
             builder.AppendLine(separator);
             builder.AppendLine(english
                 ? "[C]This receipt is an enquiry only."
-                : "[C]Bu fis yalnizca bakiye sorgulamasidir.");
+                : "[C]Bu fiş yalnızca bakiye sorgulamasıdır.");
             builder.AppendLine(english
                 ? "[C]No payment was taken."
-                : "[C]Herhangi bir tahsilat yapilmamistir.");
-            builder.AppendLine("[C]IZBAN A.S. - 444 29 26");
+                : "[C]Herhangi bir tahsilat yapılmamıştır.");
+            builder.AppendLine("[C]İZBAN A.Ş. - 444 29 26");
             builder.AppendLine();
             builder.AppendLine();
             builder.AppendLine();
@@ -72,7 +88,7 @@ namespace IzbanKiosk.Win7Prototype
 
         private static void AppendField(StringBuilder builder, string label, string value)
         {
-            builder.AppendLine(Ascii(label).PadRight(18) + ": " + Ascii(value));
+            builder.AppendLine(label.PadRight(LabelWidth) + ": " + value);
         }
 
         private static string FormatBalance(CardSnapshotResponse snapshot)
@@ -83,6 +99,26 @@ namespace IzbanKiosk.Win7Prototype
             }
             decimal balance = snapshot.BalanceMinor / (decimal)snapshot.BalanceScale;
             return balance.ToString("N2", Turkish) + " TL";
+        }
+
+        private static string DescribeCardType(string cardType)
+        {
+            string value = (cardType ?? string.Empty).Trim();
+            if (value.Length == 0)
+            {
+                return string.Empty;
+            }
+
+            foreach (char character in value)
+            {
+                if (!char.IsDigit(character))
+                {
+                    return value;
+                }
+            }
+
+            // Digits only: a raw vendor code, not a fare name.
+            return string.Empty;
         }
 
         private static string MaskCardNumber(string cardNumber)
@@ -103,46 +139,6 @@ namespace IzbanKiosk.Win7Prototype
                 return "-";
             }
             return value.Length <= 16 ? value : value.Substring(0, 16);
-        }
-
-        private static string FallbackDash(string value)
-        {
-            return string.IsNullOrWhiteSpace(value) ? "-" : value.Trim();
-        }
-
-        /// <summary>
-        /// KioskPrint.dll marshals text as ANSI. The kiosk locale is not guaranteed to
-        /// be Turkish, so fold the Turkish letters instead of risking question marks on
-        /// the slip.
-        /// </summary>
-        private static string Ascii(string value)
-        {
-            if (string.IsNullOrEmpty(value))
-            {
-                return string.Empty;
-            }
-
-            var builder = new StringBuilder(value.Length);
-            foreach (char character in value)
-            {
-                switch (character)
-                {
-                    case 'ç': builder.Append('c'); break;
-                    case 'Ç': builder.Append('C'); break;
-                    case 'ğ': builder.Append('g'); break;
-                    case 'Ğ': builder.Append('G'); break;
-                    case 'ı': builder.Append('i'); break;
-                    case 'İ': builder.Append('I'); break;
-                    case 'ö': builder.Append('o'); break;
-                    case 'Ö': builder.Append('O'); break;
-                    case 'ş': builder.Append('s'); break;
-                    case 'Ş': builder.Append('S'); break;
-                    case 'ü': builder.Append('u'); break;
-                    case 'Ü': builder.Append('U'); break;
-                    default: builder.Append(character); break;
-                }
-            }
-            return builder.ToString();
         }
     }
 }

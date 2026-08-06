@@ -30,8 +30,8 @@ namespace IzbanKiosk.Win7Prototype
     {
         private const string PipeName = "IzbanKiosk.LegacyHardware.v1";
         private const string BridgeExeName = "IzbanKiosk.LegacyHardwareBridge.exe";
-        private const string ExpectedBridgeVersion = "2.3.0-net40";
-        private const string PackageVersion = "R15";
+        private const string ExpectedBridgeVersion = "2.3.1-net40";
+        private const string PackageVersion = "R16";
         private const int MaxManualAmount = 500;
         private const string StationName = "ALSANCAK";
         private const string KioskId = "0482";

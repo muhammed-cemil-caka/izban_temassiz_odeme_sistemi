@@ -46,16 +46,46 @@ public sealed class ReceiptDocumentBuilderTests
     }
 
     [Fact]
-    public void BalanceReceipt_StaysAsciiForTheAnsiVendorApi()
+    public void BalanceReceipt_KeepsTurkishCharacters()
     {
+        // The deployed AUSKiosk 5.2.0.4 printed "Kart Dolum Fişi" and "BAŞARISIZ İŞLEM
+        // FİŞİ" through this same DLL on this same hardware, so the ANSI code page
+        // carries Turkish. Folding to ASCII made the slips look unfinished for nothing.
         var snapshot = Snapshot();
         snapshot.CardType = "Öğrenci";
 
         string receipt = ReceiptDocumentBuilder.BuildBalanceReceipt(snapshot, "ŞİRİNYER", "0482", Timestamp, false);
 
-        Assert.Contains("Ogrenci", receipt);
-        Assert.Contains("SIRINYER", receipt);
-        Assert.All(receipt, character => Assert.True(character < 128, $"Non-ASCII character '{character}' would be mangled by KioskPrint.dll."));
+        Assert.Contains("BAKİYE SORGULAMA FİŞİ", receipt);
+        Assert.Contains("ŞİRİNYER", receipt);
+        Assert.Contains("Öğrenci", receipt);
+        Assert.Contains("BAŞARILI", receipt);
+    }
+
+    [Fact]
+    public void BalanceReceipt_OmitsBareNumericCardTypeCode()
+    {
+        // The reader returned "1" on the first physical slip. A bare code means nothing
+        // to a passenger and inventing a fare name from it could print the wrong
+        // entitlement, so the line is dropped instead.
+        var snapshot = Snapshot();
+        snapshot.CardType = "1";
+
+        string receipt = ReceiptDocumentBuilder.BuildBalanceReceipt(snapshot, "ALSANCAK", "0482", Timestamp, false);
+
+        Assert.DoesNotContain("Kart Tipi", receipt);
+    }
+
+    [Fact]
+    public void BalanceReceipt_SeparatorFitsThePaperWidth()
+    {
+        string receipt = ReceiptDocumentBuilder.BuildBalanceReceipt(Snapshot(), "ALSANCAK", "0482", Timestamp, false);
+
+        foreach (string line in receipt.Split('\n'))
+        {
+            Assert.True(line.TrimEnd('\r').Length <= 46,
+                $"Line exceeds the 56 mm roll width and will be clipped: '{line}'");
+        }
     }
 
     [Fact]
@@ -63,8 +93,8 @@ public sealed class ReceiptDocumentBuilderTests
     {
         string receipt = ReceiptDocumentBuilder.BuildBalanceReceipt(Snapshot(), "ALSANCAK", "0482", Timestamp, false);
 
-        Assert.Contains("[C]IZBAN - IZMIRIM KART", receipt);
-        Assert.Contains("[C]BAKIYE SORGULAMA FISI", receipt);
+        Assert.Contains("[C]İZBAN - İZMİRİM KART", receipt);
+        Assert.Contains("[C]BAKİYE SORGULAMA FİŞİ", receipt);
     }
 
     [Fact]
@@ -75,7 +105,7 @@ public sealed class ReceiptDocumentBuilderTests
 
         string receipt = ReceiptDocumentBuilder.BuildBalanceReceipt(snapshot, "ALSANCAK", "0482", Timestamp, false);
 
-        Assert.Contains("Bakiye".PadRight(18) + ": -", receipt);
+        Assert.Contains("Bakiye".PadRight(15) + ": -", receipt);
         Assert.DoesNotContain("4250", receipt);
         Assert.DoesNotContain("42,50", receipt);
     }

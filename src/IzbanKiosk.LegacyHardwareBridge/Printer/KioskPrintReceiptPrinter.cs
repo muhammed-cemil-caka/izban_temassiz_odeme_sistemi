@@ -151,15 +151,19 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
 
         public bool PrintTestReceipt()
         {
+            // No kiosk number here. The bridge is a hardware process and does not know
+            // which kiosk it serves; the first slips printed a hard-coded "00082" while
+            // the balance receipt correctly said "0482" for the same machine.
+            string separator = new string('-', 46);
             string testReceipt =
-                "[C]IZBAN KIOSK TEST FISI\n" +
-                "----------------------------------------------------\n" +
-                "Tarih: " + DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss") + "\n" +
-                "Kiosk: 00082\n" +
-                "Termal yazici test cikisi\n" +
-                "KioskPrint.dll dogrulamasi\n" +
-                "----------------------------------------------------\n" +
-                "[C]Fiziksel ciktiyi kontrol edin.\n\n\n\n\n";
+                "[C]İZBAN KIOSK TEST FİŞİ\n" +
+                separator + "\n" +
+                "Tarih  : " + DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss") + "\n" +
+                "Yazıcı : " + _resolvedPrinterName + "\n" +
+                "Termal yazıcı test çıktısı\n" +
+                separator + "\n" +
+                "[C]Bu bir donanım testidir.\n" +
+                "[C]Fiziksel çıktıyı kontrol ediniz.\n\n\n\n";
 
             string testKey = "TEST_RECEIPT_" + Guid.NewGuid().ToString("N");
             return PrintReceipt(testReceipt, testKey);
