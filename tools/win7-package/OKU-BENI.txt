@@ -1,31 +1,32 @@
 IZBAN KIOSK R15 - WINDOWS 7 / EMBEDDED (x86)
 ============================================
 
-R15: CIHAZ VARLIGI TESPITI
---------------------------
-C:\Tools klasorundeki usbser.sys ve ID&DC-VCom.inf dosyalari sunu gosteriyor:
-bu yazici standart bir USB yazici DEGIL. USB uzerinden kendini SANAL COM PORTU
-olarak tanitiyor. Yani dogru kuyruk USB001 degil, bir COM portu olmali.
+!!! KURULUMDA ZORUNLU ADIM: BIDIRECTIONAL SUPPORT !!!
+-----------------------------------------------------
+Denetim Masasi -> Aygitlar ve Yazicilar -> termal yazici -> sag tik ->
+Yazici ozellikleri -> Baglanti Noktalari (Ports) sekmesi ->
+[X] Enable bidirectional support  ISARETLI OLMALI -> Apply
 
-Windows'ta bir yazici kuyrugu, cihaz cikarilsa bile listede kalir ve "hazir"
-gorunur. R15 artik cihazin GERCEKTEN takili olup olmadigini soyluyor:
+Bu kutu KAPALIYKEN Windows cihaza durumunu hic sormaz. Yazici "kapagim acik"
+veya "kagidim bitti" dese bile durum bayraklari her zaman 0 gorunur, kuyruk
+isi kabul eder ve kagit hic cikmaz - hicbir uyari almadan.
 
-  Windows'un gordugu seri portlar (cihaz takili mi?):
-    - COM2  (\Device\...)
-    - COM4  (\Device\...)
+Alsancak otomatinda tam olarak bu oldu: yazici gunlerce "KAPAK ACIK"
+bildiriyordu ama kimse duymuyordu. Kutu isaretlenir isaretlenmez sorun
+saniyeler icinde ortaya cikti.
 
-Cihaz takiliyken bu listeye YENI bir COM portu eklenir. Kabloyu cikarip takarak
-hangi portun geldigini gorebilirsiniz - dogru kuyruk o porta bagli olandir.
+KAGIT CIKMIYORSA ILK BAKILACAK YER
+----------------------------------
+TANILA ekraninda "Durum bayraklari" satiri:
 
-Rapora eklenen diger alanlar:
-  - Isin durumu (CIHAZ CEVRIMDISI / KUYRUK BLOKE / HATA)
-  - CEVRIMDISI MOD (Windows'ta "yaziciyi cevrimdisi kullan" isaretli mi)
+   0         -> cihaz sorun bildirmiyor
+   16        -> KAGIT BITTI
+   128       -> CIHAZ CEVRIMDISI
+   4194304   -> KAPAK ACIK  (baski kafasi kilidi kapali degil)
 
-URETICI TEST ARACI
-------------------
-C:\Tools\KioskPrintTst.exe ureticinin kendi test programidir ve ayni
-KioskPrint.dll'i kullanir. Bizim yazilimimizi tamamen devre disi birakir.
-O da basmiyorsa sorun kesinlikle bizim kodumuzda degildir.
+4194304 goruyorsaniz: mekanizmadaki yesil kilit kolunu klik sesi gelene kadar
+asagi bastirin, kagit rulosunu takin ve mekanizmayi otomattaki yuvasina tam
+oturtun. Kapak sensoru govdeye duzgun oturmadan tetiklenmez.
 
 NE VAR
 ------

@@ -34,6 +34,11 @@ These checks establish binary-contract compatibility. They do not replace a phys
 3. Set a Base64-encoded `IZBAN_HMAC_SECRET` containing at least 32 random bytes.
 4. Stop `AUSKiosk.exe` during testing so it releases `COM4`.
 5. Verify that the termal printer is installed in Windows and that its spooler name is known.
+6. Enable "bidirectional support" on the thermal printer queue (Printer properties, Ports tab).
+   With it off, Windows never queries the device and every status flag reads 0: the queue
+   accepts jobs and no paper appears, with no error anywhere. The Alsancak kiosk reported
+   PRINTER_STATUS_DOOR_OPEN (0x400000) the moment it was enabled, after days of silent
+   failure.
    Run `IzbanKiosk.LegacyHardwareBridge.exe --list-printers` on the kiosk and copy the exact
    queue name into `ThermalPrinterName`. The value currently committed in
    `KioskHardware.config.json` ("Trentino Printer Driver 56mm") reads like a driver name and
