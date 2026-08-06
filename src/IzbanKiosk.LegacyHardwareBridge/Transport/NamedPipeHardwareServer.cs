@@ -245,7 +245,7 @@ namespace IzbanKiosk.LegacyHardwareBridge.Transport
                     response.Success = true;
                     response.PayloadJson = JsonConvert.SerializeObject(new
                     {
-                        Version = "2.3.1-net40",
+                        Version = "2.3.2-net40",
                         Framework = ".NET Framework 4.0 Client Profile (x86)"
                     });
                     break;

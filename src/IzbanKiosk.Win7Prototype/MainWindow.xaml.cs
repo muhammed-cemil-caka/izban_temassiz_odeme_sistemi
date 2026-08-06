@@ -30,11 +30,9 @@ namespace IzbanKiosk.Win7Prototype
     {
         private const string PipeName = "IzbanKiosk.LegacyHardware.v1";
         private const string BridgeExeName = "IzbanKiosk.LegacyHardwareBridge.exe";
-        private const string ExpectedBridgeVersion = "2.3.1-net40";
-        private const string PackageVersion = "R16";
+        private const string ExpectedBridgeVersion = "2.3.2-net40";
+        private const string PackageVersion = "R17";
         private const int MaxManualAmount = 500;
-        private const string StationName = "ALSANCAK";
-        private const string KioskId = "0482";
         // Printer work is a technician action behind a button, not a passenger-path
         // poll, so it waits far longer for the shared pipe than card polling does.
         private const int PrinterRequestConnectTimeoutMs = 20000;
@@ -204,6 +202,8 @@ namespace IzbanKiosk.Win7Prototype
                 // is the passenger-facing function and it does not need paper; the
                 // printer state is surfaced in the footer and stays retryable from the
                 // screen instead of blocking card reading entirely.
+                OnUi(ApplyLanguage);
+
                 _printerReady = health.Printer.IsReady;
                 _printerStateKnown = true;
                 string printerStatusMessage = health.Printer.StatusMessage;
@@ -577,8 +577,14 @@ namespace IzbanKiosk.Win7Prototype
         {
             LanguageButton.Content = _english ? "🌍 TR" : "🌍 EN";
             HelpButton.Content = _english ? "❓ HELP" : "❓ YARDIM AL";
-            StationText.Text = "ALSANCAK " + (_english ? "STATION" : "İSTASYONU");
-            KioskStatusText.Text = _english ? "Kiosk ID: #0482 / Hardware profile: Windows 7" : "Kiosk ID: #0482 / Donanım profili: Windows 7";
+            string station = _hardwareSettings == null ? string.Empty : _hardwareSettings.StationName;
+            string kioskNumber = _hardwareSettings == null ? string.Empty : _hardwareSettings.KioskNumber;
+            StationText.Text = station.Length == 0
+                ? (_english ? "STATION" : "İSTASYON")
+                : station + " " + (_english ? "STATION" : "İSTASYONU");
+            KioskStatusText.Text = (_english ? "Kiosk ID: #" : "Kiosk No: #") +
+                (kioskNumber.Length == 0 ? "-" : kioskNumber) +
+                (_english ? " / Hardware profile: Windows 7" : " / Donanım profili: Windows 7");
             IdleTitleText.Text = _english ? "PLEASE PLACE YOUR İZMİRİM CARD ON THE" : "LÜTFEN İZMİRİM KARTINIZI KART OKUYUCU";
             IdleTitleAccentText.Text = _english ? "CARD READER AREA" : "BÖLGESİNE YERLEŞTİRİNİZ";
             AmountTitleText.Text = _english ? "PLEASE SELECT THE AMOUNT YOU WANT TO LOAD" : "LÜTFEN YÜKLEMEK İSTEDİĞİNİZ TUTARI SEÇİNİZ";
@@ -1101,7 +1107,20 @@ namespace IzbanKiosk.Win7Prototype
             BalanceReceiptStatusText.Text = string.Empty;
 
             DateTime timestamp = DateTime.Now;
-            string body = ReceiptDocumentBuilder.BuildBalanceReceipt(snapshot, StationName, KioskId, timestamp, _english);
+            KioskHardwareSettings? settings = _hardwareSettings;
+            if (settings == null)
+            {
+                BalanceReceiptStatusText.Text = _english
+                    ? "Kiosk identity is not loaded; the receipt was not printed."
+                    : "Kiosk kimliği yüklenmedi; fiş yazdırılmadı.";
+                BalanceReceiptStatusText.Foreground = ErrorBrush;
+                BalanceReceiptButton.IsEnabled = true;
+                BalanceReceiptButton.Content = _english ? "PRINT BALANCE RECEIPT" : "BAKİYE FİŞİ YAZDIR";
+                return;
+            }
+
+            string body = ReceiptDocumentBuilder.BuildBalanceReceipt(
+                snapshot, settings.StationName, settings.KioskNumber, timestamp, _english);
             string idempotencyKey = ReceiptDocumentBuilder.BuildIdempotencyKey(snapshot, timestamp);
 
             _printerOperationInFlight = true;

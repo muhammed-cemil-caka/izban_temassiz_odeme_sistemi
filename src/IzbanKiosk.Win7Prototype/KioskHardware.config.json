@@ -1,4 +1,6 @@
 {
   "NfcComPort": "COM4",
-  "ThermalPrinterName": "Trentino Printer Driver 56mm"
+  "ThermalPrinterName": "Trentino Printer Driver 56mm",
+  "StationName": "ALSANCAK",
+  "KioskNumber": "51591"
 }

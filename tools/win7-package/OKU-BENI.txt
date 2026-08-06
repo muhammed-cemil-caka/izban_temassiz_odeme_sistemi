@@ -1,8 +1,23 @@
-IZBAN KIOSK R15 - WINDOWS 7 / EMBEDDED (x86)
+IZBAN KIOSK R17 - WINDOWS 7 / EMBEDDED (x86)
 ============================================
 
-!!! KURULUMDA ZORUNLU ADIM: BIDIRECTIONAL SUPPORT !!!
------------------------------------------------------
+!!! KURULUMDA ZORUNLU: OTOMAT KIMLIGI !!!
+-----------------------------------------
+KioskHardware.config.json dosyasindaki su iki alani, kurulum yapilan otomata
+gore DOLDURUN. Bu degerler yolcunun fisine basilir:
+
+   "StationName": "ALSANCAK",     <-- istasyon adi
+   "KioskNumber": "51591"         <-- otomatin numarasi
+
+KioskNumber, eski AUSKiosk kurulumundaki setup.ini dosyasinda [SETUP] No=
+satirinda yazar. Yanlis birakilirsa yolcunun fisinde BASKA bir otomatin
+numarasi cikar.
+
+Bu alanlar bos veya hatali ise uygulama acilista hata verir ve durur -
+bilerek boyle: yanlis kimlikli fis basmaktansa hic basmamak dogrudur.
+
+!!! KURULUMDA ZORUNLU: BIDIRECTIONAL SUPPORT !!!
+------------------------------------------------
 Denetim Masasi -> Aygitlar ve Yazicilar -> termal yazici -> sag tik ->
 Yazici ozellikleri -> Baglanti Noktalari (Ports) sekmesi ->
 [X] Enable bidirectional support  ISARETLI OLMALI -> Apply
@@ -11,9 +26,9 @@ Bu kutu KAPALIYKEN Windows cihaza durumunu hic sormaz. Yazici "kapagim acik"
 veya "kagidim bitti" dese bile durum bayraklari her zaman 0 gorunur, kuyruk
 isi kabul eder ve kagit hic cikmaz - hicbir uyari almadan.
 
-Alsancak otomatinda tam olarak bu oldu: yazici gunlerce "KAPAK ACIK"
-bildiriyordu ama kimse duymuyordu. Kutu isaretlenir isaretlenmez sorun
-saniyeler icinde ortaya cikti.
+Alsancak otomatinda tam olarak bu oldu: baski kafasina 24V gitmedigi icin
+kontrol karti guvenlik kilidini devreye sokup "KAPAK ACIK" bildiriyordu, ama
+kutu kapali oldugu icin kimse duymuyordu.
 
 KAGIT CIKMIYORSA ILK BAKILACAK YER
 ----------------------------------
@@ -22,11 +37,7 @@ TANILA ekraninda "Durum bayraklari" satiri:
    0         -> cihaz sorun bildirmiyor
    16        -> KAGIT BITTI
    128       -> CIHAZ CEVRIMDISI
-   4194304   -> KAPAK ACIK  (baski kafasi kilidi kapali degil)
-
-4194304 goruyorsaniz: mekanizmadaki yesil kilit kolunu klik sesi gelene kadar
-asagi bastirin, kagit rulosunu takin ve mekanizmayi otomattaki yuvasina tam
-oturtun. Kapak sensoru govdeye duzgun oturmadan tetiklenmez.
+   4194304   -> KAPAK ACIK  (kafa kilidi kapali degil VEYA kafaya 24V gitmiyor)
 
 NE VAR
 ------

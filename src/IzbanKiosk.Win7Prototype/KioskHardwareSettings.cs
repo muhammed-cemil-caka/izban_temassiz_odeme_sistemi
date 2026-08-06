@@ -17,6 +17,12 @@ namespace IzbanKiosk.Win7Prototype
         public string NfcComPort { get; set; } = string.Empty;
         public string ThermalPrinterName { get; set; } = string.Empty;
 
+        // Printed on every passenger receipt, so it must come from the machine it is
+        // deployed on rather than from source: the same package is installed on every
+        // kiosk in the fleet.
+        public string StationName { get; set; } = string.Empty;
+        public string KioskNumber { get; set; } = string.Empty;
+
         public static KioskHardwareSettings LoadFromApplicationDirectory()
         {
             string settingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, SettingsFileName);
@@ -66,6 +72,8 @@ namespace IzbanKiosk.Win7Prototype
         {
             NfcComPort = (NfcComPort ?? string.Empty).Trim();
             ThermalPrinterName = (ThermalPrinterName ?? string.Empty).Trim();
+            StationName = (StationName ?? string.Empty).Trim();
+            KioskNumber = (KioskNumber ?? string.Empty).Trim();
 
             if (!Regex.IsMatch(NfcComPort, "^COM[1-9][0-9]*$", RegexOptions.IgnoreCase))
             {
@@ -75,6 +83,16 @@ namespace IzbanKiosk.Win7Prototype
             if (ThermalPrinterName.Length == 0 || ThermalPrinterName.Length > 128 || ThermalPrinterName.IndexOf('"') >= 0)
             {
                 throw new InvalidDataException("ThermalPrinterName is missing or invalid.");
+            }
+
+            if (StationName.Length == 0 || StationName.Length > 40)
+            {
+                throw new InvalidDataException("StationName is missing or invalid.");
+            }
+
+            if (!Regex.IsMatch(KioskNumber, "^[0-9]{1,10}$"))
+            {
+                throw new InvalidDataException("KioskNumber must be the digits printed on the kiosk, e.g. 51591.");
             }
         }
     }
