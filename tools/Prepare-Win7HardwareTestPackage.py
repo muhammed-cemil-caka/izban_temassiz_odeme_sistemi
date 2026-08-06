@@ -16,6 +16,7 @@ the bridge verifies at startup.
 """
 import argparse
 import hashlib
+import re
 import json
 import os
 import shutil
@@ -113,6 +114,31 @@ def import_vendor_dlls(vendor_source, bridge_dir):
     write_json(os.path.join(bridge_dir, "vendor-manifest.local.json"), manifest)
 
 
+def read_release_version(terminal_build):
+    """Reads the version the terminal executable actually carries.
+
+    The release tag and the assembly version have to agree: the kiosk compares the
+    tag against its own version, so a tag that runs ahead of the build makes every
+    kiosk download a package that does not move it forward. Reading it from the
+    compiled output removes the chance of copying the wrong number by hand.
+    """
+    csproj = os.path.join(REPOSITORY_ROOT, "src/IzbanKiosk.Terminal/IzbanKiosk.Terminal.csproj")
+    with open(csproj, encoding="utf-8") as handle:
+        match = re.search(r"<Version>([^<]+)</Version>", handle.read())
+    if not match:
+        raise SystemExit("IzbanKiosk.Terminal.csproj has no <Version> element.")
+    version = match.group(1).strip()
+
+    padded = version if version.count(".") >= 3 else version + ".0" * (3 - version.count("."))
+    with open(os.path.join(terminal_build, "IZBAN-Kiosk.exe"), "rb") as handle:
+        image = handle.read()
+    if image.find(padded.encode("utf-16-le")) < 0:
+        raise SystemExit(
+            "IZBAN-Kiosk.exe does not carry version " + padded + ". Rebuild Release/x86 after "
+            "changing <Version>, otherwise the published tag and the package disagree.")
+    return version
+
+
 def write_json(path, payload):
     with open(path, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2, ensure_ascii=False)
@@ -144,7 +170,8 @@ def main():
                         help="Staging directory for the package layout. Defaults outside the "
                              "repository so build output never clutters the source tree.")
     parser.add_argument("--zip-path", default="",
-                        help="Destination .zip. Defaults to <output-directory>.zip.")
+                        help="Destination .zip. Defaults to IZBAN-Kiosk-v<version>.zip beside "
+                             "the staging directory.")
     args = parser.parse_args()
 
     output_dir = os.path.abspath(args.output_directory)
@@ -162,6 +189,7 @@ def main():
     bridge_dir = os.path.join(output_dir, "Bridge")
     os.makedirs(bridge_dir)
 
+    version = read_release_version(prototype_build)
     copy_runtime(prototype_build, PROTOTYPE_RUNTIME, output_dir)
     copy_runtime(bridge_build, BRIDGE_RUNTIME, bridge_dir)
     copy_operator_helpers(output_dir)
@@ -169,8 +197,18 @@ def main():
     write_package_manifest(output_dir)
 
     archive = shutil.make_archive(zip_base, "zip", output_dir)
+
+    checksum = sha256(archive)
+    with open(archive + ".sha256", "w", encoding="ascii") as handle:
+        handle.write(checksum + "  " + os.path.basename(archive) + "\n")
+
     print("Package : " + output_dir)
     print("Archive : %s (%d bytes)" % (archive, os.path.getsize(archive)))
+    print("Sha256  : " + os.path.basename(archive) + ".sha256")
+    print("")
+    print("Publish this release as tag and title:  v" + version)
+    print("Upload both files as assets. Bump <Version> in IzbanKiosk.Terminal.csproj")
+    print("before the next release or kiosks will not move forward.")
     print("No card write/top-up or POS operation is enabled in this package.")
 
 
