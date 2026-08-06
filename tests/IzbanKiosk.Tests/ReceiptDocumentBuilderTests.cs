@@ -63,6 +63,28 @@ public sealed class ReceiptDocumentBuilderTests
     }
 
     [Fact]
+    public void BalanceReceipt_OmitsStationLineWhenNoStationIsConfigured()
+    {
+        // The fleet-wide default leaves the station unset. Printing a placeholder would
+        // put the same "station" on every receipt in the network; the kiosk number
+        // already identifies the machine.
+        string receipt = ReceiptDocumentBuilder.BuildBalanceReceipt(Snapshot(), "", "51591", Timestamp, false);
+
+        Assert.DoesNotContain("İstasyon", receipt);
+        Assert.Contains("Otomat No", receipt);
+        Assert.Contains("51591", receipt);
+    }
+
+    [Fact]
+    public void BalanceReceipt_KeepsStationLineWhenConfigured()
+    {
+        string receipt = ReceiptDocumentBuilder.BuildBalanceReceipt(Snapshot(), "ALSANCAK", "51591", Timestamp, false);
+
+        Assert.Contains("İstasyon", receipt);
+        Assert.Contains("ALSANCAK", receipt);
+    }
+
+    [Fact]
     public void BalanceReceipt_OmitsBareNumericCardTypeCode()
     {
         // The reader returned "1" on the first physical slip. A bare code means nothing

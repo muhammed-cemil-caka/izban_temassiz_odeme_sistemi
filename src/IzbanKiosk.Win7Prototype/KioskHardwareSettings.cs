@@ -17,9 +17,12 @@ namespace IzbanKiosk.Win7Prototype
         public string NfcComPort { get; set; } = string.Empty;
         public string ThermalPrinterName { get; set; } = string.Empty;
 
-        // Printed on every passenger receipt, so it must come from the machine it is
-        // deployed on rather than from source: the same package is installed on every
-        // kiosk in the fleet.
+        /// <summary>
+        /// Optional. setup.ini does not carry the station, and the same package is
+        /// installed fleet-wide, so leaving this empty is the normal case: the kiosk
+        /// then identifies itself by its unique number alone rather than by a station
+        /// label that would be wrong everywhere but one platform.
+        /// </summary>
         public string StationName { get; set; } = string.Empty;
         public string KioskNumber { get; set; } = string.Empty;
 
@@ -35,9 +38,9 @@ namespace IzbanKiosk.Win7Prototype
         internal string KioskNumberSource { get; private set; } = string.Empty;
 
         /// <summary>
-        /// True when station and kiosk number are both known, i.e. a receipt can carry
-        /// a truthful identity. False does not stop the kiosk: card reading and balance
-        /// display need no identity, so only receipt printing is withheld.
+        /// True when the kiosk number is known, i.e. a receipt can name the machine it
+        /// came from. False does not stop the kiosk: card reading and balance display
+        /// need no identity, so only receipt printing is withheld.
         /// </summary>
         internal bool IsIdentityComplete
         {
@@ -193,10 +196,9 @@ namespace IzbanKiosk.Win7Prototype
             // withheld while the passenger-facing balance enquiry keeps working.
             IdentityProblem = string.Empty;
 
-            if (StationName.Length == 0 || StationName.Length > 40)
+            if (StationName.Length > 40)
             {
-                IdentityProblem = "StationName is not set in " + SettingsFileName + ".";
-                return;
+                StationName = StationName.Substring(0, 40);
             }
 
             if (!Regex.IsMatch(KioskNumber, "^[0-9]{1,10}$"))

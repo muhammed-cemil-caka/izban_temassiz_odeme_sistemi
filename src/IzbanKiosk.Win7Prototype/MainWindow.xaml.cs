@@ -30,8 +30,8 @@ namespace IzbanKiosk.Win7Prototype
     {
         private const string PipeName = "IzbanKiosk.LegacyHardware.v1";
         private const string BridgeExeName = "IzbanKiosk.LegacyHardwareBridge.exe";
-        private const string ExpectedBridgeVersion = "2.3.4-net40";
-        private const string PackageVersion = "R19";
+        private const string ExpectedBridgeVersion = "2.3.5-net40";
+        private const string PackageVersion = "R20";
         private const int MaxManualAmount = 500;
         // Printer work is a technician action behind a button, not a passenger-path
         // poll, so it waits far longer for the shared pipe than card polling does.
@@ -410,8 +410,8 @@ namespace IzbanKiosk.Win7Prototype
             if (!identityKnown)
             {
                 BalanceReceiptStatusText.Text = _english
-                    ? "This kiosk's identity is unknown, so no receipt can be issued."
-                    : "Bu otomatın kimliği belirlenemedi, fiş kesilemez.";
+                    ? "This kiosk's number could not be read, so no receipt can be issued."
+                    : "Otomat numarası okunamadı, fiş kesilemez.";
                 BalanceReceiptStatusText.Foreground = ErrorBrush;
                 ShowOnly(AmountPanel);
                 SetHardwareStatus("KART OKUNDU", _english ? "Live card balance is displayed" : "Gerçek kart kimliği ve bakiye gösteriliyor", ReadyBrush);
@@ -471,9 +471,9 @@ namespace IzbanKiosk.Win7Prototype
                     : "Kartınızı okuyucunun üzerinde sabit tutunuz. Gerçek bakiye SAM ile doğrulanarak okunacaktır.";
                 if (_hardwareSettings != null && !_hardwareSettings.IsIdentityComplete)
                 {
-                    SetHardwareStatus("KİMLİK EKSİK", _english
-                        ? "Balance enquiry works • Receipts disabled until the kiosk identity is set"
-                        : "Bakiye sorgulama çalışıyor • Kimlik tanımlanana kadar fiş kesilemez", BusyBrush);
+                    SetHardwareStatus("OTOMAT NO OKUNAMADI", _english
+                        ? "Balance enquiry works • Receipts disabled until the kiosk number is known"
+                        : "Bakiye sorgulama çalışıyor • Otomat numarası okunana kadar fiş kesilemez", BusyBrush);
                 }
                 else if (_printerReady)
                 {
@@ -606,8 +606,11 @@ namespace IzbanKiosk.Win7Prototype
             HelpButton.Content = _english ? "❓ HELP" : "❓ YARDIM AL";
             string station = _hardwareSettings == null ? string.Empty : _hardwareSettings.StationName;
             string kioskNumber = _hardwareSettings == null ? string.Empty : _hardwareSettings.KioskNumber;
+            // The same package runs on every kiosk in the network, so the default
+            // heading has to be true everywhere. A station name is shown only when the
+            // deployment actually set one.
             StationText.Text = station.Length == 0
-                ? (_english ? "STATION" : "İSTASYON")
+                ? (_english ? "İZMİRİM KART SERVICE POINT" : "İZMİRİM KART HİZMET NOKTASI")
                 : station + " " + (_english ? "STATION" : "İSTASYONU");
             KioskStatusText.Text = (_english ? "Kiosk ID: #" : "Kiosk No: #") +
                 (kioskNumber.Length == 0 ? "-" : kioskNumber) +
@@ -1141,8 +1144,8 @@ namespace IzbanKiosk.Win7Prototype
             if (settings == null || !settings.IsIdentityComplete)
             {
                 BalanceReceiptStatusText.Text = _english
-                    ? "This kiosk's identity is unknown, so no receipt can be issued. Balance enquiry still works."
-                    : "Bu otomatın kimliği belirlenemedi, fiş kesilemez. Bakiye sorgulama çalışmaya devam ediyor.";
+                    ? "This kiosk's number could not be read, so no receipt can be issued. Balance enquiry still works."
+                    : "Otomat numarası okunamadı, fiş kesilemez. Bakiye sorgulama çalışmaya devam ediyor.";
                 BalanceReceiptStatusText.Foreground = ErrorBrush;
                 BalanceReceiptButton.IsEnabled = true;
                 BalanceReceiptButton.Content = _english ? "PRINT BALANCE RECEIPT" : "BAKİYE FİŞİ YAZDIR";

@@ -1,4 +1,4 @@
-IZBAN KIOSK R19 - WINDOWS 7 / EMBEDDED (x86)
+IZBAN KIOSK R20 - WINDOWS 7 / EMBEDDED (x86)
 ============================================
 
 OTOMAT KIMLIGI - KIOSK NUMARASI OTOMATIK
@@ -23,20 +23,31 @@ Numaranin nereden geldigini gormek icin ekranin sol ustundeki "Kiosk No"
 yazisinin uzerine gelin; kaynak dosya yolu ipucu olarak cikar. Ayrica her
 acilista Journal klasorundeki gunluge yazilir.
 
-ISTASYON ADI ELLE GIRILIR
--------------------------
+ISTASYON ADI - BOS BIRAKIN (VARSAYILAN)
+---------------------------------------
+   "StationName": ""
+
+Ayni paket filodaki her otomata kuruldugu icin varsayilan olarak BOS gelir ve
+hicbir sey yapmaniz gerekmez:
+
+  - Ekran basligi: "IZMIRIM KART HIZMET NOKTASI"  (her otomatta dogru)
+  - Fis: istasyon satiri HIC BASILMAZ, yerine "Otomat No: 51591" yazar
+
+Otomat numarasi zaten benzersiz oldugu icin makineyi tek basina tanimlar.
+Filo genelinde ayni "istasyon" adini basmak, hic basmamaktan kotudur.
+
+Belirli bir otomatta istasyon adinin fise basilmasini ISTERSENIZ doldurun:
    "StationName": "ALSANCAK"
+O zaman baslikta "ALSANCAK ISTASYONU" ve fiste "Istasyon: ALSANCAK" cikar.
 
-setup.ini istasyon adini icermiyor, bu yuzden kuruluma gore siz yazacaksiniz.
-
-KIMLIK EKSIKSE NE OLUR?
------------------------
+OTOMAT NUMARASI OKUNAMAZSA NE OLUR?
+-----------------------------------
 Uygulama YINE ACILIR ve calisir. Kart okuma, SAM dogrulama ve bakiye gosterme
 kimlik gerektirmez, calismaya devam eder.
 
 Yalnizca FIS KESILEMEZ: "BAKIYE FISI YAZDIR" dugmesi pasif olur ve ekranda
-"Bu otomatin kimligi belirlenemedi, fis kesilemez" yazar. Alt barda da
-"KIMLIK EKSIK" uyarisi cikar.
+"Otomat numarasi okunamadi, fis kesilemez" yazar. Alt barda da
+"OTOMAT NO OKUNAMADI" uyarisi cikar.
 
 Boyle tasarlandi: yanlis istasyon/otomat numarasi tasiyan bir fis basmaktansa
 fis hic basmamak dogrudur - ama bu yuzden otomatin tamamen durmasi da yanlis

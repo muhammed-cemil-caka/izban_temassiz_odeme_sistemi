@@ -37,8 +37,18 @@ namespace IzbanKiosk.Win7Prototype
             builder.AppendLine("[C]İZBAN - İZMİRİM KART");
             builder.AppendLine(english ? "[C]BALANCE ENQUIRY RECEIPT" : "[C]BAKİYE SORGULAMA FİŞİ");
             builder.AppendLine(separator);
-            AppendField(builder, english ? "Station" : "İstasyon", stationName);
-            AppendField(builder, "Kiosk", kioskId);
+
+            // The station is optional and usually unset: printing a fleet-wide
+            // placeholder would put the same "station" on every receipt in the network,
+            // which is worse than saying nothing. The kiosk number identifies the
+            // machine on its own.
+            string station = (stationName ?? string.Empty).Trim();
+            if (station.Length > 0)
+            {
+                AppendField(builder, english ? "Station" : "İstasyon", station);
+            }
+
+            AppendField(builder, english ? "Kiosk No" : "Otomat No", kioskId);
             AppendField(builder, english ? "Date" : "Tarih", localTimestamp.ToString("dd.MM.yyyy HH:mm:ss", Turkish));
             builder.AppendLine(separator);
             AppendField(builder, english ? "Card No" : "Kart No", MaskCardNumber(snapshot.CardNumber));
