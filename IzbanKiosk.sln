@@ -9,7 +9,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IzbanKiosk.LegacyHardware.C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IzbanKiosk.LegacyHardwareBridge", "src\IzbanKiosk.LegacyHardwareBridge\IzbanKiosk.LegacyHardwareBridge.csproj", "{68AA6731-3BC7-473F-9B61-FBE87DBA1939}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IzbanKiosk.Win7Prototype", "src\IzbanKiosk.Win7Prototype\IzbanKiosk.Win7Prototype.csproj", "{4E105817-7AFD-4E54-A19D-9F988D4436B9}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IzbanKiosk.Terminal", "src\IzbanKiosk.Terminal\IzbanKiosk.Terminal.csproj", "{4E105817-7AFD-4E54-A19D-9F988D4436B9}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{DB1AFF21-9847-4754-9C3A-69B652921797}"
 EndProject

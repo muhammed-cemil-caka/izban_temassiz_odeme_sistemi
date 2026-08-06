@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Text;
 using IzbanKiosk.LegacyHardware.Contracts;
 
-namespace IzbanKiosk.Win7Prototype
+namespace IzbanKiosk.Terminal
 {
     /// <summary>
     /// Renders the plain-text receipt body that the bridge feeds to KioskPrint.dll.

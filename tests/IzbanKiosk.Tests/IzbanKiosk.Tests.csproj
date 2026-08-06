@@ -16,6 +16,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
@@ -36,10 +37,12 @@
              Link="Compatibility\EmvRdr35NativeMethods.cs" />
     <Compile Include="..\..\src\IzbanKiosk.LegacyHardwareBridge\Printer\LegacyPrinterHealthPolicy.cs"
              Link="Compatibility\LegacyPrinterHealthPolicy.cs" />
-    <Compile Include="..\..\src\IzbanKiosk.Win7Prototype\ReceiptDocumentBuilder.cs"
+    <Compile Include="..\..\src\IzbanKiosk.Terminal\ReceiptDocumentBuilder.cs"
              Link="Compatibility\ReceiptDocumentBuilder.cs" />
-    <Compile Include="..\..\src\IzbanKiosk.Win7Prototype\IzmirimKartNumber.cs"
+    <Compile Include="..\..\src\IzbanKiosk.Terminal\IzmirimKartNumber.cs"
              Link="Compatibility\IzmirimKartNumber.cs" />
+    <Compile Include="..\..\src\IzbanKiosk.Terminal\Update\GitHubReleaseClient.cs"
+             Link="Compatibility\GitHubReleaseClient.cs" />
   </ItemGroup>
 
 </Project>

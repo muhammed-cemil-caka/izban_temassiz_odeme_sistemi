@@ -1,5 +1,5 @@
 using IzbanKiosk.LegacyHardware.Contracts;
-using IzbanKiosk.Win7Prototype;
+using IzbanKiosk.Terminal;
 
 namespace IzbanKiosk.Tests;
 

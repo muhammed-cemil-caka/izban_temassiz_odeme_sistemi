@@ -1,4 +1,4 @@
-using IzbanKiosk.Win7Prototype;
+using IzbanKiosk.Terminal;
 
 namespace IzbanKiosk.Tests;
 

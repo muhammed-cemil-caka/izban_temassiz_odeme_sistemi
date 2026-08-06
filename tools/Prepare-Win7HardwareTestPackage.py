@@ -7,7 +7,7 @@ and Linux, so the whole package can be produced off-Windows.
 
 Usage:
     dotnet build src/IzbanKiosk.LegacyHardwareBridge/IzbanKiosk.LegacyHardwareBridge.csproj -c Release -p:Platform=x86
-    dotnet build src/IzbanKiosk.Win7Prototype/IzbanKiosk.Win7Prototype.csproj -c Release -p:Platform=x86
+    dotnet build src/IzbanKiosk.Terminal/IzbanKiosk.Terminal.csproj -c Release -p:Platform=x86
     python3 tools/Prepare-Win7HardwareTestPackage.py --vendor-source ~/Desktop/AUSKiosk
 
 The package never contains the legacy EXE, database, logs, PDB files or
@@ -155,7 +155,7 @@ def main():
         zip_base = zip_path
 
     bridge_build = os.path.join(REPOSITORY_ROOT, "src/IzbanKiosk.LegacyHardwareBridge/bin/x86/Release/net40")
-    prototype_build = os.path.join(REPOSITORY_ROOT, "src/IzbanKiosk.Win7Prototype/bin/x86/Release/net40")
+    prototype_build = os.path.join(REPOSITORY_ROOT, "src/IzbanKiosk.Terminal/bin/x86/Release/net40")
 
     if os.path.isdir(output_dir):
         shutil.rmtree(output_dir)

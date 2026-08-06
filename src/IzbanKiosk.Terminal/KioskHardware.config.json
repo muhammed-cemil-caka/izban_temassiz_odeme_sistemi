@@ -1,0 +1,11 @@
+{
+  "NfcComPort": "COM4",
+  "ThermalPrinterName": "Trentino Printer Driver 56mm",
+  "StationName": "",
+  "KioskNumber": "",
+  "LegacySetupIniPath": "",
+  "UpdateEnabled": true,
+  "UpdateRepositoryOwner": "muhammed-cemil-caka",
+  "UpdateRepositoryName": "izban_temassiz_odeme_sistemi",
+  "UpdateCheckHour": 4
+}

@@ -3,7 +3,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 
-namespace IzbanKiosk.Win7Prototype
+namespace IzbanKiosk.Terminal
 {
     /// <summary>
     /// Deployment-owned hardware settings.  They intentionally live next to the
@@ -12,7 +12,8 @@ namespace IzbanKiosk.Win7Prototype
     /// </summary>
     internal sealed class KioskHardwareSettings
     {
-        private const string SettingsFileName = "KioskHardware.config.json";
+        internal const string FileName = "KioskHardware.config.json";
+        private const string SettingsFileName = FileName;
 
         public string NfcComPort { get; set; } = string.Empty;
         public string ThermalPrinterName { get; set; } = string.Empty;
@@ -33,6 +34,13 @@ namespace IzbanKiosk.Win7Prototype
         /// Leave empty to search the usual install locations.
         /// </summary>
         public string LegacySetupIniPath { get; set; } = string.Empty;
+
+        // Unattended updates from the project's GitHub releases.
+        public bool UpdateEnabled { get; set; } = true;
+        public string UpdateRepositoryOwner { get; set; } = string.Empty;
+        public string UpdateRepositoryName { get; set; } = string.Empty;
+        /// <summary>Local hour of the daily check. Defaults to 04:00, when no train runs.</summary>
+        public int UpdateCheckHour { get; set; } = 4;
 
         /// <summary>Where <see cref="KioskNumber"/> ended up coming from, for display.</summary>
         internal string KioskNumberSource { get; private set; } = string.Empty;
@@ -194,6 +202,13 @@ namespace IzbanKiosk.Win7Prototype
             // printer are what the kiosk cannot run without; an unknown identity only
             // means a receipt would carry the wrong or no origin, so the receipt is
             // withheld while the passenger-facing balance enquiry keeps working.
+            UpdateRepositoryOwner = (UpdateRepositoryOwner ?? string.Empty).Trim();
+            UpdateRepositoryName = (UpdateRepositoryName ?? string.Empty).Trim();
+            if (UpdateCheckHour < 0 || UpdateCheckHour > 23)
+            {
+                UpdateCheckHour = 4;
+            }
+
             IdentityProblem = string.Empty;
 
             if (StationName.Length > 40)

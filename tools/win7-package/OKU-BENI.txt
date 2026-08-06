@@ -1,6 +1,43 @@
 IZBAN KIOSK R20 - WINDOWS 7 / EMBEDDED (x86)
 ============================================
 
+OTOMATIK GUNCELLEME (GITHUB RELEASES)
+-------------------------------------
+Her gun saat 04:00'te otomat GitHub'daki en son surumu kontrol eder. Yeni surum
+varsa arka planda indirir, dogrular ve kendini yeniden baslatarak gecer.
+
+YOLCU VARSA GUNCELLEME BEKLER. Kart okuyucuda kart varsa, tutar ekranindaysa
+veya fis basiliyorsa kurulum yapilmaz; 30 saniyede bir tekrar bakar ve otomat
+bosaldiginda devam eder. Indirme bittikten sonra bile yolcu geldiyse kurulum
+ertelenir.
+
+Ayarlar (KioskHardware.config.json):
+   "UpdateEnabled": true,
+   "UpdateRepositoryOwner": "muhammed-cemil-caka",
+   "UpdateRepositoryName": "izban_temassiz_odeme_sistemi",
+   "UpdateCheckHour": 4
+
+SURUM YAYINLARKEN
+   1. Kodda surumu artirin (IzbanKiosk.Terminal.csproj -> <Version>)
+   2. Yeni zip'i GitHub Releases'e yukleyin
+   3. Release etiketini ayni surumle verin (ornek: v1.1.0)
+   Etiket surum icermiyorsa (ornek "latest") guncelleme YAPILMAZ - yanlis yone
+   gecmemek icin bilerek boyle.
+
+   Istege bagli: zip ile ayni ada sahip bir .sha256 dosyasi da yuklerseniz
+   otomat indirdigi paketi bu ozetle dogrular.
+
+KORUNAN DOSYALAR
+   Guncelleme sirasinda KioskHardware.config.json ve Journal klasoru korunur;
+   yazici adi ve otomat kayitlari kaybolmaz. Onceki kurulumun yedegi gecici
+   klasorde "previous" adiyla saklanir.
+
+GEREKSINIM: TLS 1.2
+   Windows 7 uzerinde GitHub'a baglanabilmek icin makinede .NET Framework 4.5
+   veya ustu kurulu olmalidir. Yoksa guncelleme kontrolu ag hatasi verir ve
+   otomat mevcut surumde calismaya devam eder.
+
+
 OTOMAT KIMLIGI - KIOSK NUMARASI OTOMATIK
 ----------------------------------------
 Kiosk numarasi, o makinedeki eski AUSKiosk kurulumunun setup.ini dosyasindan

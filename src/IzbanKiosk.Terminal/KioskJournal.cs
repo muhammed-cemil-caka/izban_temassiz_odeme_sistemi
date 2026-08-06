@@ -4,7 +4,7 @@ using System.IO;
 using System.Text;
 using Newtonsoft.Json;
 
-namespace IzbanKiosk.Win7Prototype
+namespace IzbanKiosk.Terminal
 {
     /// <summary>
     /// Append-only local record of what the kiosk did, one JSON object per line under

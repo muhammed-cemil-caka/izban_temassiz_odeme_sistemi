@@ -40,7 +40,7 @@ if ($null -eq $MsBuild) {
 
 $ContractsProject = Join-Path $RepositoryRoot "src\IzbanKiosk.LegacyHardware.Contracts.Net40\IzbanKiosk.LegacyHardware.Contracts.Net40.csproj"
 $BridgeProject = Join-Path $RepositoryRoot "src\IzbanKiosk.LegacyHardwareBridge\IzbanKiosk.LegacyHardwareBridge.csproj"
-$PrototypeProject = Join-Path $RepositoryRoot "src\IzbanKiosk.Win7Prototype\IzbanKiosk.Win7Prototype.csproj"
+$PrototypeProject = Join-Path $RepositoryRoot "src\IzbanKiosk.Terminal\IzbanKiosk.Terminal.csproj"
 
 foreach ($Project in @($ContractsProject, $BridgeProject, $PrototypeProject)) {
     & $MsBuild.FullName $Project /restore /t:Rebuild /m:1 /p:Configuration=Release /p:Platform=x86
@@ -50,7 +50,7 @@ foreach ($Project in @($ContractsProject, $BridgeProject, $PrototypeProject)) {
 }
 
 $BridgeBuildDirectory = Join-Path $RepositoryRoot "src\IzbanKiosk.LegacyHardwareBridge\bin\x86\Release\net40"
-$PrototypeBuildDirectory = Join-Path $RepositoryRoot "src\IzbanKiosk.Win7Prototype\bin\x86\Release\net40"
+$PrototypeBuildDirectory = Join-Path $RepositoryRoot "src\IzbanKiosk.Terminal\bin\x86\Release\net40"
 $BridgeOutput = Join-Path $OutputDirectory "Bridge"
 
 if (Test-Path $OutputDirectory) {

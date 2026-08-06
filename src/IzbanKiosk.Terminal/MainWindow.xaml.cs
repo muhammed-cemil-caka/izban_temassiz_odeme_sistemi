@@ -13,9 +13,10 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using IzbanKiosk.LegacyHardware.Contracts;
+using IzbanKiosk.Terminal.Update;
 using Newtonsoft.Json;
 
-namespace IzbanKiosk.Win7Prototype
+namespace IzbanKiosk.Terminal
 {
     /// <summary>
     /// The kiosk UI: WPF on .NET Framework 4.0 / x86, the only combination the
@@ -30,8 +31,8 @@ namespace IzbanKiosk.Win7Prototype
     {
         private const string PipeName = "IzbanKiosk.LegacyHardware.v1";
         private const string BridgeExeName = "IzbanKiosk.LegacyHardwareBridge.exe";
-        private const string ExpectedBridgeVersion = "2.3.9-net40";
-        private const string PackageVersion = "R24";
+        private const string ExpectedBridgeVersion = "2.4.0-net40";
+        private const string PackageVersion = "R25";
         private const int MaxManualAmount = 500;
         // Printer work is a technician action behind a button, not a passenger-path
         // poll, so it waits far longer for the shared pipe than card polling does.
@@ -46,6 +47,7 @@ namespace IzbanKiosk.Win7Prototype
         private readonly DispatcherTimer _clockTimer;
         private readonly KioskJournal _journal = new KioskJournal();
         private readonly List<string> _queueCandidates = new List<string>();
+        private KioskUpdateService? _updateService;
 
         private volatile bool _shutdownRequested;
         private volatile bool _hardwareReady;
@@ -203,6 +205,7 @@ namespace IzbanKiosk.Win7Prototype
                 // printer state is surfaced in the footer and stays retryable from the
                 // screen instead of blocking card reading entirely.
                 OnUi(ApplyLanguage);
+                StartUpdateService();
                 if (!_hardwareSettings!.IsIdentityComplete)
                 {
                     AddDiagnostic("Kiosk identity incomplete: " + _hardwareSettings.IdentityProblem);
@@ -1001,6 +1004,10 @@ namespace IzbanKiosk.Win7Prototype
             }
 
             _shutdownRequested = true;
+            if (_updateService != null)
+            {
+                _updateService.Stop();
+            }
             Application.Current.Shutdown();
         }
 
@@ -1103,6 +1110,31 @@ namespace IzbanKiosk.Win7Prototype
         private void ClosePrinterDiagnosticsButton_Click(object sender, RoutedEventArgs e)
         {
             PrinterDiagnosticsModal.Visibility = Visibility.Collapsed;
+        }
+
+        private void StartUpdateService()
+        {
+            if (_updateService != null || _hardwareSettings == null)
+            {
+                return;
+            }
+
+            _updateService = new KioskUpdateService(_hardwareSettings, IsServingPassenger, AddDiagnostic);
+            _updateService.Start();
+        }
+
+        /// <summary>
+        /// True whenever a passenger is mid-interaction. The updater consults this
+        /// before it swaps any file, so a card presented at the scheduled hour is
+        /// served normally and the install simply waits its turn.
+        /// </summary>
+        private bool IsServingPassenger()
+        {
+            return _cardPresent
+                   || _printerOperationInFlight
+                   || _screen == KioskScreen.Amount
+                   || _screen == KioskScreen.Numpad
+                   || _screen == KioskScreen.Payment;
         }
 
         private void SetPrinterState(bool ready, string statusMessage)
@@ -1466,6 +1498,10 @@ namespace IzbanKiosk.Win7Prototype
         {
             _shutdownRequested = true;
             _hardwareReady = false;
+            if (_updateService != null)
+            {
+                _updateService.Stop();
+            }
             _clockTimer.Stop();
 
             if (_ownsBridgeProcess && _bridgeProcess != null)

@@ -7,7 +7,7 @@ için tüm ürün **.NET Framework 4.0 Client Profile / x86** üzerinde durur.
 
 | Proje | Hedef | Görevi |
 |---|---|---|
-| `src/IzbanKiosk.Win7Prototype` | net40 / x86 / WPF | Yolcu arayüzü (`IZBAN-Kiosk.exe`). Donanıma doğrudan dokunmaz. |
+| `src/IzbanKiosk.Terminal` | net40 / x86 / WPF | Yolcu arayüzü (`IZBAN-Kiosk.exe`). Donanıma doğrudan dokunmaz. |
 | `src/IzbanKiosk.LegacyHardwareBridge` | net40 / x86 | Donanım süreci. Vendor DLL'lerini yükler, named pipe ile hizmet verir. |
 | `src/IzbanKiosk.LegacyHardware.Contracts` | (kaynak) | İki taraf arasındaki mesaj modelleri ve pipe çerçeveleme. `.Net40` projesi bunları derler. |
 | `tests/IzbanKiosk.Tests` | net8.0 | Yalnızca geliştirici makinesinde koşar, otomata **gitmez**. net40 kaynaklarını link ederek test eder. |
@@ -37,7 +37,7 @@ dotnet build src/IzbanKiosk.LegacyHardwareBridge/IzbanKiosk.LegacyHardwareBridge
 ```
 
 ```bash
-dotnet build src/IzbanKiosk.Win7Prototype/IzbanKiosk.Win7Prototype.csproj -c Release -p:Platform=x86
+dotnet build src/IzbanKiosk.Terminal/IzbanKiosk.Terminal.csproj -c Release -p:Platform=x86
 ```
 
 ```bash

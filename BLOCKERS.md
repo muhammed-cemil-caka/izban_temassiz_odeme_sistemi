@@ -29,7 +29,7 @@ These checks establish binary-contract compatibility. They do not replace a phys
 
 ## Blocking before the first physical test
 
-1. Build `IzbanKiosk.LegacyHardwareBridge` and `IzbanKiosk.Win7Prototype` as Release/x86/net48 on Windows with the .NET Framework 4.8 targeting pack.
+1. Build `IzbanKiosk.LegacyHardwareBridge` and `IzbanKiosk.Terminal` as Release/x86/net48 on Windows with the .NET Framework 4.8 targeting pack.
 2. Prepare the package with `tools/Prepare-Win7HardwareTestPackage.ps1`; do not copy DLLs recursively from `AUSKiosk\Temp` because it contains multiple historical versions.
 3. Set a Base64-encoded `IZBAN_HMAC_SECRET` containing at least 32 random bytes.
 4. Stop `AUSKiosk.exe` during testing so it releases `COM4`.
@@ -53,7 +53,7 @@ These checks establish binary-contract compatibility. They do not replace a phys
 
 ## Operating-system boundary
 
-- The whole product targets .NET Framework 4.0 Client Profile / x86: `IzbanKiosk.Win7Prototype`
+- The whole product targets .NET Framework 4.0 Client Profile / x86: `IzbanKiosk.Terminal`
   (WPF kiosk UI) and `IzbanKiosk.LegacyHardwareBridge` (hardware process). This is the only
   combination the Windows 7 Embedded machine can run, and both build with the .NET SDK on any
   host OS.

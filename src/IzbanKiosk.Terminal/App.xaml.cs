@@ -1,7 +1,7 @@
 using System;
 using System.Windows;
 
-namespace IzbanKiosk.Win7Prototype
+namespace IzbanKiosk.Terminal
 {
     public partial class App : Application
     {

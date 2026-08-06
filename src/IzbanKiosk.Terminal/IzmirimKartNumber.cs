@@ -1,7 +1,7 @@
 using System;
 using System.Text;
 
-namespace IzbanKiosk.Win7Prototype
+namespace IzbanKiosk.Terminal
 {
     /// <summary>
     /// Renders the card number the way it is printed on the İzmirim Kart, so a
