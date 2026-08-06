@@ -34,6 +34,18 @@ namespace IzbanKiosk.Win7Prototype
         /// <summary>Where <see cref="KioskNumber"/> ended up coming from, for display.</summary>
         internal string KioskNumberSource { get; private set; } = string.Empty;
 
+        /// <summary>
+        /// True when station and kiosk number are both known, i.e. a receipt can carry
+        /// a truthful identity. False does not stop the kiosk: card reading and balance
+        /// display need no identity, so only receipt printing is withheld.
+        /// </summary>
+        internal bool IsIdentityComplete
+        {
+            get { return IdentityProblem.Length == 0; }
+        }
+
+        internal string IdentityProblem { get; private set; } = string.Empty;
+
         public static KioskHardwareSettings LoadFromApplicationDirectory()
         {
             string settingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, SettingsFileName);
@@ -175,16 +187,22 @@ namespace IzbanKiosk.Win7Prototype
                 throw new InvalidDataException("ThermalPrinterName is missing or invalid.");
             }
 
+            // Station and kiosk number are deliberately NOT fatal. The reader and the
+            // printer are what the kiosk cannot run without; an unknown identity only
+            // means a receipt would carry the wrong or no origin, so the receipt is
+            // withheld while the passenger-facing balance enquiry keeps working.
+            IdentityProblem = string.Empty;
+
             if (StationName.Length == 0 || StationName.Length > 40)
             {
-                throw new InvalidDataException("StationName is missing or invalid.");
+                IdentityProblem = "StationName is not set in " + SettingsFileName + ".";
+                return;
             }
 
             if (!Regex.IsMatch(KioskNumber, "^[0-9]{1,10}$"))
             {
-                throw new InvalidDataException(
-                    "KioskNumber could not be determined. It is read from the legacy setup.ini ([SETUP] No=) " +
-                    "when that file is found, otherwise from KioskHardware.config.json.");
+                IdentityProblem = "Kiosk number could not be determined. It is read from the legacy setup.ini " +
+                    "([SETUP] No=) when that file is found, otherwise from KioskNumber in " + SettingsFileName + ".";
             }
         }
     }

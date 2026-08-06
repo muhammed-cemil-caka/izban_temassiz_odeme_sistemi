@@ -30,8 +30,8 @@ namespace IzbanKiosk.Win7Prototype
     {
         private const string PipeName = "IzbanKiosk.LegacyHardware.v1";
         private const string BridgeExeName = "IzbanKiosk.LegacyHardwareBridge.exe";
-        private const string ExpectedBridgeVersion = "2.3.3-net40";
-        private const string PackageVersion = "R18";
+        private const string ExpectedBridgeVersion = "2.3.4-net40";
+        private const string PackageVersion = "R19";
         private const int MaxManualAmount = 500;
         // Printer work is a technician action behind a button, not a passenger-path
         // poll, so it waits far longer for the shared pipe than card polling does.
@@ -203,6 +203,10 @@ namespace IzbanKiosk.Win7Prototype
                 // printer state is surfaced in the footer and stays retryable from the
                 // screen instead of blocking card reading entirely.
                 OnUi(ApplyLanguage);
+                if (!_hardwareSettings!.IsIdentityComplete)
+                {
+                    AddDiagnostic("Kiosk identity incomplete: " + _hardwareSettings.IdentityProblem);
+                }
 
                 _printerReady = health.Printer.IsReady;
                 _printerStateKnown = true;
@@ -400,8 +404,19 @@ namespace IzbanKiosk.Win7Prototype
             CardUidText.Text = "NFC UID: " + snapshot.CardUid;
             BalanceText.Text = (snapshot.BalanceMinor / 100m).ToString("N2", CultureInfo.GetCultureInfo("tr-TR")) + " TL";
             CardVerificationText.Text = _english ? "Verified by SAM • live card data" : "SAM doğrulaması başarılı • gerçek kart verisi";
-            BalanceReceiptButton.IsEnabled = true;
+            bool identityKnown = _hardwareSettings != null && _hardwareSettings.IsIdentityComplete;
+            BalanceReceiptButton.IsEnabled = identityKnown;
             BalanceReceiptButton.Content = _english ? "PRINT BALANCE RECEIPT" : "BAKİYE FİŞİ YAZDIR";
+            if (!identityKnown)
+            {
+                BalanceReceiptStatusText.Text = _english
+                    ? "This kiosk's identity is unknown, so no receipt can be issued."
+                    : "Bu otomatın kimliği belirlenemedi, fiş kesilemez.";
+                BalanceReceiptStatusText.Foreground = ErrorBrush;
+                ShowOnly(AmountPanel);
+                SetHardwareStatus("KART OKUNDU", _english ? "Live card balance is displayed" : "Gerçek kart kimliği ve bakiye gösteriliyor", ReadyBrush);
+                return;
+            }
             BalanceReceiptStatusText.Text = _printerReady
                 ? string.Empty
                 : (_english ? "Thermal printer is not ready; the receipt may not be produced." : "Termal yazıcı hazır değil; fiş çıkmayabilir.");
@@ -454,7 +469,13 @@ namespace IzbanKiosk.Win7Prototype
                 IdleDescriptionText.Text = _english
                     ? "Keep your card on the reader. The live balance is read after SAM verification."
                     : "Kartınızı okuyucunun üzerinde sabit tutunuz. Gerçek bakiye SAM ile doğrulanarak okunacaktır.";
-                if (_printerReady)
+                if (_hardwareSettings != null && !_hardwareSettings.IsIdentityComplete)
+                {
+                    SetHardwareStatus("KİMLİK EKSİK", _english
+                        ? "Balance enquiry works • Receipts disabled until the kiosk identity is set"
+                        : "Bakiye sorgulama çalışıyor • Kimlik tanımlanana kadar fiş kesilemez", BusyBrush);
+                }
+                else if (_printerReady)
                 {
                     SetHardwareStatus("TÜM DONANIM HAZIR", _english ? "NFC, SAM and thermal printer ready • Waiting for card" : "NFC, SAM ve termal yazıcı hazır • Kart bekleniyor", ReadyBrush);
                 }
@@ -1117,11 +1138,11 @@ namespace IzbanKiosk.Win7Prototype
 
             DateTime timestamp = DateTime.Now;
             KioskHardwareSettings? settings = _hardwareSettings;
-            if (settings == null)
+            if (settings == null || !settings.IsIdentityComplete)
             {
                 BalanceReceiptStatusText.Text = _english
-                    ? "Kiosk identity is not loaded; the receipt was not printed."
-                    : "Kiosk kimliği yüklenmedi; fiş yazdırılmadı.";
+                    ? "This kiosk's identity is unknown, so no receipt can be issued. Balance enquiry still works."
+                    : "Bu otomatın kimliği belirlenemedi, fiş kesilemez. Bakiye sorgulama çalışmaya devam ediyor.";
                 BalanceReceiptStatusText.Foreground = ErrorBrush;
                 BalanceReceiptButton.IsEnabled = true;
                 BalanceReceiptButton.Content = _english ? "PRINT BALANCE RECEIPT" : "BAKİYE FİŞİ YAZDIR";

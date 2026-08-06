@@ -1,4 +1,4 @@
-IZBAN KIOSK R18 - WINDOWS 7 / EMBEDDED (x86)
+IZBAN KIOSK R19 - WINDOWS 7 / EMBEDDED (x86)
 ============================================
 
 OTOMAT KIMLIGI - KIOSK NUMARASI OTOMATIK
@@ -28,8 +28,19 @@ ISTASYON ADI ELLE GIRILIR
    "StationName": "ALSANCAK"
 
 setup.ini istasyon adini icermiyor, bu yuzden kuruluma gore siz yazacaksiniz.
-Bos birakilirsa uygulama acilista durur - yanlis kimlikli fis basmaktansa hic
-basmamak dogrudur.
+
+KIMLIK EKSIKSE NE OLUR?
+-----------------------
+Uygulama YINE ACILIR ve calisir. Kart okuma, SAM dogrulama ve bakiye gosterme
+kimlik gerektirmez, calismaya devam eder.
+
+Yalnizca FIS KESILEMEZ: "BAKIYE FISI YAZDIR" dugmesi pasif olur ve ekranda
+"Bu otomatin kimligi belirlenemedi, fis kesilemez" yazar. Alt barda da
+"KIMLIK EKSIK" uyarisi cikar.
+
+Boyle tasarlandi: yanlis istasyon/otomat numarasi tasiyan bir fis basmaktansa
+fis hic basmamak dogrudur - ama bu yuzden otomatin tamamen durmasi da yanlis
+olurdu.
 
 !!! KURULUMDA ZORUNLU: BIDIRECTIONAL SUPPORT !!!
 ------------------------------------------------
