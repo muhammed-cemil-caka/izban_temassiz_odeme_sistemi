@@ -30,8 +30,8 @@ namespace IzbanKiosk.Win7Prototype
     {
         private const string PipeName = "IzbanKiosk.LegacyHardware.v1";
         private const string BridgeExeName = "IzbanKiosk.LegacyHardwareBridge.exe";
-        private const string ExpectedBridgeVersion = "2.3.2-net40";
-        private const string PackageVersion = "R17";
+        private const string ExpectedBridgeVersion = "2.3.3-net40";
+        private const string PackageVersion = "R18";
         private const int MaxManualAmount = 500;
         // Printer work is a technician action behind a button, not a passenger-path
         // poll, so it waits far longer for the shared pipe than card polling does.
@@ -207,6 +207,12 @@ namespace IzbanKiosk.Win7Prototype
                 _printerReady = health.Printer.IsReady;
                 _printerStateKnown = true;
                 string printerStatusMessage = health.Printer.StatusMessage;
+                _journal.Record("KioskIdentity", new
+                {
+                    station = _hardwareSettings!.StationName,
+                    kioskNumber = _hardwareSettings.KioskNumber,
+                    source = _hardwareSettings.KioskNumberSource
+                });
                 _journal.Record("HardwareHealth", new
                 {
                     nfcReady = health.Nfc.IsReady,
@@ -585,6 +591,9 @@ namespace IzbanKiosk.Win7Prototype
             KioskStatusText.Text = (_english ? "Kiosk ID: #" : "Kiosk No: #") +
                 (kioskNumber.Length == 0 ? "-" : kioskNumber) +
                 (_english ? " / Hardware profile: Windows 7" : " / Donanım profili: Windows 7");
+            KioskStatusText.ToolTip = _hardwareSettings == null || _hardwareSettings.KioskNumberSource.Length == 0
+                ? null
+                : (_english ? "Kiosk number source: " : "Kiosk numarası kaynağı: ") + _hardwareSettings.KioskNumberSource;
             IdleTitleText.Text = _english ? "PLEASE PLACE YOUR İZMİRİM CARD ON THE" : "LÜTFEN İZMİRİM KARTINIZI KART OKUYUCU";
             IdleTitleAccentText.Text = _english ? "CARD READER AREA" : "BÖLGESİNE YERLEŞTİRİNİZ";
             AmountTitleText.Text = _english ? "PLEASE SELECT THE AMOUNT YOU WANT TO LOAD" : "LÜTFEN YÜKLEMEK İSTEDİĞİNİZ TUTARI SEÇİNİZ";

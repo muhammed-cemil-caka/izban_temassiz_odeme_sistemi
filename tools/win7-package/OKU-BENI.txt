@@ -1,20 +1,35 @@
-IZBAN KIOSK R17 - WINDOWS 7 / EMBEDDED (x86)
+IZBAN KIOSK R18 - WINDOWS 7 / EMBEDDED (x86)
 ============================================
 
-!!! KURULUMDA ZORUNLU: OTOMAT KIMLIGI !!!
------------------------------------------
-KioskHardware.config.json dosyasindaki su iki alani, kurulum yapilan otomata
-gore DOLDURUN. Bu degerler yolcunun fisine basilir:
+OTOMAT KIMLIGI - KIOSK NUMARASI OTOMATIK
+----------------------------------------
+Kiosk numarasi, o makinedeki eski AUSKiosk kurulumunun setup.ini dosyasindan
+([SETUP] No= satiri) OTOMATIK okunur. Paketi hangi otomata kurarsaniz o
+otomatin numarasi fise basilir; elle bir sey yapmaniz gerekmez.
 
-   "StationName": "ALSANCAK",     <-- istasyon adi
-   "KioskNumber": "51591"         <-- otomatin numarasi
+Aranan yerler (sirayla):
+   C:\AUSKiosk\setup.ini
+   C:\Program Files\AUSKiosk\setup.ini
+   D:\AUSKiosk\setup.ini
+   (paketin kendi klasoru)\setup.ini
 
-KioskNumber, eski AUSKiosk kurulumundaki setup.ini dosyasinda [SETUP] No=
-satirinda yazar. Yanlis birakilirsa yolcunun fisinde BASKA bir otomatin
-numarasi cikar.
+setup.ini baska bir yerdeyse yolunu yazin:
+   "LegacySetupIniPath": "E:\Kiosk\AUSKiosk\setup.ini"
 
-Bu alanlar bos veya hatali ise uygulama acilista hata verir ve durur -
-bilerek boyle: yanlis kimlikli fis basmaktansa hic basmamak dogrudur.
+Hicbiri bulunamazsa yedek olarak su alan kullanilir:
+   "KioskNumber": "51591"
+
+Numaranin nereden geldigini gormek icin ekranin sol ustundeki "Kiosk No"
+yazisinin uzerine gelin; kaynak dosya yolu ipucu olarak cikar. Ayrica her
+acilista Journal klasorundeki gunluge yazilir.
+
+ISTASYON ADI ELLE GIRILIR
+-------------------------
+   "StationName": "ALSANCAK"
+
+setup.ini istasyon adini icermiyor, bu yuzden kuruluma gore siz yazacaksiniz.
+Bos birakilirsa uygulama acilista durur - yanlis kimlikli fis basmaktansa hic
+basmamak dogrudur.
 
 !!! KURULUMDA ZORUNLU: BIDIRECTIONAL SUPPORT !!!
 ------------------------------------------------

@@ -2,5 +2,6 @@
   "NfcComPort": "COM4",
   "ThermalPrinterName": "Trentino Printer Driver 56mm",
   "StationName": "ALSANCAK",
-  "KioskNumber": "51591"
+  "KioskNumber": "",
+  "LegacySetupIniPath": ""
 }
