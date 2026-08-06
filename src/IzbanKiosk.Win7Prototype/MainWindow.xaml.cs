@@ -30,8 +30,8 @@ namespace IzbanKiosk.Win7Prototype
     {
         private const string PipeName = "IzbanKiosk.LegacyHardware.v1";
         private const string BridgeExeName = "IzbanKiosk.LegacyHardwareBridge.exe";
-        private const string ExpectedBridgeVersion = "2.3.5-net40";
-        private const string PackageVersion = "R20";
+        private const string ExpectedBridgeVersion = "2.3.6-net40";
+        private const string PackageVersion = "R21";
         private const int MaxManualAmount = 500;
         // Printer work is a technician action behind a button, not a passenger-path
         // poll, so it waits far longer for the shared pipe than card polling does.
@@ -602,8 +602,11 @@ namespace IzbanKiosk.Win7Prototype
 
         private void ApplyLanguage()
         {
-            LanguageButton.Content = _english ? "🌍 TR" : "🌍 EN";
-            HelpButton.Content = _english ? "❓ HELP" : "❓ YARDIM AL";
+            // No emoji: Windows 7 has no glyph for them and the kiosk rendered empty boxes.
+            LanguageButton.Content = _english ? "TR" : "EN";
+            HelpButton.Content = _english ? "HELP" : "YARDIM AL";
+            CardPanelTitleText.Text = _english ? "CARD READ" : "OKUNAN İZMİRİM KART";
+            BalancePanelTitleText.Text = _english ? "CURRENT BALANCE" : "MEVCUT BAKİYE";
             string station = _hardwareSettings == null ? string.Empty : _hardwareSettings.StationName;
             string kioskNumber = _hardwareSettings == null ? string.Empty : _hardwareSettings.KioskNumber;
             // The same package runs on every kiosk in the network, so the default
