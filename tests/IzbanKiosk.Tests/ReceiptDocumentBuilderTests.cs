@@ -7,7 +7,7 @@ public sealed class ReceiptDocumentBuilderTests
 {
     private static CardSnapshotResponse Snapshot() => new()
     {
-        CardNumber = "1234567890123456",
+        CardNumber = "2340018133",
         CardUid = "04A2B3C4D5",
         StoragePseudonym = "psd0123456789abcdef0123",
         CardType = "Tam",
@@ -20,12 +20,15 @@ public sealed class ReceiptDocumentBuilderTests
     private static readonly DateTime Timestamp = new(2026, 8, 5, 14, 30, 15);
 
     [Fact]
-    public void BalanceReceipt_MasksAllButLastFourCardDigits()
+    public void BalanceReceipt_MasksTheCardNumberInThePrintedCardFormat()
     {
-        string receipt = ReceiptDocumentBuilder.BuildBalanceReceipt(Snapshot(), "ALSANCAK", "0482", Timestamp, false);
+        var snapshot = Snapshot();
+        snapshot.CardNumber = "2340018133";
 
-        Assert.Contains("************3456", receipt);
-        Assert.DoesNotContain("1234567890123456", receipt);
+        string receipt = ReceiptDocumentBuilder.BuildBalanceReceipt(snapshot, "ALSANCAK", "51591", Timestamp, false);
+
+        Assert.Contains("*****-*8133-5", receipt);
+        Assert.DoesNotContain("2340018133", receipt);
     }
 
     [Fact]

@@ -38,6 +38,8 @@
              Link="Compatibility\LegacyPrinterHealthPolicy.cs" />
     <Compile Include="..\..\src\IzbanKiosk.Win7Prototype\ReceiptDocumentBuilder.cs"
              Link="Compatibility\ReceiptDocumentBuilder.cs" />
+    <Compile Include="..\..\src\IzbanKiosk.Win7Prototype\IzmirimKartNumber.cs"
+             Link="Compatibility\IzmirimKartNumber.cs" />
   </ItemGroup>
 
 </Project>

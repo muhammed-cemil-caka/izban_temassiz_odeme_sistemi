@@ -30,8 +30,8 @@ namespace IzbanKiosk.Win7Prototype
     {
         private const string PipeName = "IzbanKiosk.LegacyHardware.v1";
         private const string BridgeExeName = "IzbanKiosk.LegacyHardwareBridge.exe";
-        private const string ExpectedBridgeVersion = "2.3.6-net40";
-        private const string PackageVersion = "R21";
+        private const string ExpectedBridgeVersion = "2.3.7-net40";
+        private const string PackageVersion = "R22";
         private const int MaxManualAmount = 500;
         // Printer work is a technician action behind a button, not a passenger-path
         // poll, so it waits far longer for the shared pipe than card polling does.
@@ -400,7 +400,7 @@ namespace IzbanKiosk.Win7Prototype
         private void ShowAmountScreen(CardSnapshotResponse snapshot)
         {
             _screen = KioskScreen.Amount;
-            CardNumberText.Text = snapshot.CardNumber;
+            CardNumberText.Text = IzmirimKartNumber.FormatOrRaw(snapshot.CardNumber);
             CardUidText.Text = "NFC UID: " + snapshot.CardUid;
             BalanceText.Text = (snapshot.BalanceMinor / 100m).ToString("N2", CultureInfo.GetCultureInfo("tr-TR")) + " TL";
             CardVerificationText.Text = _english ? "Verified by SAM • live card data" : "SAM doğrulaması başarılı • gerçek kart verisi";

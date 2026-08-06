@@ -51,7 +51,7 @@ namespace IzbanKiosk.Win7Prototype
             AppendField(builder, english ? "Kiosk No" : "Otomat No", kioskId);
             AppendField(builder, english ? "Date" : "Tarih", localTimestamp.ToString("dd.MM.yyyy HH:mm:ss", Turkish));
             builder.AppendLine(separator);
-            AppendField(builder, english ? "Card No" : "Kart No", MaskCardNumber(snapshot.CardNumber));
+            AppendField(builder, english ? "Card No" : "Kart No", IzmirimKartNumber.Mask(snapshot.CardNumber));
 
             // The vendor returns a bare type code. Printing "1" tells the passenger
             // nothing, and translating it into a fare name would be a guess that could
@@ -129,16 +129,6 @@ namespace IzbanKiosk.Win7Prototype
 
             // Digits only: a raw vendor code, not a fare name.
             return string.Empty;
-        }
-
-        private static string MaskCardNumber(string cardNumber)
-        {
-            string value = (cardNumber ?? string.Empty).Trim();
-            if (value.Length <= 4)
-            {
-                return value.Length == 0 ? "-" : new string('*', value.Length);
-            }
-            return new string('*', value.Length - 4) + value.Substring(value.Length - 4);
         }
 
         private static string ShortReference(string pseudonym)
