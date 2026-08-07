@@ -37,6 +37,8 @@
              Link="Compatibility\EmvRdr35NativeMethods.cs" />
     <Compile Include="..\..\src\IzbanKiosk.LegacyHardwareBridge\Printer\LegacyPrinterHealthPolicy.cs"
              Link="Compatibility\LegacyPrinterHealthPolicy.cs" />
+    <Compile Include="..\..\src\IzbanKiosk.LegacyHardwareBridge\Configuration\KioskAutoConfigurationPolicy.cs"
+             Link="Compatibility\KioskAutoConfigurationPolicy.cs" />
     <Compile Include="..\..\src\IzbanKiosk.Terminal\ReceiptDocumentBuilder.cs"
              Link="Compatibility\ReceiptDocumentBuilder.cs" />
     <Compile Include="..\..\src\IzbanKiosk.Terminal\IzmirimKartNumber.cs"

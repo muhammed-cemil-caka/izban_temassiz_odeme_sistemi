@@ -1,32 +1,130 @@
-IZBAN KIOSK R28 - WINDOWS 7 / EMBEDDED (x86)
+IZBAN KIOSK R31 - WINDOWS 7 / EMBEDDED (x86)
 ============================================
+
+"DONANIM SERVISI BASLATILAMADI" / SURUM UYUSMAZLIGI
+--------------------------------------------------
+Belirti: acilista "Donanim servisi baslatilamadi", detay satirinda
+"Bridge version mismatch after startup: got '2.4.1-net40', expected
+'2.5.0-net40'" benzeri bir mesaj.
+
+IKI AYRI NEDENI VAR. Detay satirinda hangisi oldugu yazar.
+
+1) KARISIK KURULUM  (en sik)
+   Detayda "MIXED INSTALLATION: ...\Bridge\...exe is from an older package"
+   yazar. Yeni paket eskisinin USTUNE cikarilmis ve Bridge\ klasoru
+   guncellenmemistir: yanyana yeni bir uygulama ile ESKI bir donanim
+   servisi durur. Windows'un kendi zip cikaricisi "bu dosya zaten var"
+   diye sorar; orada Hayir denirse tam olarak bu olur.
+
+   COZUM - USTUNE CIKARMAYIN:
+     1. Otomati yeniden baslatin (dosyalar kilitli olmasin).
+     2. Kiosk klasorunu TAMAMEN SILIN.
+     3. Yeni paketi BOS bir klasore cikarin.
+     4. KURULUM.bat -> yonetici olarak.
+   Ayar dosyasi da silinir ama sorun degil: 7/8 yaziciyi ve NFC portunu
+   yeniden bulur, otomat numarasi setup.ini'den gelir.
+
+2) AYAKTA KALAN ESKI SERVIS
+   Eski surumun donanim servisi isimli kanali (named pipe) TEK ORNEKLE
+   acar. Once o baslarsa yeni surumun servisi kanali hic alamaz; acilir,
+   "listening" yazar ama sorulara ESKI servis cevap verir.
+
+   R30'dan itibaren buna gerek kalmadan cozuluyor:
+     - Uygulama makinedeki TUM donanim servisi sureclerini kapatip bir kez
+       daha deniyor. Kendi kendine toparlar.
+     - Guncelleyici, yeniden baslatmadan ONCE koprunun kendisini kapatiyor.
+       Onceden kapatmiyordu ve her guncelleme eski kopruyu ayakta
+       birakiyordu; surum degistiginde de bu hatayi veriyordu.
+     - KURULUM.bat 6/8 adiminda eski servisi ve eski IZBAN-Kiosk.exe'yi
+       kapatiyor; acilis kaydi baska bir klasoru gosteriyorsa uyariyor.
+
+HER IKI DURUMDA DA ESKI KLASORU SILIN. Betik acilis kaydini yeni klasore
+cevirir ama eski klasoru silmez.
 
 YENI OTOMATA KURULUM - TEK ADIM
 -------------------------------
 1. Bu klasoru otomata kopyalayin (ornegin C:\IZBAN-Kiosk).
-2. Ayni klasore ndp48-x86-x64-allos-enu.exe dosyasini koyun
-   (.NET Framework 4.8 OFFLINE installer, ~110 MB).
-3. KURULUM.bat -^> sag tik -^> YONETICI OLARAK CALISTIR.
+   Klasoru sonradan TASIMAYIN: otomatik baslatma kaydi bu yolu gosterir.
+2. KURULUM.bat -^> sag tik -^> YONETICI OLARAK CALISTIR.
+   (-KURULUM.zip kullaniyorsaniz .NET 4.8 kurulumu zaten icinde. Duz
+    yayin zip'ini kullaniyorsaniz ve otomatta .NET 4.5+ yoksa,
+    ndp48-x86-x64-allos-enu.exe dosyasini ayni klasore koyun.)
+3. Sonunda "Yeniden baslatilsin mi?" diye sorar; E deyin.
 
-Betik sirayla sunlari yapar:
-   - Windows surumunu raporlar
-   - TLS 1.2'yi acar (Windows 7'de varsayilan kapalidir)
-   - ISRG Root X1 kok sertifikasini kurar
-     (GitHub'in dosya sunucusu bunu kullanir; olmadan guncelleme inmez)
-   - .NET 4.5+ yoksa 4.8 kurulumunu baslatir
+Betik sirayla sunlari yapar ve her adimin sonucunu ekrana yazar:
+   1/8 Windows surumu ve Service Pack 1 kontrolu
+       (.NET 4.8 SP1 olmadan KURULMAZ. windows6.1-KB976932-X86.exe
+        dosyasini klasore koyarsaniz SP1'i de betik kurar.)
+   2/8 Yazma filtresi (EWF/FBWF/UWF) calisiyorsa KENDISI KAPATIR
+       (kapatmadan yapilan her sey ilk yeniden baslatmada geri alinir)
+   3/8 TLS 1.2'yi acar (Windows 7'de varsayilan kapalidir)
+   4/8 ISRG Root X1 kok sertifikasini kurar
+       (GitHub'in dosya sunucusu bunu kullanir; olmadan guncelleme inmez)
+   5/8 .NET 4.5+ yoksa 4.8 kurulumunu baslatir ve SONUCU DOGRULAR
+   6/8 Calisan AUSKiosk.exe'yi kapatir (NFC okuyucunun COM portunu birakir)
+   7/8 TERMAL YAZICIYI VE NFC PORTUNU KENDISI BULUP AYAR DOSYASINA YAZAR
+       (isterseniz ayni anda bir test fisi da basar)
+   8/8 Uygulamayi acilista otomatik baslatacak kaydi yazar
 
-4. Otomati yeniden baslatin.
-5. Termal yazici kuyrugunda "Enable bidirectional support" isaretleyin.
-6. 1-Yazicilari-Listele.bat ile yazici adini ogrenip config'e yazin.
-7. SISTEM TANILA -^> SIMDI KONTROL ET -^> "GitHub'a erisim: BASARILI"
+4. Otomat yeniden baslar, uygulama kendiliginden acilir.
+5. SISTEM TANILA -> SIMDI KONTROL ET -> "GitHub'a erisim: BASARILI"
+6. Kart okutup fis basin ve KAGIDIN CIKTIGINI GOZLE DOGRULAYIN.
 
-Bundan sonra o otomata bir daha gitmeniz gerekmez; uygulama kendini gunceller.
+Bu adimlarin hepsi temizse o otomata bir daha gitmeniz gerekmez; uygulama
+kendini gunceller.
+
+BETIK IKI YERDE SIZI GERI CAGIRABILIR
+   Service Pack 1 kurdugunda (1/8) ve yazma filtresini kapattiginda (2/8)
+   betik orada durur ve yeniden baslatmanizi ister. Ikisi de ancak yeniden
+   baslatmadan sonra gecerli olur; devam etmek bos yere calismak olurdu.
+   Yeniden baslatin ve KURULUM.bat'i TEKRAR calistirin. Ikinci calistirmada
+   o adimlar [TAMAM] gecer ve kurulum sonuna kadar gider.
+
+YAZICI VE NFC PORTU NASIL BULUNUYOR (7/8)
+   Yazici: sanal kuyruklar (PDF/XPS/Fax/OneNote) ve kagit uretemeyecek
+   portlar (FILE:, NUL:) elenir. Kalanlardan termal yazici isareti tasiyan
+   (thermal/receipt/pos/58mm/80mm/Trentino/Epson TM/Bixolon/Star...) varsa
+   o secilir. Isaret tasiyan yoksa ama geriye TEK fiziksel kuyruk kalmissa
+   o secilir - otomatta bir yazici vardir.
+
+   NFC portu: bir yazici kuyruguna bagli COM portlari elenir (COM3'teki
+   termal yazici ile kart okuyucu baska turlu ayirt edilemez). Geriye TEK
+   port kalirsa o yazilir.
+
+   ZATEN DOGRU AYARLANMISSA DOKUNULMAZ. Ayar dosyasindaki yazici gercekten
+   kuruluysa oldugu gibi birakilir; her kurulumda yeniden tahmin edilmez.
+
+   BIRDEN FAZLA ADAY VARSA HICBIRI SECILMEZ. Betik adaylari ekrana yazar ve
+   [EKSIK] der. Yanlis kuyruga ayarlanmis bir otomat her fisi kabul eder,
+   basarili der ve kagit hic cikarmaz; bu yuzden tahmin etmektense
+   secmemek dogrudur. O durumda uygulama acildiktan sonra
+   SISTEM TANILA -> listeden yaziciyi secin -> "BU KUYRUGU KULLAN VE
+   YENIDEN BASLAT".
+
+BETIK "EKSIK ADIM VAR" DERSE
+   Otomattan AYRILMADAN once giderin. Ekrandaki [HATA] / [EKSIK] / [UYARI]
+   satirlari hangi adimda ne oldugunu ve ne yapilmasi gerektigini yazar.
 
 NEDEN BU ADIMLAR GEREKLI
    Windows 7 Embedded imajinda .NET 4.0 var ve TLS 1.2'yi kullanamiyor;
    GitHub ise baska protokol kabul etmiyor. Ayrica imajin kok sertifika
    listesi eski oldugu icin GitHub'in dosya sunucusu dogrulanamiyor.
    Bu ucunu de KURULUM.bat hallediyor.
+
+YAZMA FILTRESI HAKKINDA (Windows Embedded)
+   EWF/FBWF/UWF acikken diske yazilan hicbir sey kalici olmaz. Kurulumun
+   yaptigi TLS kayitlari, kok sertifika, yazici ayari ve otomatik baslatma
+   kaydi ilk yeniden baslatmada silinir; otomat hic kurulmamis gibi acilir
+   ve bunu siz gidene kadar kimse fark etmez.
+
+   Betik bunu 2/8 adiminda tespit eder ve filtreyi KENDISI kapatir
+   (ewfmgr / fbwfmgr / uwfmgr). Sonra durur ve yeniden baslatmanizi ister.
+   Yeniden baslatip betigi tekrar calistirin.
+
+   KURULUM BITTIKTEN SONRA FILTREYI GERI ACIN. Betik bunu yapmaz: filtreyi
+   geri acmak otomatin diskini tekrar korumaya alir ve bu, kurulumun
+   dogrulandigindan emin olduktan sonra verilecek bir karardir. Sonuc
+   ekraninda hatirlatma cikar.
 
 OTOMATIK GUNCELLEME (GITHUB RELEASES)
 -------------------------------------
@@ -148,15 +246,20 @@ Boyle tasarlandi: yanlis istasyon/otomat numarasi tasiyan bir fis basmaktansa
 fis hic basmamak dogrudur - ama bu yuzden otomatin tamamen durmasi da yanlis
 olurdu.
 
-!!! KURULUMDA ZORUNLU: BIDIRECTIONAL SUPPORT !!!
-------------------------------------------------
-Denetim Masasi -> Aygitlar ve Yazicilar -> termal yazici -> sag tik ->
-Yazici ozellikleri -> Baglanti Noktalari (Ports) sekmesi ->
-[X] Enable bidirectional support  ISARETLI OLMALI -> Apply
+BIDIRECTIONAL SUPPORT - ARTIK ELLE YAPILMIYOR
+---------------------------------------------
+Bu kutuyu (Yazici ozellikleri -> Baglanti Noktalari -> [X] Enable
+bidirectional support) KOD ACIYOR. Yazici ilklendirilirken
+PRINTER_ATTRIBUTE_ENABLE_BIDI ozniteligi kuyruga yaziliyor; kurulumda elle
+isaretlemeniz gerekmez.
 
-Bu kutu KAPALIYKEN Windows cihaza durumunu hic sormaz. Yazici "kapagim acik"
-veya "kagidim bitti" dese bile durum bayraklari her zaman 0 gorunur, kuyruk
-isi kabul eder ve kagit hic cikmaz - hicbir uyari almadan.
+Yetki yetmezse kurulum durmaz: tanilama ekranina bir uyari yazilir ve devam
+edilir. Kuyruk yine basar, sadece ariza bildiremez - o durumda kutuyu elle
+isaretlemek gerekir.
+
+NEDEN ONEMLI: Bu kutu KAPALIYKEN Windows cihaza durumunu hic sormaz. Yazici
+"kapagim acik" veya "kagidim bitti" dese bile durum bayraklari her zaman 0
+gorunur, kuyruk isi kabul eder ve kagit hic cikmaz - hicbir uyari almadan.
 
 Alsancak otomatinda tam olarak bu oldu: baski kafasina 24V gitmedigi icin
 kontrol karti guvenlik kilidini devreye sokup "KAPAK ACIK" bildiriyordu, ama
@@ -202,36 +305,62 @@ GEREKSINIMLER
 - Termal yazicinin Windows'ta kurulu olmasi
 
 
-KURULUM
--------
-1. Bu klasoru otomata kopyalayin (ornegin C:\IZBAN-Yazici-Testi).
-2. Klasor yapisi bozulmamalidir:
+PAKET ICERIGI
+-------------
+Klasor yapisi bozulmamalidir:
 
-   IZBAN-Yazici-Testi\
+   IZBAN-Kiosk\
+     KURULUM.bat                    <-- YENI OTOMATTA SADECE BU
+     ISRG-Root-X1.crt               <-- KURULUM.bat kok depoya kurar
      1-Yazicilari-Listele.bat
      2-Yazici-Teshis.bat
      3-Test-Fisi-Bas.bat
      4-Kiosk-Arayuzunu-Ac.bat
      5-TLS-Duzelt.bat               <-- guncelleme baglanamazsa
      IZBAN-Kiosk.exe
-     KioskHardware.config.json      <-- yazici adi BURADA
+     KioskHardware.config.json      <-- yazici adi ve COM portu BURADA
      Bridge\                        <-- kopru + vendor DLL'leri
+     ndp48-x86-x64-allos-enu.exe    <-- yalnizca -KURULUM.zip icinde
+
+Yayin (Releases) zip'i ile USB kurulum zip'i arasindaki TEK fark, .NET 4.8
+kurulum dosyasidir. 116 MB'lik o dosyayi yayina koymak, otomat basina omur
+boyu bir kez gereken bir seyi her guncellemede yeniden indirtmek olurdu.
 
 
-SIRAYLA YAPILACAKLAR
---------------------
+ASAGIDAKI ADIMLAR ELLE TANILAMA ICINDIR
+---------------------------------------
+Normal kurulumda bunlara ihtiyaciniz yok: KURULUM.bat + SISTEM TANILA ekrani
+yeterlidir. Bir sey ters giderse, konsoldan tek tek dogrulamak icin kullanin.
+
 ADIM 1 -> 1-Yazicilari-Listele.bat
 
   Otomatta kurulu yazicilarin gercek adlarini ve mevcut varsayilan yaziciyi
   gosterir. AUSKiosk.exe'yi KAPATMANIZA GEREK YOK.
 
-ADIM 2 -> KioskHardware.config.json dosyasini Not Defteri ile acin
+ADIM 2 -> Yazici adini ayarlayin
 
+  NORMALDE GEREKMEZ: KURULUM.bat 7/8 adiminda bunu zaten yapiyor. Asagidakiler
+  betik "birden fazla aday var" deyip secim yapmadiginda gecerlidir.
+
+  Betigin yaptigini elle tekrarlamak icin:
+     Bridge\IzbanKiosk.LegacyHardwareBridge.exe --autoconfigure
+  Neyi neden sectigini (veya nicin secmedigini) ekrana yazar ve ayar
+  dosyasina isler. Ayni dosyadaki guncelleme ayarlarina dokunmaz.
+
+  TERCIH EDILEN YOL: Uygulamayi acin -> SISTEM TANILA -> listeden termal
+  yaziciyi secin -> "BU KUYRUGU KULLAN VE YENIDEN BASLAT". Ayar dosyasina
+  otomatik yazilir, klavye/Not Defteri gerekmez.
+
+  Elle yapmak isterseniz: KioskHardware.config.json icindeki
   "ThermalPrinterName" degerini, Adim 1'de cikan InstalledPrinters
   listesindeki adla BIREBIR ayni yapin.
 
   Pakette su an "Trentino Printer Driver 56mm" yaziyor. Bu bir SURUCU adina
-  benziyor; Windows kuyruk adi buyuk ihtimalle farklidir. Mutlaka kontrol edin.
+  benziyor; Windows kuyruk adi buyuk ihtimalle farklidir. Kurulu degilse
+  otomatik secim onu dikkate almaz ve gercek kuyrugu bulur.
+
+  NFC okuyucu portu ("NfcComPort", varsayilan COM4) ekrandan degistirilemez;
+  otomatik secim de yapamadiysa bu dosyadan duzeltilmesi gerekir.
 
 ADIM 3 -> 2-Yazici-Teshis.bat
 

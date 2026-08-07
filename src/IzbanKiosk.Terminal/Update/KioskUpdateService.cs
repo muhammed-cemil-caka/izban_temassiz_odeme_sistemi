@@ -46,17 +46,28 @@ namespace IzbanKiosk.Terminal.Update
         private readonly KioskHardwareSettings _settings;
         private readonly Func<bool> _isBusy;
         private readonly Action<string> _log;
+        private readonly Action _beforeRestart;
         private readonly ManualResetEvent _stop = new ManualResetEvent(false);
         private readonly object _reportLock = new object();
         private Thread? _worker;
         private UpdateStatusReport _report = new UpdateStatusReport();
         private GitHubRelease? _pendingRelease;
 
-        internal KioskUpdateService(KioskHardwareSettings settings, Func<bool> isBusy, Action<string> log)
+        /// <param name="beforeRestart">
+        /// Releases anything the replaced installation still owns, immediately before
+        /// this process ends. The hardware bridge is a separate process that Windows
+        /// does not end with its parent, and <see cref="Environment.Exit"/> does not
+        /// raise the window events the normal shutdown path hangs off - so without
+        /// this the old bridge outlives the update, keeps the single-instance named
+        /// pipe, and the freshly installed terminal cannot reach its own bridge.
+        /// </param>
+        internal KioskUpdateService(
+            KioskHardwareSettings settings, Func<bool> isBusy, Action<string> log, Action beforeRestart)
         {
             _settings = settings;
             _isBusy = isBusy;
             _log = log;
+            _beforeRestart = beforeRestart;
         }
 
         internal void Start()
@@ -295,6 +306,17 @@ namespace IzbanKiosk.Terminal.Update
             WriteAppliedTag(release.Tag);
             string script = WriteInstallerScript(staging, payload, installRoot, exeName);
             _log("Applying " + release.Tag + " and restarting.");
+
+            try
+            {
+                _beforeRestart();
+            }
+            catch (Exception ex)
+            {
+                // Never abandon an update that is already staged; the incoming build
+                // clears a leftover bridge itself, this only spares it the detour.
+                _log("Pre-restart cleanup failed: " + ex.Message);
+            }
 
             Process.Start(new ProcessStartInfo
             {

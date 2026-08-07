@@ -26,6 +26,7 @@ namespace IzbanKiosk.LegacyHardwareBridge
             bool cliPrintTest = false;
             bool cliListPrinters = false;
             bool cliPrinterDiagnose = false;
+            bool cliAutoConfigure = false;
             bool rejectedScaleOverride = false;
             bool comPortFromCommandLine = false;
             bool printerFromCommandLine = false;
@@ -50,6 +51,10 @@ namespace IzbanKiosk.LegacyHardwareBridge
                 else if (string.Equals(args[i], "--printer-diagnose", StringComparison.OrdinalIgnoreCase))
                 {
                     cliPrinterDiagnose = true;
+                }
+                else if (string.Equals(args[i], "--autoconfigure", StringComparison.OrdinalIgnoreCase))
+                {
+                    cliAutoConfigure = true;
                 }
                 else if (string.Equals(args[i], "--verify-scale", StringComparison.OrdinalIgnoreCase))
                 {
@@ -83,6 +88,14 @@ namespace IzbanKiosk.LegacyHardwareBridge
             {
                 Console.Error.WriteLine("[ERROR] --verify-scale is not accepted. Record physical comparison evidence before enabling a verified balance scale in deployment configuration.");
                 return 4;
+            }
+
+            // Runs before anything reads the settings: it is what writes them. Needs
+            // no HMAC secret and no vendor DLLs, because it only asks Windows what
+            // hardware is present - it never opens the reader or the printer.
+            if (cliAutoConfigure)
+            {
+                return RunAutoConfigureCommand();
             }
 
             // 2. Fill in whatever the caller did not pass from the deployment-owned
@@ -399,6 +412,45 @@ namespace IzbanKiosk.LegacyHardwareBridge
                 options.PrinterName = settings.ThermalPrinterName;
                 Console.Error.WriteLine("[INFO] Thermal printer name loaded from " + sourcePath + ".");
             }
+        }
+
+        /// <summary>
+        /// Detects the thermal printer queue and the reader's serial port and saves
+        /// them, so first-time installation needs no hand-edited JSON on a kiosk with
+        /// no keyboard.
+        ///
+        /// The exit code tells the installer script which half is unresolved; the
+        /// script prints that back to the operator before they leave the machine.
+        /// </summary>
+        private static int RunAutoConfigureCommand()
+        {
+            KioskAutoConfigurator.AutoConfigureOutcome outcome;
+            try
+            {
+                outcome = KioskAutoConfigurator.Run(true);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine("[HATA] Otomatik yapilandirma basarisiz: " + ex.Message);
+                return 5;
+            }
+
+            Console.WriteLine("Ayar dosyasi : " +
+                (outcome.SettingsPath.Length == 0 ? "[bulunamadi]" : outcome.SettingsPath));
+            Console.WriteLine("Yazici       : " + (outcome.PrinterOk ? "[TAMAM]" : "[EKSIK]") + " " +
+                outcome.PrinterMessage + (outcome.PrinterChanged ? "  (yazildi)" : string.Empty));
+            Console.WriteLine("NFC portu    : " + (outcome.ComPortOk ? "[TAMAM]" : "[EKSIK]") + " " +
+                outcome.ComPortMessage + (outcome.ComPortChanged ? "  (yazildi)" : string.Empty));
+
+            if (outcome.PrinterOk && outcome.ComPortOk)
+            {
+                return 0;
+            }
+            if (!outcome.PrinterOk && !outcome.ComPortOk)
+            {
+                return 4;
+            }
+            return outcome.PrinterOk ? 3 : 2;
         }
 
         private static int RunPrinterInspectionCommand(bool listPrinters, bool diagnose, HardwareOptions options)

@@ -31,8 +31,9 @@ namespace IzbanKiosk.Terminal
     {
         private const string PipeName = "IzbanKiosk.LegacyHardware.v1";
         private const string BridgeExeName = "IzbanKiosk.LegacyHardwareBridge.exe";
+        private const string BridgeProcessName = "IzbanKiosk.LegacyHardwareBridge";
         private const string ExpectedBridgeVersion = "2.5.0-net40";
-        private const string PackageVersion = "R29";
+        private const string PackageVersion = "R31";
         private const int MaxManualAmount = 500;
         // Printer work is a technician action behind a button, not a passenger-path
         // poll, so it waits far longer for the shared pipe than card polling does.
@@ -64,6 +65,12 @@ namespace IzbanKiosk.Terminal
         private Thread? _workerThread;
         private Process? _bridgeProcess;
         private bool _ownsBridgeProcess;
+
+        /// <summary>
+        /// Set when a bridge this process launched reported the wrong version, which
+        /// means the Bridge folder itself is from an older package. Empty otherwise.
+        /// </summary>
+        private string _bridgeVersionOnDisk = string.Empty;
         private KioskHardwareSettings? _hardwareSettings;
         private string _numpadDigits = "0";
         private CardSnapshotResponse? _currentSnapshot;
@@ -148,12 +155,21 @@ namespace IzbanKiosk.Terminal
 
                 if (!EnsureBridgeStarted())
                 {
+                    string description = _bridgeVersionOnDisk.Length > 0
+                        ? "KARIŞIK KURULUM. Bridge klasöründeki donanım servisi eski bir paketten (" +
+                          _bridgeVersionOnDisk + "), yanındaki uygulama ise yeni. Bu, yeni sürüm eskisinin " +
+                          "ÜZERİNE çıkarıldığında ve Bridge klasörü güncellenmediğinde olur. ÇÖZÜM: kiosk " +
+                          "klasörünü tamamen SİLİN, yeni paketi boş bir klasöre çıkarın, KURULUM.bat'ı " +
+                          "yönetici olarak çalıştırın."
+                        : "En sık nedeni, otomatta ESKİ BİR IZBAN KİOSK KURULUMUNUN kalmış olmasıdır: " +
+                          "eski sürümün donanım servisi çalışır ve yenisinin yerini kapar. Otomatı yeniden " +
+                          "başlatın; sürerse eski kiosk klasörünü ve onun açılışta başlatma kaydını kaldırın. " +
+                          "Ayrıca program klasörünün eksiksiz çıkarıldığını ve eski AUSKiosk uygulamasının " +
+                          "kapalı olduğunu kontrol edin.";
+
                     OnUi(delegate
                     {
-                        ShowFatalError(
-                            "Donanım servisi başlatılamadı",
-                            "Program klasörünün eksiksiz çıkarıldığını ve eski AUSKiosk uygulamasının kapalı olduğunu kontrol ediniz.",
-                            GetDiagnosticSummary());
+                        ShowFatalError("Donanım servisi başlatılamadı", description, GetDiagnosticSummary());
                     });
                     return;
                 }
@@ -1233,8 +1249,22 @@ namespace IzbanKiosk.Terminal
                 return;
             }
 
-            _updateService = new KioskUpdateService(_hardwareSettings, IsServingPassenger, AddDiagnostic);
+            _updateService = new KioskUpdateService(
+                _hardwareSettings, IsServingPassenger, AddDiagnostic, ReleaseHardwareBeforeUpdateRestart);
             _updateService.Start();
+        }
+
+        /// <summary>
+        /// Hands the hardware back before an update replaces this installation.
+        ///
+        /// The bridge is its own process and Windows keeps it running when this one
+        /// ends, so the incoming build would find the previous version's bridge still
+        /// holding the single-instance pipe and the COM port.
+        /// </summary>
+        private void ReleaseHardwareBeforeUpdateRestart()
+        {
+            _ownsBridgeProcess = false;
+            KillAllBridgeProcesses();
         }
 
         /// <summary>
@@ -1383,7 +1413,150 @@ namespace IzbanKiosk.Terminal
             FooterStatusDot.Fill = color;
         }
 
+        /// <summary>
+        /// Brings up a hardware bridge of the version this build speaks to.
+        ///
+        /// The retry exists because of what a kiosk carrying an older install looks
+        /// like: the previous version's bridge is already running and owns the named
+        /// pipe, which is created with a single server instance. Our own bridge then
+        /// starts, prints its banner, and never gets the pipe - so the version query
+        /// is answered by the old process and the terminal refuses to go on. Asking
+        /// the old bridge to shut down does not help when nothing asked it to start;
+        /// the second pass removes it and takes the pipe.
+        /// </summary>
         private bool EnsureBridgeStarted()
+        {
+            if (TryStartBridge())
+            {
+                return true;
+            }
+
+            if (_shutdownRequested)
+            {
+                return false;
+            }
+
+            AddDiagnostic("Retrying after removing every hardware bridge process on this machine.");
+            ReleaseOwnedBridgeProcess();
+            if (!TerminateStrayBridgeProcesses())
+            {
+                return false;
+            }
+
+            return TryStartBridge();
+        }
+
+        /// <summary>
+        /// Force-ends every bridge process, ours included, and waits for the pipe to
+        /// be released. Returns false when one survives, because starting another
+        /// bridge against a pipe that is still held would repeat the same failure.
+        /// </summary>
+        /// <summary>
+        /// Ends every hardware bridge process on the machine. Returns false only when
+        /// the list itself could not be read; a bridge this process is not allowed to
+        /// touch is reported and skipped.
+        /// </summary>
+        private bool KillAllBridgeProcesses()
+        {
+            int killed = 0;
+            try
+            {
+                foreach (Process process in Process.GetProcessesByName(BridgeProcessName))
+                {
+                    using (process)
+                    {
+                        try
+                        {
+                            if (process.HasExited)
+                            {
+                                continue;
+                            }
+                            process.Kill();
+                            process.WaitForExit(3000);
+                            killed++;
+                        }
+                        catch (Exception ex)
+                        {
+                            // Most often a bridge started by another Windows account,
+                            // which this process is not allowed to touch.
+                            AddDiagnostic("Could not end bridge process " + process.Id + ": " + ex.Message);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                AddDiagnostic("Bridge processes could not be listed: " + ex.Message);
+                return false;
+            }
+
+            AddDiagnostic("Ended " + killed + " hardware bridge process(es).");
+            return true;
+        }
+
+        private bool TerminateStrayBridgeProcesses()
+        {
+            if (!KillAllBridgeProcesses())
+            {
+                return false;
+            }
+
+            // Windows frees the pipe name when the owning handle closes, which is not
+            // always complete the instant the process ends.
+            for (int attempt = 0; attempt < 20 && !_shutdownRequested; attempt++)
+            {
+                if (SendRequest(new BridgeRequest
+                {
+                    RequestId = Guid.NewGuid().ToString("N"),
+                    Command = "GetBridgeVersion"
+                }, 150) == null)
+                {
+                    return true;
+                }
+                Thread.Sleep(150);
+            }
+
+            AddDiagnostic("A hardware bridge still holds the pipe. Restart the kiosk.");
+            return false;
+        }
+
+        /// <summary>
+        /// Where the bridge that answered actually came from, so the operator can see
+        /// which folder to replace rather than guessing between two installations.
+        /// </summary>
+        private static string DescribeBridgeFile(string bridgePath)
+        {
+            try
+            {
+                var file = new FileInfo(bridgePath);
+                return "Bridge file: " + file.Length + " bytes, last written " +
+                    file.LastWriteTime.ToString("dd.MM.yyyy HH:mm:ss") + ".";
+            }
+            catch (Exception ex)
+            {
+                return "Bridge file could not be inspected: " + ex.Message;
+            }
+        }
+
+        private void ReleaseOwnedBridgeProcess()
+        {
+            if (_bridgeProcess == null)
+            {
+                return;
+            }
+
+            try
+            {
+                _bridgeProcess.Dispose();
+            }
+            catch
+            {
+            }
+            _bridgeProcess = null;
+            _ownsBridgeProcess = false;
+        }
+
+        private bool TryStartBridge()
         {
             BridgeResponse? existing = SendRequest(new BridgeRequest
             {
@@ -1494,7 +1667,16 @@ namespace IzbanKiosk.Terminal
                         return true;
                     }
 
+                    // This bridge is the one we just launched, so the version it
+                    // reports is the version of the file on disk. Nothing that can be
+                    // done at runtime fixes that: the Bridge folder was left behind by
+                    // an older package while the terminal beside it was replaced.
+                    // Saying so here is the difference between a five-minute fix and
+                    // an afternoon spent hunting a process that does not exist.
                     AddDiagnostic("Bridge version mismatch after startup: got '" + startedVersion + "', expected '" + ExpectedBridgeVersion + "'.");
+                    AddDiagnostic("MIXED INSTALLATION: " + bridgePath + " is from an older package.");
+                    AddDiagnostic(DescribeBridgeFile(bridgePath));
+                    _bridgeVersionOnDisk = startedVersion;
                     return false;
                 }
             }
