@@ -29,6 +29,7 @@ set H5=0
 set H6=0
 set H7=0
 set H8=0
+set H9=0
 
 echo.
 echo  ==============================================================
@@ -41,7 +42,7 @@ echo   kendini gunceller.
 echo.
 
 echo  --------------------------------------------------------------
-echo   1/8  Windows surumu ve Service Pack
+echo   1/9  Windows surumu ve Service Pack
 echo  --------------------------------------------------------------
 for /f "tokens=2 delims=[]" %%a in ('ver') do echo        %%a
 
@@ -103,7 +104,7 @@ set SP1=0
 echo.
 
 echo  --------------------------------------------------------------
-echo   2/8  Yazma filtresi ^(write filter^)
+echo   2/9  Yazma filtresi ^(write filter^)
 echo  --------------------------------------------------------------
 set WF=
 set "WFKOMUT="
@@ -153,7 +154,7 @@ exit /b 0
 echo.
 
 echo  --------------------------------------------------------------
-echo   3/8  TLS 1.2
+echo   3/9  TLS 1.2
 echo  --------------------------------------------------------------
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.2\Client" /v Enabled /t REG_DWORD /d 1 /f >nul
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.2\Client" /v DisabledByDefault /t REG_DWORD /d 0 /f >nul
@@ -167,7 +168,7 @@ echo        [TAMAM] Windows'ta TLS 1.2 acildi.
 echo.
 
 echo  --------------------------------------------------------------
-echo   4/8  Kok sertifika
+echo   4/9  Kok sertifika
 echo  --------------------------------------------------------------
 if not exist "ISRG-Root-X1.crt" (
   echo        [HATA] ISRG-Root-X1.crt bu klasorde yok.
@@ -189,7 +190,7 @@ echo.
 
 :net
 echo  --------------------------------------------------------------
-echo   5/8  .NET Framework
+echo   5/9  .NET Framework
 echo  --------------------------------------------------------------
 call :netsurum
 if %NETVAL% GEQ 378389 (
@@ -256,7 +257,7 @@ echo.
 
 :cakisma
 echo  --------------------------------------------------------------
-echo   6/8  Cakisan eski kurulum
+echo   6/9  Cakisan eski kurulum
 echo  --------------------------------------------------------------
 
 REM Eski bir IZBAN Kiosk kurulumunun donanim servisi, isimli kanali tek
@@ -301,7 +302,7 @@ if errorlevel 1 (
 
 :eskiklasor
 REM Acilis kaydi baska bir klasoru gosteriyorsa otomatta ikinci bir
-REM kurulum var demektir. 8/8 bu kaydin uzerine yazar, ama eski klasor
+REM kurulum var demektir. 8/9 bu kaydin uzerine yazar, ama eski klasor
 REM yerinde durur; elle silinmesi gerektigini burada soyluyoruz.
 set "ESKIYOL="
 for /f "tokens=2,*" %%a in ('reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "IZBAN-Kiosk" 2^>nul ^| find /i "IZBAN-Kiosk"') do set "ESKIYOL=%%b"
@@ -336,7 +337,7 @@ if not "%ESKIAUS%"=="" (
 echo.
 
 echo  --------------------------------------------------------------
-echo   7/8  Termal yazici ve NFC portu
+echo   7/9  Termal yazici ve NFC portu
 echo  --------------------------------------------------------------
 if not exist "%KOPRU%" (
   echo        [HATA] Bridge\IzbanKiosk.LegacyHardwareBridge.exe yok.
@@ -348,7 +349,7 @@ if not exist "%KOPRU%" (
 
 echo        Kurulu yazicilar ve seri portlar taraniyor...
 echo.
-"%KOPRU%" --autoconfigure
+"%KOPRU%" --autoconfigure --interactive
 set ACRC=%errorlevel%
 echo.
 
@@ -360,8 +361,8 @@ if "%ACRC%"=="2" echo        [EKSIK] Yazici secilemedi. Yukaridaki satira bakin.
 if "%ACRC%"=="3" echo        [EKSIK] NFC portu secilemedi. Yukaridaki satira bakin.
 if "%ACRC%"=="4" echo        [EKSIK] Yazici ve NFC portu secilemedi.
 if "%ACRC%"=="5" echo        [HATA]  Otomatik yapilandirma hata verdi.
-echo               Uygulama acildiktan sonra SISTEM TANILA ekranindan
-echo               dogru kuyrugu elle secebilirsiniz.
+echo               Ayar dosyasini elle duzeltmeniz gerekir:
+echo               KioskHardware.config.json -^> ThermalPrinterName / NfcComPort
 set HATA=1
 set H7=1
 
@@ -387,7 +388,7 @@ if "%TESTRC%"=="0" (
 :baslangic
 echo.
 echo  --------------------------------------------------------------
-echo   8/8  Otomatik baslatma
+echo   8/9  Otomatik baslatma
 echo  --------------------------------------------------------------
 if not exist "%KIOSKEXE%" (
   echo        [HATA] IZBAN-Kiosk.exe bu klasorde yok, kayit yapilmadi.
@@ -410,6 +411,43 @@ if errorlevel 1 (
 )
 echo.
 
+echo  --------------------------------------------------------------
+echo   9/9  GitHub erisimi
+echo  --------------------------------------------------------------
+REM Sahadaki otomatlarda tanilama ekrani yok; bu, erisimin calistigini
+REM kimsenin ogrenebilecegi TEK an. Erisemeyen bir otomat yolcuya normal
+REM hizmet vermeye devam eder, bu yuzden hicbir sey dikkat cekmez - sadece
+REM bir daha hic guncelleme almaz. Ping yetmez: TLS 1.2, kok sertifika ve
+REM depo adresinin ucu birden ancak gercek istekle sinanir.
+if not exist "%KIOSKEXE%" (
+  echo        [HATA] IZBAN-Kiosk.exe yok, erisim test edilemedi.
+  set HATA=1
+  set H9=1
+  goto :sonuc
+)
+
+echo        GitHub'a baglaniliyor, bekleyin...
+echo.
+"%KIOSKEXE%" --check-update
+set NETTEST=%errorlevel%
+echo.
+
+if "%NETTEST%"=="0" (
+  echo        [TAMAM] Otomat guncellemelerine erisebiliyor.
+  goto :sonuc
+)
+if "%NETTEST%"=="2" (
+  echo        [HATA] GitHub'a ERISILEMIYOR.
+  echo               Bu otomat bir daha hic guncelleme ALAMAZ ve sahada
+  echo               bunu fark edeceginiz bir ekran yok.
+  echo               Otomatin ag baglantisini ve varsa proxy ayarlarini
+  echo               kontrol edin, sonra bu betigi tekrar calistirin.
+)
+if "%NETTEST%"=="3" echo        [HATA] Ayar dosyasi okunamadi.
+if "%NETTEST%"=="4" echo        [HATA] Otomatik guncelleme ayar dosyasinda KAPALI.
+set HATA=1
+set H9=1
+
 :sonuc
 echo  ==============================================================
 if "%HATA%"=="1" (
@@ -419,22 +457,21 @@ if "%HATA%"=="1" (
 )
 echo  ==============================================================
 echo.
-if "%H1%"=="1" echo    - 1/8  Service Pack 1 yok. .NET 4.8 kurulamaz.
-if "%H2%"=="1" echo    - 2/8  Yazma filtresi kapatilamadi. Hicbir sey kalici degil.
-if "%H4%"=="1" echo    - 4/8  Kok sertifika kurulamadi. Guncelleme indirilemez.
-if "%H5%"=="1" echo    - 5/8  .NET Framework 4.5+ yok. Guncelleme calismaz.
-if "%H7%"=="1" echo    - 7/8  Yazici veya NFC portu secilemedi.
-if "%H8%"=="1" echo    - 8/8  Otomatik baslatma kaydi yok. Acilista uygulama acilmaz.
+if "%H1%"=="1" echo    - 1/9  Service Pack 1 yok. .NET 4.8 kurulamaz.
+if "%H2%"=="1" echo    - 2/9  Yazma filtresi kapatilamadi. Hicbir sey kalici degil.
+if "%H4%"=="1" echo    - 4/9  Kok sertifika kurulamadi. Guncelleme indirilemez.
+if "%H5%"=="1" echo    - 5/9  .NET Framework 4.5+ yok. Guncelleme calismaz.
+if "%H7%"=="1" echo    - 7/9  Yazici veya NFC portu secilemedi.
+if "%H8%"=="1" echo    - 8/9  Otomatik baslatma kaydi yok. Acilista uygulama acilmaz.
+if "%H9%"=="1" echo    - 9/9  GitHub'a erisilemiyor. Otomat guncelleme ALAMAZ.
 if "%HATA%"=="1" echo.
 echo   SIRADAKI ADIMLAR
 echo.
 echo    1. Otomati YENIDEN BASLATIN.
 echo    2. Uygulama kendiliginden acilmali.
-echo    3. SISTEM TANILA -^> SIMDI KONTROL ET
-echo       "GitHub'a erisim: BASARILI" gormeniz gerekir.
-echo    4. Kart okutup fis basin ve KAGIDIN CIKTIGINI GOZLE
+echo    3. Kart okutup fis basin ve KAGIDIN CIKTIGINI GOZLE
 echo       DOGRULAYIN.
-if not "%WF%"=="" echo    5. Yazma filtresini ^(%WF%^) geri acin.
+if not "%WF%"=="" echo    4. Yazma filtresini ^(%WF%^) geri acin.
 echo.
 echo   Bunlar tamamsa otomata bir daha gelmeniz gerekmez;
 echo   uygulama kendini gunceller.

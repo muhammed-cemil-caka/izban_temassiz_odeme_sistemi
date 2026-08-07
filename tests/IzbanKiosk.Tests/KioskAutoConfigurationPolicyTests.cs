@@ -173,6 +173,81 @@ public class KioskAutoConfigurationPolicyTests
     }
 
     [Fact]
+    public void TiedPrintersAreHandedBackSoTheInstallerCanAsk()
+    {
+        // Field kiosks ship without the diagnostics screen, so a tie has to be
+        // settled at the console during installation. The candidates are the only
+        // way the installer can put the question.
+        var printers = new List<PrinterCandidate>
+        {
+            Printer("POS-58 Thermal", port: "USB001"),
+            Printer("POS-58 Thermal (Copy 1)", port: "USB004")
+        };
+
+        bool resolved = KioskAutoConfigurationPolicy.TryPickPrinter(
+            printers, string.Empty, out _, out _, out List<PrinterCandidate> choices);
+
+        Assert.False(resolved);
+        Assert.Equal(2, choices.Count);
+        Assert.Contains(choices, c => c.Name == "POS-58 Thermal");
+        Assert.Contains(choices, c => c.Name == "POS-58 Thermal (Copy 1)");
+    }
+
+    [Fact]
+    public void ADecidedPrinterOffersNoChoices()
+    {
+        var printers = new List<PrinterCandidate> { Printer("POS-58 Thermal", port: "USB001") };
+
+        bool resolved = KioskAutoConfigurationPolicy.TryPickPrinter(
+            printers, string.Empty, out _, out _, out List<PrinterCandidate> choices);
+
+        Assert.True(resolved);
+        Assert.Empty(choices);
+    }
+
+    [Fact]
+    public void NoPhysicalPrinterOffersNoChoicesToPickFrom()
+    {
+        // Nothing to ask about: the operator cannot pick a queue that is not there,
+        // so the installer must report a driver problem instead of prompting.
+        var printers = new List<PrinterCandidate>
+        {
+            Printer("Microsoft Print to PDF", port: "PORTPROMPT:")
+        };
+
+        bool resolved = KioskAutoConfigurationPolicy.TryPickPrinter(
+            printers, string.Empty, out _, out _, out List<PrinterCandidate> choices);
+
+        Assert.False(resolved);
+        Assert.Empty(choices);
+    }
+
+    [Fact]
+    public void TiedComPortsAreHandedBack()
+    {
+        bool resolved = KioskAutoConfigurationPolicy.TryPickComPort(
+            new List<string> { "COM3", "COM5" }, new List<PrinterCandidate>(), "COM4",
+            out _, out _, out List<string> choices);
+
+        Assert.False(resolved);
+        Assert.Equal(new[] { "COM3", "COM5" }, choices);
+    }
+
+    [Fact]
+    public void PortsBelongingToPrintersAreNeverOfferedToTheOperator()
+    {
+        var printers = new List<PrinterCandidate> { Printer("POS-58 Thermal", port: "COM3") };
+
+        bool resolved = KioskAutoConfigurationPolicy.TryPickComPort(
+            new List<string> { "COM3", "COM5", "COM7" }, printers, "COM4",
+            out _, out _, out List<string> choices);
+
+        Assert.False(resolved);
+        Assert.Equal(new[] { "COM5", "COM7" }, choices);
+        Assert.DoesNotContain("COM3", choices);
+    }
+
+    [Fact]
     public void ConfiguredComPortThatExistsIsKept()
     {
         bool resolved = KioskAutoConfigurationPolicy.TryPickComPort(

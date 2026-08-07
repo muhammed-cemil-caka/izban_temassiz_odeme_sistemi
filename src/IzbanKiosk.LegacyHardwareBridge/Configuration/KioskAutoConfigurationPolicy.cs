@@ -80,8 +80,23 @@ namespace IzbanKiosk.LegacyHardwareBridge.Configuration
         public static bool TryPickPrinter(
             List<PrinterCandidate> printers, string configured, out string picked, out string reason)
         {
+            List<PrinterCandidate> ignored;
+            return TryPickPrinter(printers, configured, out picked, out reason, out ignored);
+        }
+
+        /// <param name="choices">
+        /// The queues that were tied when no choice could be made, so a caller with a
+        /// console can put them to the operator. Empty whenever the result is decided:
+        /// field kiosks have no diagnostics screen, so an unresolved printer has to be
+        /// settled during installation or not at all.
+        /// </param>
+        public static bool TryPickPrinter(
+            List<PrinterCandidate> printers, string configured, out string picked, out string reason,
+            out List<PrinterCandidate> choices)
+        {
             picked = string.Empty;
             reason = string.Empty;
+            choices = new List<PrinterCandidate>();
 
             if (printers == null || printers.Count == 0)
             {
@@ -138,8 +153,8 @@ namespace IzbanKiosk.LegacyHardwareBridge.Configuration
                 return true;
             }
 
-            reason = "Birden fazla aday var, secim yapilmadi: " + Join(candidates) +
-                "  -> SISTEM TANILA ekranindan dogru kuyrugu secin.";
+            choices = candidates;
+            reason = "Birden fazla aday var, secim yapilmadi: " + Join(candidates);
             return false;
         }
 
@@ -154,8 +169,20 @@ namespace IzbanKiosk.LegacyHardwareBridge.Configuration
             List<string> serialPorts, List<PrinterCandidate> printers, string configured,
             out string picked, out string reason)
         {
+            List<string> ignored;
+            return TryPickComPort(serialPorts, printers, configured, out picked, out reason, out ignored);
+        }
+
+        /// <param name="choices">
+        /// The free ports that were tied, for the same reason as on the printer.
+        /// </param>
+        public static bool TryPickComPort(
+            List<string> serialPorts, List<PrinterCandidate> printers, string configured,
+            out string picked, out string reason, out List<string> choices)
+        {
             picked = string.Empty;
             reason = string.Empty;
+            choices = new List<string>();
 
             string wanted = (configured ?? string.Empty).Trim();
             if (serialPorts == null || serialPorts.Count == 0)
@@ -193,10 +220,10 @@ namespace IzbanKiosk.LegacyHardwareBridge.Configuration
                 return true;
             }
 
+            choices = free;
             reason = free.Count == 0
                 ? "Bos seri port yok; bulunan portlarin hepsi bir yazici kuyruguna bagli."
-                : "Birden fazla seri port var, secim yapilmadi: " + string.Join(" | ", free.ToArray()) +
-                  "  -> Dogru portu KioskHardware.config.json icindeki NfcComPort alanina yazin.";
+                : "Birden fazla seri port var, secim yapilmadi: " + string.Join(" | ", free.ToArray());
             return false;
         }
 

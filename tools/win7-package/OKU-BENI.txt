@@ -1,4 +1,4 @@
-IZBAN KIOSK R31 - WINDOWS 7 / EMBEDDED (x86)
+IZBAN KIOSK R32 - WINDOWS 7 / EMBEDDED (x86)
 ============================================
 
 "DONANIM SERVISI BASLATILAMADI" / SURUM UYUSMAZLIGI
@@ -21,7 +21,7 @@ IKI AYRI NEDENI VAR. Detay satirinda hangisi oldugu yazar.
      2. Kiosk klasorunu TAMAMEN SILIN.
      3. Yeni paketi BOS bir klasore cikarin.
      4. KURULUM.bat -> yonetici olarak.
-   Ayar dosyasi da silinir ama sorun degil: 7/8 yaziciyi ve NFC portunu
+   Ayar dosyasi da silinir ama sorun degil: 7/9 yaziciyi ve NFC portunu
    yeniden bulur, otomat numarasi setup.ini'den gelir.
 
 2) AYAKTA KALAN ESKI SERVIS
@@ -35,7 +35,7 @@ IKI AYRI NEDENI VAR. Detay satirinda hangisi oldugu yazar.
      - Guncelleyici, yeniden baslatmadan ONCE koprunun kendisini kapatiyor.
        Onceden kapatmiyordu ve her guncelleme eski kopruyu ayakta
        birakiyordu; surum degistiginde de bu hatayi veriyordu.
-     - KURULUM.bat 6/8 adiminda eski servisi ve eski IZBAN-Kiosk.exe'yi
+     - KURULUM.bat 6/9 adiminda eski servisi ve eski IZBAN-Kiosk.exe'yi
        kapatiyor; acilis kaydi baska bir klasoru gosteriyorsa uyariyor.
 
 HER IKI DURUMDA DA ESKI KLASORU SILIN. Betik acilis kaydini yeni klasore
@@ -52,35 +52,35 @@ YENI OTOMATA KURULUM - TEK ADIM
 3. Sonunda "Yeniden baslatilsin mi?" diye sorar; E deyin.
 
 Betik sirayla sunlari yapar ve her adimin sonucunu ekrana yazar:
-   1/8 Windows surumu ve Service Pack 1 kontrolu
+   1/9 Windows surumu ve Service Pack 1 kontrolu
        (.NET 4.8 SP1 olmadan KURULMAZ. windows6.1-KB976932-X86.exe
         dosyasini klasore koyarsaniz SP1'i de betik kurar.)
-   2/8 Yazma filtresi (EWF/FBWF/UWF) calisiyorsa KENDISI KAPATIR
+   2/9 Yazma filtresi (EWF/FBWF/UWF) calisiyorsa KENDISI KAPATIR
        (kapatmadan yapilan her sey ilk yeniden baslatmada geri alinir)
-   3/8 TLS 1.2'yi acar (Windows 7'de varsayilan kapalidir)
-   4/8 ISRG Root X1 kok sertifikasini kurar
+   3/9 TLS 1.2'yi acar (Windows 7'de varsayilan kapalidir)
+   4/9 ISRG Root X1 kok sertifikasini kurar
        (GitHub'in dosya sunucusu bunu kullanir; olmadan guncelleme inmez)
-   5/8 .NET 4.5+ yoksa 4.8 kurulumunu baslatir ve SONUCU DOGRULAR
-   6/8 Calisan AUSKiosk.exe'yi kapatir (NFC okuyucunun COM portunu birakir)
-   7/8 TERMAL YAZICIYI VE NFC PORTUNU KENDISI BULUP AYAR DOSYASINA YAZAR
-       (isterseniz ayni anda bir test fisi da basar)
-   8/8 Uygulamayi acilista otomatik baslatacak kaydi yazar
+   5/9 .NET 4.5+ yoksa 4.8 kurulumunu baslatir ve SONUCU DOGRULAR
+   6/9 Calisan AUSKiosk.exe'yi kapatir (NFC okuyucunun COM portunu birakir)
+   7/9 TERMAL YAZICIYI VE NFC PORTUNU KENDISI BULUP AYAR DOSYASINA YAZAR
+       (belirsizlik varsa konsoldan SIZE SORAR; test fisi da basabilir)
+   8/9 Uygulamayi acilista otomatik baslatacak kaydi yazar
+   9/9 GITHUB ERISIMINI GERCEKTEN SINAR ve sonucu yazar
 
 4. Otomat yeniden baslar, uygulama kendiliginden acilir.
-5. SISTEM TANILA -> SIMDI KONTROL ET -> "GitHub'a erisim: BASARILI"
-6. Kart okutup fis basin ve KAGIDIN CIKTIGINI GOZLE DOGRULAYIN.
+5. Kart okutup fis basin ve KAGIDIN CIKTIGINI GOZLE DOGRULAYIN.
 
 Bu adimlarin hepsi temizse o otomata bir daha gitmeniz gerekmez; uygulama
 kendini gunceller.
 
 BETIK IKI YERDE SIZI GERI CAGIRABILIR
-   Service Pack 1 kurdugunda (1/8) ve yazma filtresini kapattiginda (2/8)
+   Service Pack 1 kurdugunda (1/9) ve yazma filtresini kapattiginda (2/9)
    betik orada durur ve yeniden baslatmanizi ister. Ikisi de ancak yeniden
    baslatmadan sonra gecerli olur; devam etmek bos yere calismak olurdu.
    Yeniden baslatin ve KURULUM.bat'i TEKRAR calistirin. Ikinci calistirmada
    o adimlar [TAMAM] gecer ve kurulum sonuna kadar gider.
 
-YAZICI VE NFC PORTU NASIL BULUNUYOR (7/8)
+YAZICI VE NFC PORTU NASIL BULUNUYOR (7/9)
    Yazici: sanal kuyruklar (PDF/XPS/Fax/OneNote) ve kagit uretemeyecek
    portlar (FILE:, NUL:) elenir. Kalanlardan termal yazici isareti tasiyan
    (thermal/receipt/pos/58mm/80mm/Trentino/Epson TM/Bixolon/Star...) varsa
@@ -94,12 +94,14 @@ YAZICI VE NFC PORTU NASIL BULUNUYOR (7/8)
    ZATEN DOGRU AYARLANMISSA DOKUNULMAZ. Ayar dosyasindaki yazici gercekten
    kuruluysa oldugu gibi birakilir; her kurulumda yeniden tahmin edilmez.
 
-   BIRDEN FAZLA ADAY VARSA HICBIRI SECILMEZ. Betik adaylari ekrana yazar ve
-   [EKSIK] der. Yanlis kuyruga ayarlanmis bir otomat her fisi kabul eder,
-   basarili der ve kagit hic cikarmaz; bu yuzden tahmin etmektense
-   secmemek dogrudur. O durumda uygulama acildiktan sonra
-   SISTEM TANILA -> listeden yaziciyi secin -> "BU KUYRUGU KULLAN VE
-   YENIDEN BASLAT".
+   BIRDEN FAZLA ADAY VARSA TAHMIN EDILMEZ, SIZE SORULUR. Betik adaylari
+   numaralandirip konsoldan sorar; 0 derseniz secim yapilmaz. Yanlis kuyruga
+   ayarlanmis bir otomat her fisi kabul eder, basarili der ve kagit hic
+   cikarmaz - bu yuzden tahmin etmek yasak.
+
+   SAHADAKI OTOMATLARDA TANILAMA EKRANI OLMAYACAGI ICIN bu soru kurulum
+   sirasinda cevaplanmak zorunda. 0 derseniz ayar dosyasini elle
+   duzeltmeniz gerekir: KioskHardware.config.json -> ThermalPrinterName
 
 BETIK "EKSIK ADIM VAR" DERSE
    Otomattan AYRILMADAN once giderin. Ekrandaki [HATA] / [EKSIK] / [UYARI]
@@ -117,7 +119,7 @@ YAZMA FILTRESI HAKKINDA (Windows Embedded)
    kaydi ilk yeniden baslatmada silinir; otomat hic kurulmamis gibi acilir
    ve bunu siz gidene kadar kimse fark etmez.
 
-   Betik bunu 2/8 adiminda tespit eder ve filtreyi KENDISI kapatir
+   Betik bunu 2/9 adiminda tespit eder ve filtreyi KENDISI kapatir
    (ewfmgr / fbwfmgr / uwfmgr). Sonra durur ve yeniden baslatmanizi ister.
    Yeniden baslatip betigi tekrar calistirin.
 
@@ -156,6 +158,22 @@ KORUNAN DOSYALAR
    Guncelleme sirasinda KioskHardware.config.json ve Journal klasoru korunur;
    yazici adi ve otomat kayitlari kaybolmaz. Onceki kurulumun yedegi gecici
    klasorde "previous" adiyla saklanir.
+
+SAHADA TANILAMA EKRANI YOKSA
+   Kurulum 9/9 adiminda GitHub erisimini gercekten sinar - ping degil, gercek
+   istek: TLS 1.2, kok sertifika ve depo adresinin ucu birden tek seferde
+   dogrulanir. Ayni sinami istediginiz zaman elle de yapabilirsiniz:
+
+      IZBAN-Kiosk.exe --check-update
+
+   Pencere acmaz, sonucu konsola yazar. Cikis kodlari:
+      0 = erisim var    2 = erisilemiyor    3 = ayar dosyasi bozuk
+      4 = otomatik guncelleme ayar dosyasinda kapali
+
+   BU ADIMI ATLAMAYIN. Erisemeyen bir otomat yolcuya normal hizmet vermeye
+   devam eder; hicbir sey dikkat cekmez, sadece bir daha hic guncelleme
+   almaz. Tanilama ekrani olmayan bir otomatta bunu fark etmenin baska yolu
+   yoktur.
 
 KURULUMDAN SONRA GUNCELLEMEYI TEST EDIN
    Ana ekran -> SISTEM TANILA -> "OTOMATIK GUNCELLEME" bolumu
@@ -339,7 +357,7 @@ ADIM 1 -> 1-Yazicilari-Listele.bat
 
 ADIM 2 -> Yazici adini ayarlayin
 
-  NORMALDE GEREKMEZ: KURULUM.bat 7/8 adiminda bunu zaten yapiyor. Asagidakiler
+  NORMALDE GEREKMEZ: KURULUM.bat 7/9 adiminda bunu zaten yapiyor. Asagidakiler
   betik "birden fazla aday var" deyip secim yapmadiginda gecerlidir.
 
   Betigin yaptigini elle tekrarlamak icin:

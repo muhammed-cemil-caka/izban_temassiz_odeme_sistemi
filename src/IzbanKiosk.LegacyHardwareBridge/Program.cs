@@ -27,6 +27,7 @@ namespace IzbanKiosk.LegacyHardwareBridge
             bool cliListPrinters = false;
             bool cliPrinterDiagnose = false;
             bool cliAutoConfigure = false;
+            bool cliInteractive = false;
             bool rejectedScaleOverride = false;
             bool comPortFromCommandLine = false;
             bool printerFromCommandLine = false;
@@ -55,6 +56,10 @@ namespace IzbanKiosk.LegacyHardwareBridge
                 else if (string.Equals(args[i], "--autoconfigure", StringComparison.OrdinalIgnoreCase))
                 {
                     cliAutoConfigure = true;
+                }
+                else if (string.Equals(args[i], "--interactive", StringComparison.OrdinalIgnoreCase))
+                {
+                    cliInteractive = true;
                 }
                 else if (string.Equals(args[i], "--verify-scale", StringComparison.OrdinalIgnoreCase))
                 {
@@ -95,7 +100,7 @@ namespace IzbanKiosk.LegacyHardwareBridge
             // hardware is present - it never opens the reader or the printer.
             if (cliAutoConfigure)
             {
-                return RunAutoConfigureCommand();
+                return RunAutoConfigureCommand(cliInteractive);
             }
 
             // 2. Fill in whatever the caller did not pass from the deployment-owned
@@ -422,12 +427,12 @@ namespace IzbanKiosk.LegacyHardwareBridge
         /// The exit code tells the installer script which half is unresolved; the
         /// script prints that back to the operator before they leave the machine.
         /// </summary>
-        private static int RunAutoConfigureCommand()
+        private static int RunAutoConfigureCommand(bool interactive)
         {
             KioskAutoConfigurator.AutoConfigureOutcome outcome;
             try
             {
-                outcome = KioskAutoConfigurator.Run(true);
+                outcome = KioskAutoConfigurator.Run(true, interactive);
             }
             catch (Exception ex)
             {
