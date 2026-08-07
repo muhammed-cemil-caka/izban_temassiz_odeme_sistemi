@@ -198,6 +198,81 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
         }
 
         /// <summary>
+        /// Turns on the queue's bidirectional support so Windows actually asks the
+        /// device how it is.
+        ///
+        /// With this off every status flag reads 0 no matter what the printer says.
+        /// The Alsancak kiosk sat for days reporting a healthy queue while the device
+        /// was signalling PRINTER_STATUS_DOOR_OPEN; nobody could see it because nobody
+        /// was asking. It is a per-queue checkbox buried in printer properties, so it
+        /// is set here rather than left to whoever installs the next kiosk.
+        /// </summary>
+        public static bool TryEnableBidirectionalSupport(string printerName, out bool alreadyEnabled, out string error)
+        {
+            alreadyEnabled = false;
+            error = string.Empty;
+
+            var defaults = new PRINTER_DEFAULTS { DesiredAccess = PrinterAllAccess };
+            IntPtr printerHandle;
+            if (!OpenPrinterWithDefaults(printerName, out printerHandle, ref defaults))
+            {
+                error = "Queue '" + printerName + "' could not be opened for administration. Win32 error=" +
+                    Marshal.GetLastWin32Error() + ".";
+                return false;
+            }
+
+            try
+            {
+                int bytesNeeded;
+                GetPrinter(printerHandle, 2, IntPtr.Zero, 0, out bytesNeeded);
+                if (bytesNeeded <= 0)
+                {
+                    error = "Queue settings could not be read. Win32 error=" + Marshal.GetLastWin32Error() + ".";
+                    return false;
+                }
+
+                IntPtr buffer = Marshal.AllocHGlobal(bytesNeeded);
+                try
+                {
+                    if (!GetPrinter(printerHandle, 2, buffer, bytesNeeded, out bytesNeeded))
+                    {
+                        error = "Queue settings could not be read. Win32 error=" + Marshal.GetLastWin32Error() + ".";
+                        return false;
+                    }
+
+                    // The whole PRINTER_INFO_2 has to go back to SetPrinter, pointers and
+                    // all, so the attribute is patched inside the buffer the spooler
+                    // filled rather than rebuilt from a managed copy.
+                    int attributesOffset = (int)Marshal.OffsetOf(typeof(PRINTER_INFO_2), "Attributes");
+                    var attributes = (uint)Marshal.ReadInt32(buffer, attributesOffset);
+
+                    if ((attributes & PrinterAttributeEnableBidi) != 0)
+                    {
+                        alreadyEnabled = true;
+                        return true;
+                    }
+
+                    Marshal.WriteInt32(buffer, attributesOffset, (int)(attributes | PrinterAttributeEnableBidi));
+                    if (!SetPrinter(printerHandle, 2, buffer, 0))
+                    {
+                        error = "Windows refused to enable bidirectional support on '" + printerName +
+                            "'. Win32 error=" + Marshal.GetLastWin32Error() + ".";
+                        return false;
+                    }
+                    return true;
+                }
+                finally
+                {
+                    Marshal.FreeHGlobal(buffer);
+                }
+            }
+            finally
+            {
+                ClosePrinter(printerHandle);
+            }
+        }
+
+        /// <summary>
         /// Matches the deployment-configured printer name against the queues that
         /// actually exist. A configured name that is a driver name, or that carries
         /// a typo, is the most common reason a kiosk silently stops producing paper,
@@ -526,6 +601,7 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
         private const uint PrinterEnumConnections = 0x00000004;
 
         private const uint PrinterControlPurge = 3;
+        private const uint PrinterAttributeEnableBidi = 0x00000800;
         private const uint PrinterAttributeWorkOffline = 0x00000400;
         private const uint PrinterAllAccess = 0x000F000C;
 

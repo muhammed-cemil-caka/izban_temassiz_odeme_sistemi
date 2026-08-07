@@ -108,11 +108,9 @@ echo.
 echo   SIRADAKI ADIMLAR
 echo.
 echo    1. Otomati YENIDEN BASLATIN.
-echo    2. Termal yazici kuyrugunda "Enable bidirectional support"
-echo       kutusunu isaretleyin ^(Yazici ozellikleri -^> Ports^).
-echo    3. 1-Yazicilari-Listele.bat ile yazici adini ogrenip
+echo    2. 1-Yazicilari-Listele.bat ile yazici adini ogrenip
 echo       KioskHardware.config.json icine yazin.
-echo    4. IZBAN-Kiosk.exe -^> SISTEM TANILA -^> SIMDI KONTROL ET
+echo    3. IZBAN-Kiosk.exe -^> SISTEM TANILA -^> SIMDI KONTROL ET
 echo       "GitHub'a erisim: BASARILI" gormeniz gerekir.
 echo.
 echo   Bundan sonra uygulama kendini gunceller; bu otomata bir daha

@@ -61,6 +61,22 @@ namespace IzbanKiosk.LegacyHardwareBridge.Printer
                     return false;
                 }
 
+                // Do this before the first health check: without it every status flag
+                // reads 0 and a faulty printer looks perfectly healthy.
+                bool alreadyBidirectional;
+                string bidiError;
+                if (!WindowsPrinterEnvironment.TryEnableBidirectionalSupport(
+                        _resolvedPrinterName, out alreadyBidirectional, out bidiError))
+                {
+                    // Not fatal: the queue still prints, it just cannot report faults.
+                    Console.WriteLine("[WARN] Bidirectional support could not be enabled: " + bidiError);
+                }
+                else if (!alreadyBidirectional)
+                {
+                    Console.WriteLine("[INFO] Bidirectional support enabled on '" + _resolvedPrinterName +
+                        "' so device faults become visible.");
+                }
+
                 PrinterHealthResponse health = HealthCheckCore();
                 _isInitialized = health.IsReady;
                 if (!_isInitialized)

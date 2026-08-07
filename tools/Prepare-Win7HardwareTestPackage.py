@@ -180,6 +180,13 @@ def main():
                         default=os.path.join(tempfile.gettempdir(), "izban-win7-package"),
                         help="Staging directory for the package layout. Defaults outside the "
                              "repository so build output never clutters the source tree.")
+    parser.add_argument("--dotnet-installer", default="",
+                        help="Path to ndp48-x86-x64-allos-enu.exe. When given, a second "
+                             "'-KURULUM' archive is produced with the installer bundled, for "
+                             "first-time deployment from a USB stick. It is deliberately kept "
+                             "out of the release archive: at ~116 MB it would be re-downloaded "
+                             "by every kiosk on every update, to install something only ever "
+                             "needed once.")
     parser.add_argument("--zip-path", default="",
                         help="Destination .zip. Defaults to IZBAN-Kiosk-v<version>.zip beside "
                              "the staging directory.")
@@ -209,9 +216,26 @@ def main():
 
     archive = shutil.make_archive(zip_base, "zip", output_dir)
 
-    checksum = sha256(archive)
+    checksum = sha256(archive)  # release archive: app only, no .NET installer
     with open(archive + ".sha256", "w", encoding="ascii") as handle:
         handle.write(checksum + "  " + os.path.basename(archive) + "\n")
+
+    if args.dotnet_installer:
+        installer = os.path.abspath(os.path.expanduser(args.dotnet_installer))
+        if not os.path.isfile(installer):
+            raise SystemExit("The .NET installer was not found: " + installer)
+        if pe_machine(installer) not in (0x014C, 0x8664):
+            raise SystemExit("The .NET installer is not a Windows executable: " + installer)
+
+        shutil.copy2(installer, os.path.join(output_dir, "ndp48-x86-x64-allos-enu.exe"))
+        write_package_manifest(output_dir)
+        setup_base = zip_base + "-KURULUM"
+        setup_archive = shutil.make_archive(setup_base, "zip", output_dir)
+        with open(setup_archive + ".sha256", "w", encoding="ascii") as handle:
+            handle.write(sha256(setup_archive) + "  " + os.path.basename(setup_archive) + "\n")
+        print("Setup   : %s (%d bytes)" % (setup_archive, os.path.getsize(setup_archive)))
+        print("          USB kurulum arsivi - .NET 4.8 dahil, Releases'e YUKLENMEZ")
+        print("")
 
     print("Package : " + output_dir)
     print("Archive : %s (%d bytes)" % (archive, os.path.getsize(archive)))
