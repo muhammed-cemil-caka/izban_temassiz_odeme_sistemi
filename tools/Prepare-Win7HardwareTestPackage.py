@@ -84,12 +84,23 @@ def copy_runtime(source_dir, names, dest_dir):
 
 
 def copy_operator_helpers(dest_dir):
-    """Copies the .bat entry points and OKU-BENI.txt, normalised to CRLF."""
+    """Copies the operator entry points, normalising text files to CRLF.
+
+    Certificates are copied byte for byte: rewriting line endings inside a DER
+    file would corrupt it, and the kiosk would refuse the very certificate that
+    lets it reach GitHub.
+    """
     helper_dir = os.path.join(REPOSITORY_ROOT, "tools", "win7-package")
+    binary_suffixes = (".crt", ".cer", ".der", ".p7b")
     for name in sorted(os.listdir(helper_dir)):
-        with open(os.path.join(helper_dir, name), "r", encoding="utf-8", newline="") as handle:
+        source = os.path.join(helper_dir, name)
+        target = os.path.join(dest_dir, name)
+        if name.lower().endswith(binary_suffixes):
+            shutil.copy2(source, target)
+            continue
+        with open(source, "r", encoding="utf-8", newline="") as handle:
             text = handle.read().replace("\r\n", "\n").replace("\n", "\r\n")
-        with open(os.path.join(dest_dir, name), "w", encoding="utf-8", newline="") as handle:
+        with open(target, "w", encoding="utf-8", newline="") as handle:
             handle.write(text)
 
 

@@ -1,5 +1,32 @@
-IZBAN KIOSK R26 - WINDOWS 7 / EMBEDDED (x86)
+IZBAN KIOSK R28 - WINDOWS 7 / EMBEDDED (x86)
 ============================================
+
+YENI OTOMATA KURULUM - TEK ADIM
+-------------------------------
+1. Bu klasoru otomata kopyalayin (ornegin C:\IZBAN-Kiosk).
+2. Ayni klasore ndp48-x86-x64-allos-enu.exe dosyasini koyun
+   (.NET Framework 4.8 OFFLINE installer, ~110 MB).
+3. KURULUM.bat -^> sag tik -^> YONETICI OLARAK CALISTIR.
+
+Betik sirayla sunlari yapar:
+   - Windows surumunu raporlar
+   - TLS 1.2'yi acar (Windows 7'de varsayilan kapalidir)
+   - ISRG Root X1 kok sertifikasini kurar
+     (GitHub'in dosya sunucusu bunu kullanir; olmadan guncelleme inmez)
+   - .NET 4.5+ yoksa 4.8 kurulumunu baslatir
+
+4. Otomati yeniden baslatin.
+5. Termal yazici kuyrugunda "Enable bidirectional support" isaretleyin.
+6. 1-Yazicilari-Listele.bat ile yazici adini ogrenip config'e yazin.
+7. SISTEM TANILA -^> SIMDI KONTROL ET -^> "GitHub'a erisim: BASARILI"
+
+Bundan sonra o otomata bir daha gitmeniz gerekmez; uygulama kendini gunceller.
+
+NEDEN BU ADIMLAR GEREKLI
+   Windows 7 Embedded imajinda .NET 4.0 var ve TLS 1.2'yi kullanamiyor;
+   GitHub ise baska protokol kabul etmiyor. Ayrica imajin kok sertifika
+   listesi eski oldugu icin GitHub'in dosya sunucusu dogrulanamiyor.
+   Bu ucunu de KURULUM.bat hallediyor.
 
 OTOMATIK GUNCELLEME (GITHUB RELEASES)
 -------------------------------------
