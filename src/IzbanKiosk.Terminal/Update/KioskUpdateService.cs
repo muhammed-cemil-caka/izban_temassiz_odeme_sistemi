@@ -141,7 +141,7 @@ namespace IzbanKiosk.Terminal.Update
 
             if (_settings.UpdateRepositoryOwner.Length == 0 || _settings.UpdateRepositoryName.Length == 0)
             {
-                report.Message = "No update repository is configured.";
+                report.Message = "Güncelleme deposu tanımlı değil.";
                 return Store(report, null);
             }
 
@@ -153,22 +153,23 @@ namespace IzbanKiosk.Terminal.Update
 
                 if (release == null)
                 {
-                    report.Message = "The latest release has no .zip asset.";
+                    report.Message = "Yayındaki sürümde .zip dosyası yok.";
                     return Store(report, null);
                 }
 
                 report.LatestTag = release.Tag;
                 if (release.Version == null)
                 {
-                    report.Message = "Release tag '" + release.Tag + "' carries no readable version, so it cannot be installed.";
+                    report.Message = "'" + release.Tag + "' etiketinden sürüm okunamadı, bu yüzden kurulamaz.";
                     return Store(report, null);
                 }
 
                 report.LatestVersion = release.Version.ToString();
                 report.UpdateAvailable = release.Version > CurrentVersion();
                 report.Message = report.UpdateAvailable
-                    ? "A newer release is available."
-                    : "This kiosk is running the latest release.";
+                    ? "Yeni bir sürüm yayınlanmış. Kurmak için ŞİMDİ GÜNCELLE düğmesini kullanabilir " +
+                      "veya gece 04:00'teki otomatik kurulumu bekleyebilirsiniz."
+                    : "Bu otomat en güncel sürümü çalıştırıyor.";
                 return Store(report, report.UpdateAvailable ? release : null);
             }
             catch (Exception ex)
@@ -220,7 +221,7 @@ namespace IzbanKiosk.Terminal.Update
 
             if (release == null)
             {
-                throw new InvalidOperationException("No pending release. Run a check first.");
+                throw new InvalidOperationException("Bekleyen bir sürüm yok. Önce kontrol çalıştırın.");
             }
             Apply(release);
         }
