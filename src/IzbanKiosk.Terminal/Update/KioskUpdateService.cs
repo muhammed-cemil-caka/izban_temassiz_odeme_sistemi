@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Text;
@@ -22,6 +23,13 @@ namespace IzbanKiosk.Terminal.Update
         internal string LatestTag = string.Empty;
         internal string LatestVersion = string.Empty;
         internal bool UpdateAvailable;
+
+        /// <summary>
+        /// A release was installed but the kiosk came back on the old version, so the
+        /// install root is not actually being written. Distinct from "up to date":
+        /// this kiosk is stuck and needs someone, not another download.
+        /// </summary>
+        internal bool InstallStalled;
         internal string Message = string.Empty;
     }
 
@@ -40,6 +48,8 @@ namespace IzbanKiosk.Terminal.Update
     internal sealed class KioskUpdateService
     {
         private const string AppliedTagFileName = "applied-update.txt";
+        internal const string InstallFailureFileName = "update-failed.log";
+        private const string InstallLogFileName = "apply-update.log";
         private const int IdleRetryIntervalMs = 30000;
         private const int MaxDeferralHours = 20;
 
@@ -177,6 +187,23 @@ namespace IzbanKiosk.Terminal.Update
 
                 report.LatestVersion = release.Version.ToString();
                 report.UpdateAvailable = release.Version > CurrentVersion();
+
+                // The same release was installed already and the running version did
+                // not move, so installing it again would change nothing. Reinstalling
+                // on every check is what produced an update that appeared to succeed,
+                // restarted onto the old build, and offered itself again forever.
+                if (report.UpdateAvailable &&
+                    string.Equals(ReadAppliedTag(), release.Tag, StringComparison.OrdinalIgnoreCase))
+                {
+                    report.UpdateAvailable = false;
+                    report.InstallStalled = true;
+                    report.Message =
+                        "'" + release.Tag + "' KURULDU AMA SÜRÜM DEĞİŞMEDİ. Otomat hâlâ " +
+                        report.CurrentVersion + " çalışıyor, yani dosyalar kurulum klasörüne " +
+                        "yazılamıyor. Tekrar kurmak bir işe yaramaz.\n\n" + DescribeInstallFailure();
+                    return Store(report, null);
+                }
+
                 report.Message = report.UpdateAvailable
                     ? "Yeni bir sürüm yayınlanmış. Kurmak için ŞİMDİ GÜNCELLE düğmesini kullanabilir " +
                       "veya gece 04:00'teki otomatik kurulumu bekleyebilirsiniz."
@@ -378,6 +405,37 @@ namespace IzbanKiosk.Terminal.Update
             }
         }
 
+        /// <summary>
+        /// Quotes what the installer script actually reported, when it managed to
+        /// leave a copy behind. A technician standing at a stuck kiosk otherwise has
+        /// no way to tell "access denied" from "path does not exist".
+        /// </summary>
+        private static string DescribeInstallFailure()
+        {
+            string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, InstallFailureFileName);
+            try
+            {
+                if (!File.Exists(path))
+                {
+                    return "Kurulum klasörünün yazma iznini ve dolu olup olmadığını kontrol edin: " +
+                        AppDomain.CurrentDomain.BaseDirectory;
+                }
+
+                string[] lines = File.ReadAllLines(path);
+                int from = Math.Max(0, lines.Length - 6);
+                var tail = new StringBuilder("Kurulum günlüğünün sonu (" + path + "):");
+                for (int i = from; i < lines.Length; i++)
+                {
+                    tail.Append("\n  " + lines[i]);
+                }
+                return tail.ToString();
+            }
+            catch (Exception ex)
+            {
+                return "Kurulum günlüğü okunamadı: " + ex.Message;
+            }
+        }
+
         private void WriteAppliedTag(string tag)
         {
             try
@@ -404,6 +462,8 @@ namespace IzbanKiosk.Terminal.Update
             string scriptPath = Path.Combine(staging, "apply-update.cmd");
             string backup = Path.Combine(staging, "previous");
 
+            string log = Path.Combine(staging, InstallLogFileName);
+
             var script = new StringBuilder();
             script.AppendLine("@echo off");
             script.AppendLine("setlocal");
@@ -414,15 +474,42 @@ namespace IzbanKiosk.Terminal.Update
             script.AppendLine("  ping -n 2 127.0.0.1 >nul");
             script.AppendLine("  goto waitloop");
             script.AppendLine(")");
-            script.AppendLine("xcopy \"" + installRoot + "\\*\" \"" + backup + "\\\" /E /I /Y >nul");
-            script.AppendLine("copy /Y \"" + installRoot + "\\" + KioskHardwareSettings.FileName + "\" \"" + staging + "\\settings.bak\" >nul 2>&1");
-            script.AppendLine("xcopy \"" + payload + "\\*\" \"" + installRoot + "\\\" /E /I /Y >nul");
-            script.AppendLine("copy /Y \"" + staging + "\\settings.bak\" \"" + installRoot + "\\" + KioskHardwareSettings.FileName + "\" >nul 2>&1");
+            script.AppendLine("xcopy \"" + installRoot + "\\*\" \"" + backup + "\\\" /E /I /Y >\"" + log + "\" 2>&1");
+            script.AppendLine("copy /Y \"" + installRoot + "\\" + KioskHardwareSettings.FileName + "\" \"" + staging + "\\settings.bak\" >>\"" + log + "\" 2>&1");
+            script.AppendLine("xcopy \"" + payload + "\\*\" \"" + installRoot + "\\\" /E /I /Y >>\"" + log + "\" 2>&1");
+
+            // The copy is the whole update. Letting it fail quietly is what turned a
+            // broken install into an endless nightly download: the kiosk restarted on
+            // the old build, saw the new release again, and repeated forever with
+            // nothing on screen to say why.
+            script.AppendLine("if errorlevel 1 (");
+            script.AppendLine("  echo KOPYALAMA BASARISIZ >>\"" + log + "\"");
+            script.AppendLine("  copy /Y \"" + log + "\" \"" + installRoot + "\\" + InstallFailureFileName + "\" >nul 2>&1");
+            script.AppendLine(")");
+
+            script.AppendLine("copy /Y \"" + staging + "\\settings.bak\" \"" + installRoot + "\\" + KioskHardwareSettings.FileName + "\" >>\"" + log + "\" 2>&1");
             script.AppendLine("start \"\" \"" + installRoot + "\\" + exeName + "\"");
             script.AppendLine("endlocal");
 
-            File.WriteAllText(scriptPath, script.ToString(), Encoding.Default);
+            // cmd.exe reads a .cmd in the console's OEM code page, not the ANSI one
+            // Encoding.Default gives. On a Turkish Windows those are 857 and 1254, so
+            // any non-ASCII character in the install path - "Masaüstü" is the one that
+            // actually happens - arrived mangled, xcopy wrote to a path that did not
+            // exist, and the old build was relaunched as though nothing was wrong.
+            File.WriteAllText(scriptPath, script.ToString(), OemEncoding());
             return scriptPath;
+        }
+
+        private static Encoding OemEncoding()
+        {
+            try
+            {
+                return Encoding.GetEncoding(CultureInfo.CurrentCulture.TextInfo.OEMCodePage);
+            }
+            catch (Exception)
+            {
+                return Encoding.Default;
+            }
         }
     }
 }

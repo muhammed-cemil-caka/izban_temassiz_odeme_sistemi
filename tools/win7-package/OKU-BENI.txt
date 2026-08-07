@@ -1,4 +1,4 @@
-IZBAN KIOSK R32 - WINDOWS 7 / EMBEDDED (x86)
+IZBAN KIOSK R33 - WINDOWS 7 / EMBEDDED (x86)
 ============================================
 
 "DONANIM SERVISI BASLATILAMADI" / SURUM UYUSMAZLIGI
@@ -41,10 +41,36 @@ IKI AYRI NEDENI VAR. Detay satirinda hangisi oldugu yazar.
 HER IKI DURUMDA DA ESKI KLASORU SILIN. Betik acilis kaydini yeni klasore
 cevirir ama eski klasoru silmez.
 
+GUNCELLEME DONGUSU: "KURDUM AMA YINE ESKI SURUM ACILIYOR"
+---------------------------------------------------------
+Belirti: SIMDI GUNCELLE denir, kurulum sorunsuz gorunur, otomat yeniden acilir
+ve YINE ESKI SURUMDEDIR. Kontrol yine yeni surumu gosterir, bu boyle surer.
+
+Nedeni: guncellemeyi uygulayan gecici .cmd dosyasi ANSI kod sayfasiyla
+yaziliyordu, oysa cmd.exe .cmd dosyalarini OEM kod sayfasiyla okur. Turkce
+Windows'ta bunlar 1254 ve 857 - farkli. Kurulum yolunda Turkce karakter varsa
+yol bozuluyor, xcopy var olmayan bir hedefe yaziyor ve betik hicbir sey
+olmamis gibi ESKI exe'yi baslatiyor.
+
+Pratikte bunu tetikleyen sey PAKETI MASAUSTUNE CIKARMAK: Turkce Windows'ta
+masaustu klasorunun adi "Masaustu" degil, "Masaüstü" - icinde u harfi var.
+
+R33'ten itibaren:
+  - Betik OEM kod sayfasiyla yaziliyor, yol bozulmuyor.
+  - xcopy ciktisi artik yutulmuyor; basarisiz olursa kurulum klasorune
+    update-failed.log dusuyor.
+  - Uygulama, bir surumu kurup da surumun degismedigini gorurse ARTIK
+    TEKRAR KURMUYOR. "Kuruldu ama surum degismedi" deyip gunlugun son
+    satirlarini ekrana yaziyor. Sonsuz indirme dongusu bitti.
+
+BU YUZDEN PAKETI C:\IZBAN-Kiosk GIBI SADE, TURKCE KARAKTERSIZ BIR YOLA
+CIKARIN. Masaustu veya "Belgelerim" altina kurmayin.
+
 YENI OTOMATA KURULUM - TEK ADIM
 -------------------------------
-1. Bu klasoru otomata kopyalayin (ornegin C:\IZBAN-Kiosk).
-   Klasoru sonradan TASIMAYIN: otomatik baslatma kaydi bu yolu gosterir.
+1. Bu klasoru otomata kopyalayin - C:\IZBAN-Kiosk ONERILIR.
+   Yolda TURKCE KARAKTER OLMASIN ve klasoru sonradan TASIMAYIN:
+   otomatik baslatma kaydi bu yolu gosterir.
 2. KURULUM.bat -^> sag tik -^> YONETICI OLARAK CALISTIR.
    (-KURULUM.zip kullaniyorsaniz .NET 4.8 kurulumu zaten icinde. Duz
     yayin zip'ini kullaniyorsaniz ve otomatta .NET 4.5+ yoksa,
