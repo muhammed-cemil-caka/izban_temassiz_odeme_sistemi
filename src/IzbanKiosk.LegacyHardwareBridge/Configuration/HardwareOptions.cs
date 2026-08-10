@@ -26,6 +26,10 @@ namespace IzbanKiosk.LegacyHardwareBridge.Configuration
         // one the deployed AUSKiosk passes to Topup; the top-up flow proves the choice
         // by reading the balance back after the write.
         public string CardWriteAmountUnit { get; set; } = string.Empty;
+        // Continues the legacy kiosk's transaction numbering instead of restarting it.
+        // The deployed AUSKiosk was last seen around 810749; set this above whatever
+        // the back office has already recorded so no number is ever reused.
+        public int TopupReferenceSeed { get; set; } = 0;
 
         // Loaded only from IZBAN_HMAC_SECRET at process startup. Never provide a source-code fallback.
         public string HmacKeyBase64 { get; set; } = string.Empty;

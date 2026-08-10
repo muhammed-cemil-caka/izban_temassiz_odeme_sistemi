@@ -1,5 +1,6 @@
 using System;
-using System.Threading;
+using System.Globalization;
+using System.IO;
 using IzbanKiosk.LegacyHardware.Contracts;
 using IzbanKiosk.LegacyHardwareBridge.Configuration;
 using IzbanKiosk.LegacyHardwareBridge.Nfc;
@@ -21,15 +22,61 @@ namespace IzbanKiosk.LegacyHardwareBridge.Card
     /// </summary>
     public sealed class LegacyCardLoader : ICardLoader
     {
+        private const string ReferenceFileName = "topup-reference.txt";
+
         private readonly ILegacyNfcDevice _device;
         private readonly HardwareOptions _options;
+        private readonly object _referenceLock = new object();
         private string _lastError = string.Empty;
-        private int _referenceCounter;
 
         public LegacyCardLoader(ILegacyNfcDevice device, HardwareOptions options)
         {
             _device = device;
             _options = options;
+        }
+
+        /// <summary>
+        /// The transaction number handed to the vendor library, kept on disk.
+        ///
+        /// The deployed AUSKiosk logs these as a continuing series - "TranNo: 810748",
+        /// then 810749 - and they are what a day's loads are reconciled by. An
+        /// in-memory counter restarts at one every time the kiosk reboots, so the same
+        /// number would be reused for different money and two real transactions would
+        /// become indistinguishable in the settlement.
+        /// </summary>
+        private int NextReferenceNo()
+        {
+            lock (_referenceLock)
+            {
+                string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ReferenceFileName);
+                int current = 0;
+                try
+                {
+                    if (File.Exists(path))
+                    {
+                        int.TryParse(File.ReadAllText(path).Trim(), out current);
+                    }
+                }
+                catch (Exception)
+                {
+                    current = 0;
+                }
+
+                if (current < _options.TopupReferenceSeed)
+                {
+                    // Lets the deployment continue the legacy kiosk's series rather
+                    // than restarting a numbering the back office already knows.
+                    current = _options.TopupReferenceSeed;
+                }
+
+                int next = current + 1;
+
+                // Written before the card is touched. A reference that was possibly
+                // used must never be handed out again, so losing one to a crash is
+                // the safe direction to fail.
+                File.WriteAllText(path, next.ToString(CultureInfo.InvariantCulture));
+                return next;
+            }
         }
 
         public bool IsAuthorised
@@ -109,7 +156,7 @@ namespace IzbanKiosk.LegacyHardwareBridge.Card
                 return refused;
             }
 
-            int referenceNo = Interlocked.Increment(ref _referenceCounter);
+            int referenceNo = NextReferenceNo();
             string error;
             bool ok = _device.TryTopup(
                 _options.TerminalNo, _options.TerminalUid, _options.CompanyId,
