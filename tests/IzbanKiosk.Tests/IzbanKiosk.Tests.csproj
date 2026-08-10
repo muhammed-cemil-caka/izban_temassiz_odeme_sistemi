@@ -37,6 +37,12 @@
              Link="Compatibility\EmvRdr35NativeMethods.cs" />
     <Compile Include="..\..\src\IzbanKiosk.LegacyHardwareBridge\Printer\LegacyPrinterHealthPolicy.cs"
              Link="Compatibility\LegacyPrinterHealthPolicy.cs" />
+    <Compile Include="..\..\src\IzbanKiosk.LegacyHardwareBridge\Card\LegacyCardLoader.cs"
+             Link="Compatibility\LegacyCardLoader.cs" />
+    <Compile Include="..\..\src\IzbanKiosk.LegacyHardwareBridge\Configuration\HardwareOptions.cs"
+             Link="Compatibility\HardwareOptions.cs" />
+    <Compile Include="..\..\src\IzbanKiosk.LegacyHardwareBridge\Nfc\ILegacyNfcDevice.cs"
+             Link="Compatibility\ILegacyNfcDevice.cs" />
     <Compile Include="..\..\src\IzbanKiosk.LegacyHardwareBridge\Card\TopUpSaga.cs"
              Link="Compatibility\TopUpSaga.cs" />
     <Compile Include="..\..\src\IzbanKiosk.LegacyHardwareBridge\Card\ICardLoader.cs"

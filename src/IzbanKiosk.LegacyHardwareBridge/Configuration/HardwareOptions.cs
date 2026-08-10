@@ -15,6 +15,18 @@ namespace IzbanKiosk.LegacyHardwareBridge.Configuration
         public bool BalanceScaleVerified { get; set; } = true;
         public string Currency { get; set; } = "TRY";
 
+        // Card write. Every default here is the refusing one: an unconfigured kiosk
+        // must decline to load rather than write with a made-up terminal identity or
+        // guess which unit the vendor library wants the amount in.
+        public bool CardWriteEnabled { get; set; } = false;
+        public ushort TerminalNo { get; set; } = 0;
+        public uint TerminalUid { get; set; } = 0;
+        public byte CompanyId { get; set; } = 0;
+        // "Minor" (kurus) or "Major" (lira). Blank until someone has verified which
+        // one the deployed AUSKiosk passes to Topup; the top-up flow proves the choice
+        // by reading the balance back after the write.
+        public string CardWriteAmountUnit { get; set; } = string.Empty;
+
         // Loaded only from IZBAN_HMAC_SECRET at process startup. Never provide a source-code fallback.
         public string HmacKeyBase64 { get; set; } = string.Empty;
     }

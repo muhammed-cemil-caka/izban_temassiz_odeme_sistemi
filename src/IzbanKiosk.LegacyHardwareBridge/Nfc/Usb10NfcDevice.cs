@@ -184,6 +184,17 @@ namespace IzbanKiosk.LegacyHardwareBridge.Nfc
             }
         }
 
+        /// <summary>
+        /// Not supported. This reader is the read-only development path; the money
+        /// path exists only on the certified EMVRdr35 device.
+        /// </summary>
+        public bool TryTopup(
+            ushort terminalNo, uint terminalUid, byte companyId, int referenceNo, uint amount, out string error)
+        {
+            error = "Bu okuyucu profili karta yazma desteklemiyor.";
+            return false;
+        }
+
         public bool WaitForCardRemoval(TimeSpan timeout)
         {
             // USB10 card removal wait implementation

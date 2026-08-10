@@ -49,9 +49,12 @@ namespace IzbanKiosk.LegacyHardwareBridge.Transport
 
             // One instance for the process: the saga remembers settled idempotency
             // keys, and a fresh one per request would let a double tap charge twice.
+            // The legacy loader refuses on its own until the deployment supplies a
+            // terminal identity and the amount unit, so this is still fail-closed; it
+            // just fails with the reason instead of a flat denial.
             _topUp = new TopUpSaga(
                 posTerminal,
-                new NotAuthorisedCardLoader(),
+                new LegacyCardLoader(nfcDevice, options),
                 new NfcCardBalanceReader(nfcDevice),
                 delegate { });
         }

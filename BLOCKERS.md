@@ -67,6 +67,15 @@ These checks establish binary-contract compatibility. They do not replace a phys
 
 - Ticket charge, auto-top-up and raw block writes are refused by the bridge with
   `ERR_ACCESS_DENIED`.
+- The vendor write call is now reachable: `EMVRdr35Lib.dll` exports `Topup`, and the
+  exact signature `Topup(hComp, termNo, termUId, companyId, dbRefNo, amount, av2P)` was
+  read out of the deployed AUSKiosk's own metadata. `LegacyCardLoader` calls it, but
+  refuses until the deployment sets `CardWriteEnabled`, `TerminalNo`, `TerminalUid`,
+  `CompanyId` and `CardWriteAmountUnit`. Every default is the refusing one.
+- UNRESOLVED: the unit of the vendor `amount` argument. Surrounding configuration and
+  `ReadOffCard` both use kuruş, which makes kuruş likely, but it is not confirmed and a
+  wrong choice loads 100x or 1/100x. `CardWriteAmountUnit` has no default for this
+  reason and the saga's read-back is what proves the choice.
 - Card top-up now runs through `TopUpSaga`, which sequences charge -> load -> read-back
   and reverses the payment when the load fails. It still completes nothing: `ICardLoader`
   is `NotAuthorisedCardLoader` until a write-capable SAM, its keys and scheme

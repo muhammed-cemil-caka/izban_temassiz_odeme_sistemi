@@ -118,5 +118,24 @@ namespace IzbanKiosk.LegacyHardwareBridge.Interop
 
         [DllImport(DLL_NAME, EntryPoint = "ReadOffCard", CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
         public static extern bool ReadOffCard(uint hComp, IntPtr av2P, IntPtr cardInfP);
+
+        /// <summary>
+        /// Writes value onto the card. The one call in this library that moves money.
+        ///
+        /// Signature and parameter names are taken from the deployed AUSKiosk's own
+        /// metadata rather than inferred, so the shape is exact. What that assembly
+        /// cannot tell us is the unit of <paramref name="amount"/>: the surrounding
+        /// configuration stores money in kuruş and <c>ReadOffCard</c> returns kuruş,
+        /// which makes kuruş the reasonable reading - but "reasonable" is not good
+        /// enough for a figure that lands on a passenger's card, so the caller has to
+        /// declare the unit and the top-up flow proves it by reading the balance back.
+        ///
+        /// <paramref name="termNo"/>, <paramref name="termUId"/> and
+        /// <paramref name="companyId"/> identify this terminal to the scheme and have
+        /// no safe defaults; they come from the deployment.
+        /// </summary>
+        [DllImport(DLL_NAME, EntryPoint = "Topup", CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        public static extern bool Topup(
+            uint hComp, ushort termNo, uint termUId, byte companyId, int dbRefNo, uint amount, IntPtr av2P);
     }
 }

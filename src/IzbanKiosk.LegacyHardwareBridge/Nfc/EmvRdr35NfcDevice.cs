@@ -263,6 +263,76 @@ namespace IzbanKiosk.LegacyHardwareBridge.Nfc
             }
         }
 
+        /// <summary>
+        /// Writes value onto the card on the reader.
+        ///
+        /// Re-selects the card and re-checks top-up eligibility inside the same lock as
+        /// the write. The card the passenger presented may have been swapped for
+        /// another between the balance read and here, and a stale selection would put
+        /// the money on whichever card is now in the field.
+        /// </summary>
+        public bool TryTopup(
+            ushort terminalNo, uint terminalUid, byte companyId, int referenceNo, uint amount, out string error)
+        {
+            error = string.Empty;
+            _lock.Wait();
+            IntPtr cardBuffer = IntPtr.Zero;
+            try
+            {
+                if (!_isInitialized || !_isCommOpen)
+                {
+                    error = "Okuyucu hazır değil.";
+                    return false;
+                }
+                if (_av2Buffer == IntPtr.Zero)
+                {
+                    error = "SAM oturumu açık değil; yazma yapılamaz.";
+                    return false;
+                }
+
+                int cardSize = Marshal.SizeOf(typeof(EmvRdr35NativeMethods.CARD_LAYOUT));
+                cardBuffer = Marshal.AllocHGlobal(cardSize);
+                Marshal.Copy(new byte[cardSize], 0, cardBuffer, cardSize);
+
+                if (!EmvRdr35NativeMethods.SelectCardNoRats(_hComp, cardBuffer))
+                {
+                    error = "Kart okuyucuda bulunamadı.";
+                    return false;
+                }
+                if (!EmvRdr35NativeMethods.IsOnTopupValidCard(cardBuffer))
+                {
+                    error = "Kart yükleme için uygun değil.";
+                    return false;
+                }
+
+                if (!EmvRdr35NativeMethods.Topup(
+                        _hComp, terminalNo, terminalUid, companyId, referenceNo, amount, _av2Buffer))
+                {
+                    // The library reports a boolean only. Whether the card was left
+                    // untouched or partially written cannot be told apart here, which
+                    // is why the caller reverses the payment and verifies by read-back
+                    // rather than trusting this result either way.
+                    error = "Vendor Topup çağrısı başarısız döndü.";
+                    return false;
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                error = ex.GetType().Name + ": " + ex.Message;
+                return false;
+            }
+            finally
+            {
+                if (cardBuffer != IntPtr.Zero)
+                {
+                    Marshal.FreeHGlobal(cardBuffer);
+                }
+                _lock.Release();
+            }
+        }
+
         public bool ReadCardSnapshot(string requestId, out CardSnapshotResponse snapshot)
         {
             snapshot = new CardSnapshotResponse

@@ -14,6 +14,16 @@ namespace IzbanKiosk.LegacyHardwareBridge.Nfc
         bool CheckIfCardPresent(out string maskedCardRef, out string storagePseudonym);
         bool ReadCardSnapshot(string requestId, out CardSnapshotResponse snapshot);
         bool WaitForCardRemoval(TimeSpan timeout);
+
+        /// <summary>
+        /// Writes value onto the card presently on the reader.
+        ///
+        /// <paramref name="amount"/> is passed to the vendor library exactly as given;
+        /// choosing its unit belongs to the caller, which declares it in configuration
+        /// and proves it by reading the balance back afterwards.
+        /// </summary>
+        bool TryTopup(
+            ushort terminalNo, uint terminalUid, byte companyId, int referenceNo, uint amount, out string error);
         void Shutdown();
     }
 }
