@@ -28,6 +28,7 @@ namespace IzbanKiosk.LegacyHardwareBridge.Transport
         private readonly ILegacyReceiptPrinter _printerDevice;
         private readonly IPosTerminal _posTerminal;
         private readonly TopUpSaga _topUp;
+        private readonly ICardLoader _cardLoader;
         private readonly HardwareOptions _options;
         private readonly ComPortOwnershipGuard _comGuard = new ComPortOwnershipGuard();
         private readonly object _lifecycleLock = new object();
@@ -52,9 +53,10 @@ namespace IzbanKiosk.LegacyHardwareBridge.Transport
             // The legacy loader refuses on its own until the deployment supplies a
             // terminal identity and the amount unit, so this is still fail-closed; it
             // just fails with the reason instead of a flat denial.
+            _cardLoader = new LegacyCardLoader(nfcDevice, options);
             _topUp = new TopUpSaga(
                 posTerminal,
-                new LegacyCardLoader(nfcDevice, options),
+                _cardLoader,
                 new NfcCardBalanceReader(nfcDevice),
                 delegate { });
         }
@@ -512,6 +514,73 @@ namespace IzbanKiosk.LegacyHardwareBridge.Transport
                                 : "ERR_TOPUP_" + topUp.Outcome.ToUpperInvariant(),
                             Message = topUp.StatusMessage
                         };
+                    }
+                    break;
+
+                case "TopupTest":
+                    // Deliberately skips the payment terminal. Its whole purpose is to
+                    // answer "are the terminal identity and the amount unit right for
+                    // this kiosk?", which has to be answerable before a POS exists -
+                    // and nobody is charged, so there is nothing to reverse.
+                    PosPaymentRequest? testRequest = string.IsNullOrEmpty(request.PayloadJson)
+                        ? null
+                        : JsonConvert.DeserializeObject<PosPaymentRequest>(request.PayloadJson);
+                    if (testRequest == null || testRequest.AmountMinor <= 0)
+                    {
+                        response.Success = false;
+                        response.Error = new BridgeError { Code = "ERR_BAD_PAYLOAD", Message = "TopupTest requires AmountMinor." };
+                        break;
+                    }
+
+                    var testReader = new NfcCardBalanceReader(_nfcDevice);
+                    var testResult = new TopUpResponse { RequestId = testRequest.IdempotencyKey };
+                    long testBefore;
+                    string testError;
+                    if (!testReader.TryReadBalanceMinor(testRequest.StoragePseudonym, out testBefore, out testError))
+                    {
+                        response.Success = false;
+                        response.Error = new BridgeError { Code = "ERR_CARD_READ", Message = testError };
+                        break;
+                    }
+
+                    CardLoadResponse testLoad = _cardLoader.Load(new CardLoadRequest
+                    {
+                        IdempotencyKey = testRequest.IdempotencyKey,
+                        AmountMinor = testRequest.AmountMinor,
+                        StoragePseudonym = testRequest.StoragePseudonym,
+                        BalanceBeforeMinor = testBefore
+                    });
+                    if (!testLoad.IsLoaded)
+                    {
+                        response.Success = false;
+                        response.Error = new BridgeError
+                        {
+                            Code = _cardLoader.IsAuthorised ? "ERR_TOPUP_REFUSED" : "ERR_ACCESS_DENIED",
+                            Message = testLoad.StatusMessage
+                        };
+                        break;
+                    }
+
+                    long testAfter;
+                    if (!testReader.TryReadBalanceMinor(testRequest.StoragePseudonym, out testAfter, out testError))
+                    {
+                        response.Success = false;
+                        response.Error = new BridgeError { Code = "ERR_READBACK", Message = testError };
+                        break;
+                    }
+
+                    testResult.BalanceAfterMinor = testAfter;
+                    testResult.IsCompleted = testAfter == testBefore + testRequest.AmountMinor;
+                    testResult.Outcome = testResult.IsCompleted ? TopUpOutcome.Completed : TopUpOutcome.NeedsReconciliation;
+                    testResult.StatusMessage = testResult.IsCompleted
+                        ? "Bakiye tam beklenen kadar arttı. Terminal kimliği ve tutar birimi doğru."
+                        : "Bakiye beklenenden farklı: beklenen " + (testBefore + testRequest.AmountMinor) +
+                          ", okunan " + testAfter + " kuruş.";
+                    response.Success = testResult.IsCompleted;
+                    response.PayloadJson = JsonConvert.SerializeObject(testResult);
+                    if (!testResult.IsCompleted)
+                    {
+                        response.Error = new BridgeError { Code = "ERR_TOPUP_MISMATCH", Message = testResult.StatusMessage };
                     }
                     break;
 

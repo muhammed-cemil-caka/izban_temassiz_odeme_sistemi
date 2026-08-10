@@ -18,6 +18,15 @@ namespace IzbanKiosk.Terminal
         public string NfcComPort { get; set; } = string.Empty;
         public string ThermalPrinterName { get; set; } = string.Empty;
 
+        // Card write. Mirrors the bridge's own options so the diagnostics screen can
+        // show a technician why loading is refused without them opening the JSON on a
+        // kiosk that has no keyboard.
+        public bool CardWriteEnabled { get; set; }
+        public int TerminalNo { get; set; }
+        public long TerminalUid { get; set; }
+        public int CompanyId { get; set; }
+        public string CardWriteAmountUnit { get; set; } = string.Empty;
+
         /// <summary>
         /// Optional. setup.ini does not carry the station, and the same package is
         /// installed fleet-wide, so leaving this empty is the normal case: the kiosk

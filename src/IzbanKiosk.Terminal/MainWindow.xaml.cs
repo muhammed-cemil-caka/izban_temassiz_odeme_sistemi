@@ -6,6 +6,7 @@ using System.IO;
 using System.IO.Pipes;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
@@ -33,7 +34,7 @@ namespace IzbanKiosk.Terminal
         private const string BridgeExeName = "IzbanKiosk.LegacyHardwareBridge.exe";
         private const string BridgeProcessName = "IzbanKiosk.LegacyHardwareBridge";
         private const string ExpectedBridgeVersion = "2.5.0-net40";
-        private const string PackageVersion = "R35";
+        private const string PackageVersion = "R36";
         private const int MaxManualAmount = 500;
         // Printer work is a technician action behind a button, not a passenger-path
         // poll, so it waits far longer for the shared pipe than card polling does.
@@ -846,6 +847,7 @@ namespace IzbanKiosk.Terminal
                     {
                         RenderUpdateStatus(_updateService.LastStatus());
                     }
+                    RenderCardWriteStatus();
                     PrinterDiagnosticsModal.Visibility = Visibility.Visible;
                 });
             })) { IsBackground = true, Name = "IZBAN Printer Diagnose Worker" };
@@ -1204,6 +1206,88 @@ namespace IzbanKiosk.Terminal
                 }
             })) { IsBackground = true, Name = "IZBAN Update Apply" };
             thread.Start();
+        }
+
+        /// <summary>
+        /// Shows whether this kiosk is set up to load cards, and offers the one small
+        /// test load that proves the terminal identity and the amount unit.
+        ///
+        /// The test lives here rather than only on the command line because a kiosk has
+        /// no keyboard: telling a technician to type a bridge command at a machine with
+        /// nothing to type on is the same as not providing it.
+        /// </summary>
+        private void RenderCardWriteStatus()
+        {
+            if (_hardwareSettings == null)
+            {
+                return;
+            }
+
+            var builder = new StringBuilder();
+            builder.AppendLine("Yazma          : " + (_hardwareSettings.CardWriteEnabled ? "AÇIK" : "KAPALI"));
+            builder.AppendLine("Terminal       : No=" + _hardwareSettings.TerminalNo +
+                               "  Uid=" + _hardwareSettings.TerminalUid +
+                               "  Company=" + _hardwareSettings.CompanyId);
+            builder.AppendLine("Tutar birimi   : " +
+                (_hardwareSettings.CardWriteAmountUnit.Length == 0 ? "[tanımsız]" : _hardwareSettings.CardWriteAmountUnit));
+
+            bool ready = _hardwareSettings.CardWriteEnabled
+                         && _hardwareSettings.TerminalNo > 0
+                         && _hardwareSettings.TerminalUid > 0
+                         && _hardwareSettings.CompanyId > 0
+                         && _hardwareSettings.CardWriteAmountUnit.Length > 0;
+
+            builder.AppendLine(ready
+                ? "Kart okutup aşağıdaki düğmeyle 1 TL test yüklemesi yapabilirsiniz. POS'a dokunulmaz, kimseden tahsilat yapılmaz."
+                : "Eksik ayar var. KioskHardware.config.json içinde CardWriteEnabled, TerminalNo, TerminalUid, CompanyId ve CardWriteAmountUnit doldurulmalı.");
+
+            CardWriteStatusText.Text = builder.ToString().TrimEnd();
+            CardWriteTestButton.Visibility = ready ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void CardWriteTestButton_Click(object sender, RoutedEventArgs e)
+        {
+            CardWriteTestButton.IsEnabled = false;
+            CardWriteStatusText.Text = "Test yüklemesi yapılıyor, kartı okuyucudan ÇEKMEYİN...";
+
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                BridgeResponse? response = SendRequest(new BridgeRequest
+                {
+                    RequestId = Guid.NewGuid().ToString("N"),
+                    Command = "TopupTest",
+                    TimeoutMs = 15000,
+                    PayloadJson = JsonConvert.SerializeObject(new PosPaymentRequest
+                    {
+                        IdempotencyKey = "topup-test-" + DateTime.Now.ToString("yyyyMMddHHmmss"),
+                        AmountMinor = 100,
+                        Currency = "TRY"
+                    })
+                }, 12000);
+
+                OnUi(delegate
+                {
+                    CardWriteTestButton.IsEnabled = true;
+                    if (response == null)
+                    {
+                        CardWriteStatusText.Text = "Donanım servisinden yanıt alınamadı.";
+                        return;
+                    }
+                    if (response.Success)
+                    {
+                        CardWriteStatusText.Text =
+                            "[TAMAM] Bakiye tam 1,00 TL arttı.\n" +
+                            "Terminal kimliği ve tutar birimi DOĞRU. Ayarları böyle bırakın.";
+                        return;
+                    }
+
+                    string code = response.Error == null ? string.Empty : response.Error.Code;
+                    string detail = response.Error == null ? string.Empty : response.Error.Message;
+                    CardWriteStatusText.Text = code == "ERR_TOPUP_MISMATCH"
+                        ? "[UYUŞMAZLIK] " + detail + "\nFark 100 kat ise CardWriteAmountUnit yanlış. Düzeltmeden ikinci test yapmayın."
+                        : "[BAŞARISIZ] " + detail + "\nKart DEĞİŞMEDİ. En olası sebep TerminalNo/TerminalUid'in bu otomat için yanlış olması.";
+                });
+            });
         }
 
         private void RenderUpdateStatus(UpdateStatusReport report)
