@@ -1,7 +1,10 @@
 using System;
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Collections.Generic;
+using System.Reflection;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace IzbanKiosk.Terminal
 {
@@ -21,11 +24,23 @@ namespace IzbanKiosk.Terminal
         // Card write. Mirrors the bridge's own options so the diagnostics screen can
         // show a technician why loading is refused without them opening the JSON on a
         // kiosk that has no keyboard.
-        public bool CardWriteEnabled { get; set; }
+        // Enabled by default because no passenger path reaches it: the top-up flow
+        // refuses while no POS is integrated, so the only way to write is a technician
+        // pressing the test button on the diagnostics screen.
+        public bool CardWriteEnabled { get; set; } = true;
+        // Zero means "use this kiosk's own number", filled in from setup.ini when the
+        // key is first written. One deployment's terminal number must not travel to
+        // the whole fleet inside the package.
         public int TerminalNo { get; set; }
         public long TerminalUid { get; set; }
-        public int CompanyId { get; set; }
-        public string CardWriteAmountUnit { get; set; } = string.Empty;
+        // Best current reading, to be confirmed by the test load. The vendor wrapper
+        // passes the SAM session's Av2HostMode byte here, which --nfc-health prints as
+        // "host mode"; if the test is refused, that value is the next thing to try.
+        public int CompanyId { get; set; } = 1;
+        // Confirmed from the deployed AUSKiosk's own logs: "Amount: 200,00 TL" is
+        // logged alongside "Charge: 20000", so the vendor is given kuruş.
+        public string CardWriteAmountUnit { get; set; } = "Minor";
+        public int TopupReferenceSeed { get; set; } = 900000;
 
         /// <summary>
         /// Optional. setup.ini does not carry the station, and the same package is
@@ -85,7 +100,69 @@ namespace IzbanKiosk.Terminal
 
             settings.ResolveKioskNumber();
             settings.Validate();
+            settings.BackfillMissingKeys(settingsPath, json);
             return settings;
+        }
+
+        /// <summary>
+        /// Adds settings the running build knows about but the file on this kiosk does
+        /// not, and saves it.
+        ///
+        /// An update deliberately keeps the machine's own settings file so the printer
+        /// name and kiosk number survive. The cost is that a new setting shipped in the
+        /// package never reaches an existing kiosk: the package's copy is overwritten
+        /// by the old one moments later, and the operator is left hand-editing JSON on
+        /// a machine with no keyboard. Filling the gaps here means a setting added in
+        /// any future release simply appears after one restart.
+        ///
+        /// Values already in the file are never touched - only absent keys are added.
+        /// </summary>
+        private void BackfillMissingKeys(string settingsPath, string originalJson)
+        {
+            try
+            {
+                JObject existing = JObject.Parse(originalJson);
+                var missing = new List<string>();
+                foreach (PropertyInfo property in typeof(KioskHardwareSettings).GetProperties())
+                {
+                    if (property.GetSetMethod() == null || existing[property.Name] != null)
+                    {
+                        continue;
+                    }
+                    missing.Add(property.Name);
+                }
+
+                if (missing.Count == 0)
+                {
+                    return;
+                }
+
+                // A kiosk identifies itself to the card scheme by its own number, which
+                // is already read from the machine's setup.ini. Defaulting to it beats
+                // shipping one deployment's number to the whole fleet.
+                if (missing.Contains("TerminalNo") || missing.Contains("TerminalUid"))
+                {
+                    int kioskNumber;
+                    if (int.TryParse(KioskNumber, out kioskNumber) && kioskNumber > 0)
+                    {
+                        if (missing.Contains("TerminalNo") && kioskNumber <= ushort.MaxValue)
+                        {
+                            TerminalNo = kioskNumber;
+                        }
+                        if (missing.Contains("TerminalUid"))
+                        {
+                            TerminalUid = kioskNumber;
+                        }
+                    }
+                }
+
+                File.WriteAllText(settingsPath, JsonConvert.SerializeObject(this, Formatting.Indented));
+            }
+            catch (Exception)
+            {
+                // A settings file that cannot be topped up is not a reason to stop the
+                // kiosk; the missing setting simply keeps its built-in default.
+            }
         }
 
         /// <summary>
