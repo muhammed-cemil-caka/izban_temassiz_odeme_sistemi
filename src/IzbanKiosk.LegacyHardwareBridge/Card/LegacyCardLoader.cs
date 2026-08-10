@@ -172,6 +172,7 @@ namespace IzbanKiosk.LegacyHardwareBridge.Card
             return new CardLoadResponse
             {
                 IsLoaded = true,
+                ReferenceNo = referenceNo,
                 // Deliberately the expected figure and nothing more. The card is asked
                 // for its own balance separately, and that read - not this number - is
                 // what decides whether the load counts.

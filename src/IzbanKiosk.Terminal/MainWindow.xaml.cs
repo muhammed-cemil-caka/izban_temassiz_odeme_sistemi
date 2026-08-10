@@ -34,7 +34,7 @@ namespace IzbanKiosk.Terminal
         private const string BridgeExeName = "IzbanKiosk.LegacyHardwareBridge.exe";
         private const string BridgeProcessName = "IzbanKiosk.LegacyHardwareBridge";
         private const string ExpectedBridgeVersion = "2.5.0-net40";
-        private const string PackageVersion = "R41";
+        private const string PackageVersion = "R42";
         private const int MaxManualAmount = 500;
         // Printer work is a technician action behind a button, not a passenger-path
         // poll, so it waits far longer for the shared pipe than card polling does.
@@ -77,6 +77,7 @@ namespace IzbanKiosk.Terminal
         private CardSnapshotResponse? _currentSnapshot;
         private bool _topUpInFlight;
         private bool _posConfigured;
+        private TopUpResponse? _lastTopUp;
         private KioskScreen _screen = KioskScreen.Idle;
 
         private enum KioskScreen
@@ -624,6 +625,8 @@ namespace IzbanKiosk.Terminal
                 ? "Please keep your card on the reader."
                 : "Lütfen kartınızı okuyucudan ÇEKMEYİN.";
             PaymentBackButton.IsEnabled = false;
+            TopUpReceiptPanel.Visibility = Visibility.Collapsed;
+            _lastTopUp = null;
             ShowOnly(PaymentPanel);
 
             ThreadPool.QueueUserWorkItem(delegate
@@ -693,6 +696,22 @@ namespace IzbanKiosk.Terminal
                     (result.BalanceAfterMinor / 100m).ToString("N2", CultureInfo.GetCultureInfo("tr-TR")) + " TL",
                     ReadyBrush);
                 _journal.Record("TopUpCompleted", new { amountMinor = amount * 100L, balanceAfterMinor = result.BalanceAfterMinor });
+
+                // Asked, not printed automatically: most passengers do not want a slip,
+                // and a kiosk that prints one every time runs the roll out on receipts
+                // nobody took.
+                _lastTopUp = result;
+                TopUpReceiptPromptText.Text = _english ? "Would you like a receipt?" : "Makbuz ister misiniz?";
+                TopUpReceiptYesButton.Content = _english ? "YES, PRINT RECEIPT" : "EVET, MAKBUZ VER";
+                TopUpReceiptNoButton.Content = _english ? "NO, THANK YOU" : "HAYIR, TEŞEKKÜRLER";
+                TopUpReceiptYesButton.IsEnabled = _printerReady;
+                TopUpReceiptPanel.Visibility = Visibility.Visible;
+                if (!_printerReady)
+                {
+                    TopUpReceiptPromptText.Text = _english
+                        ? "The printer is unavailable, so no receipt can be issued. Your card was loaded."
+                        : "Yazıcı kullanılamıyor, makbuz verilemiyor. Kartınıza yükleme YAPILDI.";
+                }
                 return;
             }
 
@@ -727,6 +746,75 @@ namespace IzbanKiosk.Terminal
             PaymentBackButton.Content = _english ? "RETURN TO AMOUNT SCREEN" : "TUTAR EKRANINA DÖN";
             ShowOnly(PaymentPanel);
             SetHardwareStatus("POS ENTEGRASYONU BEKLENİYOR", _english ? "No payment or card load was performed" : "Para çekilmedi ve karta yükleme yapılmadı", BusyBrush);
+        }
+
+        private void TopUpReceiptNoButton_Click(object sender, RoutedEventArgs e)
+        {
+            TopUpReceiptPanel.Visibility = Visibility.Collapsed;
+        }
+
+        /// <summary>
+        /// Prints the slip for the top-up that just completed.
+        ///
+        /// A failure here never contradicts what already happened: the money was taken
+        /// and the card was loaded before the passenger was ever asked, so a printer
+        /// fault is reported as "no receipt", never as a failed transaction.
+        /// </summary>
+        private void TopUpReceiptYesButton_Click(object sender, RoutedEventArgs e)
+        {
+            TopUpResponse? result = _lastTopUp;
+            CardSnapshotResponse? snapshot = _currentSnapshot;
+            KioskHardwareSettings? settings = _hardwareSettings;
+            if (result == null || snapshot == null || settings == null || !settings.IsIdentityComplete)
+            {
+                TopUpReceiptPromptText.Text = _english
+                    ? "This kiosk's number could not be read, so no receipt can be issued."
+                    : "Otomat numarası okunamadı, makbuz kesilemez.";
+                TopUpReceiptYesButton.IsEnabled = false;
+                return;
+            }
+
+            TopUpReceiptYesButton.IsEnabled = false;
+            TopUpReceiptNoButton.IsEnabled = false;
+            TopUpReceiptPromptText.Text = _english ? "Printing..." : "Yazdırılıyor...";
+
+            DateTime timestamp = DateTime.Now;
+            string body = ReceiptDocumentBuilder.BuildTopUpReceipt(
+                snapshot, result, settings.StationName, settings.KioskNumber, timestamp, _english);
+
+            _printerOperationInFlight = true;
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                BridgeResponse? response = SendRequest(new BridgeRequest
+                {
+                    RequestId = Guid.NewGuid().ToString("N"),
+                    Command = "PrintReceipt",
+                    TimeoutMs = 20000,
+                    PayloadJson = JsonConvert.SerializeObject(new PrintReceiptRequest
+                    {
+                        Text = body,
+                        // Tied to the transaction, so a second press cannot produce a
+                        // second slip for the same money.
+                        IdempotencyKey = "topup-" + result.ReferenceNo + "-" + result.RequestId
+                    })
+                }, 18000);
+
+                OnUi(delegate
+                {
+                    _printerOperationInFlight = false;
+                    TopUpReceiptNoButton.IsEnabled = true;
+                    bool printed = response != null && response.Success;
+                    TopUpReceiptPromptText.Text = printed
+                        ? (_english ? "Please take your receipt." : "Makbuzunuzu alınız.")
+                        : (_english
+                            ? "The receipt could not be printed. Your card was loaded."
+                            : "Makbuz basılamadı. Kartınıza yükleme YAPILDI.");
+                    if (!printed)
+                    {
+                        TopUpReceiptYesButton.IsEnabled = _printerReady;
+                    }
+                });
+            });
         }
 
         private void PaymentBackButton_Click(object sender, RoutedEventArgs e)

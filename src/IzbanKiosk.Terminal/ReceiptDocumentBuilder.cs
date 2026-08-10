@@ -83,6 +83,78 @@ namespace IzbanKiosk.Terminal
         }
 
         /// <summary>
+        /// Receipt for a completed top-up: what the passenger paid and what the card
+        /// holds now.
+        ///
+        /// Unlike the enquiry slip this one is evidence of a payment, so it carries the
+        /// references a dispute is settled with: the kiosk's transaction number, which
+        /// is the same figure the back office reconciles against, and the bank's
+        /// approval code. Without them a passenger holding a slip and a back office
+        /// holding a record have no way to match them up.
+        /// </summary>
+        internal static string BuildTopUpReceipt(
+            CardSnapshotResponse snapshot,
+            TopUpResponse result,
+            string stationName,
+            string kioskId,
+            DateTime localTimestamp,
+            bool english)
+        {
+            var builder = new StringBuilder();
+            string separator = new string('-', LineWidth);
+
+            builder.AppendLine("[C]İZBAN - İZMİRİM KART");
+            builder.AppendLine(english ? "[C]TOP-UP RECEIPT" : "[C]YÜKLEME MAKBUZU");
+            builder.AppendLine(separator);
+
+            string station = (stationName ?? string.Empty).Trim();
+            if (station.Length > 0)
+            {
+                AppendField(builder, english ? "Station" : "İstasyon", station);
+            }
+            AppendField(builder, english ? "Kiosk No" : "Otomat No", kioskId);
+            AppendField(builder, english ? "Date" : "Tarih", localTimestamp.ToString("dd.MM.yyyy HH:mm:ss", Turkish));
+            builder.AppendLine(separator);
+
+            AppendField(builder, english ? "Card No" : "Kart No", IzmirimKartNumber.Mask(snapshot.CardNumber));
+            AppendField(builder, english ? "Amount Paid" : "Ödenen Tutar", FormatMinor(result.AmountMinor));
+            AppendField(builder, english ? "New Balance" : "Yeni Bakiye", FormatMinor(result.BalanceAfterMinor));
+            builder.AppendLine(separator);
+
+            AppendField(builder, english ? "Transaction" : "İşlem No", result.ReferenceNo.ToString(Turkish));
+
+            // Printed only when the terminal supplied them. An empty "Approval:" line
+            // on a payment slip reads like something went wrong.
+            if (!string.IsNullOrWhiteSpace(result.ApprovalCode))
+            {
+                AppendField(builder, english ? "Approval" : "Onay Kodu", result.ApprovalCode);
+            }
+            if (!string.IsNullOrWhiteSpace(result.MaskedPosReference))
+            {
+                AppendField(builder, english ? "Payment Card" : "Ödeme Kartı", result.MaskedPosReference);
+            }
+            builder.AppendLine(separator);
+
+            builder.AppendLine(english
+                ? "[C]Payment received and loaded onto the card."
+                : "[C]Ödeme alınmış ve karta yüklenmiştir.");
+            builder.AppendLine(english
+                ? "[C]Please keep this receipt."
+                : "[C]Lütfen bu makbuzu saklayınız.");
+            builder.AppendLine("[C]İZBAN A.Ş. - 444 29 26");
+            builder.AppendLine();
+            builder.AppendLine();
+            builder.AppendLine();
+
+            return builder.ToString();
+        }
+
+        private static string FormatMinor(long minor)
+        {
+            return (minor / 100m).ToString("N2", Turkish) + " TL";
+        }
+
+        /// <summary>
         /// Idempotency key for a single card presentation. The bridge refuses to print
         /// the same key twice, so a double tap on the button cannot produce two slips.
         /// Uses the storage pseudonym rather than the card number: the raw identifier

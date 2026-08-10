@@ -218,6 +218,13 @@
                     <TextBlock Name="SelectedAmountText" Text="SEÇİLEN TUTAR: 0,00 TL" Foreground="#0F172A" FontSize="29" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,34,0,9"/>
                     <TextBlock Name="PaymentStatusText" Text="POS ENTEGRASYONU BEKLENİYOR" Foreground="#DC2626" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center" TextAlignment="Center"/>
                     <TextBlock Name="PaymentDetailsText" Text="Bu Windows 7 donanım profilinde banka POS SDK'sı henüz tanımlı değildir. Para çekilmedi ve İzmirim karta yükleme yapılmadı." Foreground="#475569" FontSize="16" TextAlignment="Center" TextWrapping="Wrap" Margin="0,16,0,25"/>
+                    <StackPanel Name="TopUpReceiptPanel" Visibility="Collapsed" Margin="0,0,0,18">
+                        <TextBlock Name="TopUpReceiptPromptText" Text="Makbuz ister misiniz?" Foreground="#0F172A" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <Button Name="TopUpReceiptYesButton" Content="EVET, MAKBUZ VER" Style="{StaticResource KioskButton}" Background="#10B981" Foreground="White" BorderBrush="#047857" FontSize="17" Height="56" Padding="26,0" Click="TopUpReceiptYesButton_Click"/>
+                            <Button Name="TopUpReceiptNoButton" Content="HAYIR, TEŞEKKÜRLER" Style="{StaticResource KioskButton}" Background="#64748B" Foreground="White" BorderBrush="#475569" FontSize="17" Height="56" Padding="26,0" Margin="14,0,0,0" Click="TopUpReceiptNoButton_Click"/>
+                        </StackPanel>
+                    </StackPanel>
                     <Button Name="PaymentBackButton" Content="TUTAR EKRANINA DÖN" Style="{StaticResource PrimaryButton}" Click="PaymentBackButton_Click"/>
                 </StackPanel>
             </Grid>

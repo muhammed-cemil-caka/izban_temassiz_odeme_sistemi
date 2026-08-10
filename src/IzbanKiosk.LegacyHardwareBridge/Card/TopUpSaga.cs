@@ -161,8 +161,11 @@ namespace IzbanKiosk.LegacyHardwareBridge.Card
                     "Yükleme sonrası bakiye beklenenle uyuşmuyor. İşlem elle incelenmelidir.", payment);
             }
 
-            return Settle(request, TopUpOutcome.Completed, true, balanceAfter,
+            TopUpResponse completed = Settle(request, TopUpOutcome.Completed, true, balanceAfter,
                 "Yükleme tamamlandı ve karttan doğrulandı.", payment);
+            completed.AmountMinor = request.AmountMinor;
+            completed.ReferenceNo = load.ReferenceNo;
+            return completed;
         }
 
         private TopUpResponse ReverseAfterFailedLoad(

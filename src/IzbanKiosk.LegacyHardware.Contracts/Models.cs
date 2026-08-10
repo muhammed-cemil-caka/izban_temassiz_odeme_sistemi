@@ -226,6 +226,12 @@ namespace IzbanKiosk.LegacyHardware.Contracts
     public class CardLoadResponse
     {
         public bool IsLoaded { get; set; }
+        /// <summary>
+        /// Transaction number given to the vendor library. Printed on the receipt so
+        /// the slip in the passenger's hand carries the same number the back office
+        /// will settle against.
+        /// </summary>
+        public int ReferenceNo { get; set; }
         /// <summary>Balance the loader believes the card now holds, in minor units.</summary>
         public long BalanceAfterMinor { get; set; }
         public string StatusMessage { get; set; } = string.Empty;
@@ -242,6 +248,8 @@ namespace IzbanKiosk.LegacyHardware.Contracts
         public string Outcome { get; set; } = "NeedsReconciliation";
         public bool IsCompleted { get; set; }
         public long BalanceAfterMinor { get; set; }
+        public long AmountMinor { get; set; }
+        public int ReferenceNo { get; set; }
         public string ApprovalCode { get; set; } = string.Empty;
         public string MaskedPosReference { get; set; } = string.Empty;
         public string StatusMessage { get; set; } = string.Empty;

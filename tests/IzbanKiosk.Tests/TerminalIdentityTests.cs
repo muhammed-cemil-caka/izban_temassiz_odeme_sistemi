@@ -1,3 +1,4 @@
+using IzbanKiosk.LegacyHardware.Contracts;
 using IzbanKiosk.Terminal;
 
 namespace IzbanKiosk.Tests;
@@ -68,5 +69,88 @@ public class TerminalIdentityTests
 
         Assert.Equal(0, settings.TerminalNo);
         Assert.Equal(70000L, settings.TerminalUid);
+    }
+}
+
+/// <summary>
+/// Covers the slip a passenger is handed after paying. It is the only evidence they
+/// leave with, so the figures on it and the references a dispute is settled by have
+/// to be right.
+/// </summary>
+public class TopUpReceiptTests
+{
+    private static CardSnapshotResponse Card() => new CardSnapshotResponse
+    {
+        CardNumber = "0491600225477801",
+        StoragePseudonym = "psd-1"
+    };
+
+    private static TopUpResponse Result() => new TopUpResponse
+    {
+        RequestId = "req-1",
+        Outcome = TopUpOutcome.Completed,
+        IsCompleted = true,
+        AmountMinor = 2000,
+        BalanceAfterMinor = 7150,
+        ReferenceNo = 900123,
+        ApprovalCode = "APP123",
+        MaskedPosReference = "**** 4242"
+    };
+
+    private static string Build(TopUpResponse result, string station = "")
+        => ReceiptDocumentBuilder.BuildTopUpReceipt(
+            Card(), result, station, "51591", new DateTime(2026, 8, 10, 14, 5, 9), false);
+
+    [Fact]
+    public void ShowsWhatWasPaidAndWhatTheCardHoldsNow()
+    {
+        string receipt = Build(Result());
+
+        Assert.Contains("20,00 TL", receipt);
+        Assert.Contains("71,50 TL", receipt);
+        Assert.Contains("YÜKLEME MAKBUZU", receipt);
+    }
+
+    [Fact]
+    public void CarriesTheReferencesADisputeIsSettledWith()
+    {
+        // The kiosk transaction number is what the back office reconciles against;
+        // without it a slip and a record cannot be matched.
+        string receipt = Build(Result());
+
+        Assert.Contains("900123", receipt);
+        Assert.Contains("APP123", receipt);
+        Assert.Contains("51591", receipt);
+        Assert.Contains("10.08.2026 14:05:09", receipt);
+    }
+
+    [Fact]
+    public void NeverPrintsTheFullCardNumber()
+    {
+        string receipt = Build(Result());
+
+        Assert.DoesNotContain("0491600225477801", receipt);
+    }
+
+    [Fact]
+    public void LeavesOutPaymentLinesTheTerminalDidNotSupply()
+    {
+        // An empty "Onay Kodu:" on a payment slip reads like something went wrong.
+        TopUpResponse result = Result();
+        result.ApprovalCode = string.Empty;
+        result.MaskedPosReference = string.Empty;
+
+        string receipt = Build(result);
+
+        Assert.DoesNotContain("Onay Kodu", receipt);
+        Assert.DoesNotContain("Ödeme Kartı", receipt);
+        Assert.Contains("İşlem No", receipt);
+    }
+
+    [Fact]
+    public void OmitsTheStationRatherThanPrintingAFleetWidePlaceholder()
+    {
+        Assert.DoesNotContain("İstasyon", Build(Result()));
+        Assert.Contains("İstasyon", Build(Result(), "ALSANCAK"));
     }
 }
