@@ -37,6 +37,16 @@
              Link="Compatibility\EmvRdr35NativeMethods.cs" />
     <Compile Include="..\..\src\IzbanKiosk.LegacyHardwareBridge\Printer\LegacyPrinterHealthPolicy.cs"
              Link="Compatibility\LegacyPrinterHealthPolicy.cs" />
+    <Compile Include="..\..\src\IzbanKiosk.LegacyHardwareBridge\Card\TopUpSaga.cs"
+             Link="Compatibility\TopUpSaga.cs" />
+    <Compile Include="..\..\src\IzbanKiosk.LegacyHardwareBridge\Card\ICardLoader.cs"
+             Link="Compatibility\ICardLoader.cs" />
+    <Compile Include="..\..\src\IzbanKiosk.LegacyHardwareBridge\Card\NotAuthorisedCardLoader.cs"
+             Link="Compatibility\NotAuthorisedCardLoader.cs" />
+    <Compile Include="..\..\src\IzbanKiosk.LegacyHardwareBridge\Pos\IPosTerminal.cs"
+             Link="Compatibility\IPosTerminal.cs" />
+    <Compile Include="..\..\src\IzbanKiosk.LegacyHardwareBridge\Pos\NotConfiguredPosTerminal.cs"
+             Link="Compatibility\NotConfiguredPosTerminal.cs" />
     <Compile Include="..\..\src\IzbanKiosk.LegacyHardwareBridge\Configuration\KioskAutoConfigurationPolicy.cs"
              Link="Compatibility\KioskAutoConfigurationPolicy.cs" />
     <Compile Include="..\..\src\IzbanKiosk.Terminal\ReceiptDocumentBuilder.cs"

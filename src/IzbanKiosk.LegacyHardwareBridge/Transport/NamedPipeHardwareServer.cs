@@ -8,6 +8,7 @@ using IzbanKiosk.LegacyHardwareBridge.Configuration;
 using IzbanKiosk.LegacyHardwareBridge.Diagnostics;
 using IzbanKiosk.LegacyHardwareBridge.Nfc;
 using IzbanKiosk.LegacyHardwareBridge.Printer;
+using IzbanKiosk.LegacyHardwareBridge.Card;
 using IzbanKiosk.LegacyHardwareBridge.Pos;
 using Newtonsoft.Json;
 
@@ -26,6 +27,7 @@ namespace IzbanKiosk.LegacyHardwareBridge.Transport
         private readonly ILegacyNfcDevice _nfcDevice;
         private readonly ILegacyReceiptPrinter _printerDevice;
         private readonly IPosTerminal _posTerminal;
+        private readonly TopUpSaga _topUp;
         private readonly HardwareOptions _options;
         private readonly ComPortOwnershipGuard _comGuard = new ComPortOwnershipGuard();
         private readonly object _lifecycleLock = new object();
@@ -44,6 +46,14 @@ namespace IzbanKiosk.LegacyHardwareBridge.Transport
             _printerDevice = printerDevice;
             _posTerminal = posTerminal;
             _options = options;
+
+            // One instance for the process: the saga remembers settled idempotency
+            // keys, and a fresh one per request would let a double tap charge twice.
+            _topUp = new TopUpSaga(
+                posTerminal,
+                new NotAuthorisedCardLoader(),
+                new NfcCardBalanceReader(nfcDevice),
+                delegate { });
         }
 
         public void Start()
@@ -469,6 +479,39 @@ namespace IzbanKiosk.LegacyHardwareBridge.Transport
                     break;
 
                 case "Topup":
+                    // Goes through the saga rather than a blanket refusal so the kiosk
+                    // is told which half is missing - write authorisation or the
+                    // payment terminal - instead of a flat "denied". Nothing is
+                    // charged: the saga checks both before it reaches the terminal.
+                    PosPaymentRequest? topUpRequest = string.IsNullOrEmpty(request.PayloadJson)
+                        ? null
+                        : JsonConvert.DeserializeObject<PosPaymentRequest>(request.PayloadJson);
+                    if (topUpRequest == null)
+                    {
+                        response.Success = false;
+                        response.Error = new BridgeError
+                        {
+                            Code = "ERR_BAD_PAYLOAD",
+                            Message = "Topup requires AmountMinor and IdempotencyKey."
+                        };
+                        break;
+                    }
+
+                    TopUpResponse topUp = _topUp.Execute(topUpRequest);
+                    response.Success = topUp.IsCompleted;
+                    response.PayloadJson = JsonConvert.SerializeObject(topUp);
+                    if (!topUp.IsCompleted)
+                    {
+                        response.Error = new BridgeError
+                        {
+                            Code = topUp.Outcome == TopUpOutcome.NotAuthorised
+                                ? "ERR_ACCESS_DENIED"
+                                : "ERR_TOPUP_" + topUp.Outcome.ToUpperInvariant(),
+                            Message = topUp.StatusMessage
+                        };
+                    }
+                    break;
+
                 case "AutoTopup":
                 case "TicketCharge":
                 case "MfrWriteBlock":

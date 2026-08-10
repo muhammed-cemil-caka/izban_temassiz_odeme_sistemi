@@ -33,6 +33,20 @@ namespace IzbanKiosk.LegacyHardwareBridge.Pos
 
         PosPaymentResponse Charge(PosPaymentRequest request);
 
+        /// <summary>
+        /// Cancels a charge whose value never reached the card.
+        ///
+        /// Not optional. The kiosk takes the money before it writes the card, so
+        /// without a reversal every failed write leaves a passenger paid-for-nothing -
+        /// exactly what the previous system did. Ask the bank whether their SDK
+        /// supports void/reversal before integration starts; if it does not, the
+        /// payment step has to be redesigned rather than worked around.
+        ///
+        /// Must be idempotent on <see cref="PosReversalRequest.IdempotencyKey"/>: a
+        /// retried reversal must not refund twice.
+        /// </summary>
+        PosReversalResponse Reverse(PosReversalRequest request);
+
         void Shutdown();
     }
 }

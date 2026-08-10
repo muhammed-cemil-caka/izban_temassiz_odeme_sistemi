@@ -22,7 +22,7 @@ yolcu arayüzü ayakta kalır.
 | NFC okuyucu + SAM (COM4) | `EMVRdr35Lib.dll` | Çalışıyor — gerçek kart kimliği ve bakiye |
 | Termal yazıcı | `KioskPrint.dll` | Çalışıyor — test fişi ve gerçek bakiye fişi |
 | POS | — | **Entegre değil.** `IPosTerminal` arayüzü hazır, banka SDK'sı bekleniyor. |
-| Karta yükleme | — | **Kapalı.** İzmirim Kart yazma yetkisi/lisansı gerekiyor. |
+| Karta yükleme | — | **Kapalı.** `ICardLoader` arayüzü ve `TopUpSaga` hazır; yazma yetkili SAM + anahtar + şema izni bekleniyor. |
 
 Vendor DLL'leri repoya **konmaz**; paketleme sırasında mevcut AUSKiosk kurulumundan
 whitelist + SHA-256 manifest ile alınır (`tools/Import-LegacyVendorFiles.ps1`).

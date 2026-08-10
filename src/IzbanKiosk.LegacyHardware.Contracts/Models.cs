@@ -180,6 +180,66 @@ namespace IzbanKiosk.LegacyHardware.Contracts
         public string StatusMessage { get; set; } = string.Empty;
     }
 
+    /// <summary>
+    /// Cancels a charge that was approved but could not be turned into value on the
+    /// card. Carries the same idempotency key as the original charge so the acquirer
+    /// can match them, and so a retried reversal cannot refund twice.
+    /// </summary>
+    public class PosReversalRequest
+    {
+        public string IdempotencyKey { get; set; } = string.Empty;
+        public string ApprovalCode { get; set; } = string.Empty;
+        public long AmountMinor { get; set; }
+        public string Currency { get; set; } = "TRY";
+        public string Reason { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Result of a reversal. <c>OutcomeUnknown</c> here is the worst case in the whole
+    /// system: money left the passenger, no value reached the card, and the refund is
+    /// unconfirmed. It must be surfaced for manual reconciliation, never swallowed.
+    /// </summary>
+    public class PosReversalResponse
+    {
+        public string Outcome { get; set; } = "OutcomeUnknown";
+        public bool IsReversed { get; set; }
+        public string StatusMessage { get; set; } = string.Empty;
+    }
+
+    /// <summary>Writes value onto an İzmirim Kart after a charge has been approved.</summary>
+    public class CardLoadRequest
+    {
+        public string IdempotencyKey { get; set; } = string.Empty;
+        public long AmountMinor { get; set; }
+        public string StoragePseudonym { get; set; } = string.Empty;
+        /// <summary>Balance read immediately before the load, for the read-back check.</summary>
+        public long BalanceBeforeMinor { get; set; }
+    }
+
+    public class CardLoadResponse
+    {
+        public bool IsLoaded { get; set; }
+        /// <summary>Balance the loader believes the card now holds, in minor units.</summary>
+        public long BalanceAfterMinor { get; set; }
+        public string StatusMessage { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Outcome of a whole top-up. <c>NeedsReconciliation</c> means the kiosk could not
+    /// establish what happened to the passenger's money and a human has to settle it;
+    /// it is never reported as either success or plain failure.
+    /// </summary>
+    public class TopUpResponse
+    {
+        public string RequestId { get; set; } = string.Empty;
+        public string Outcome { get; set; } = "NeedsReconciliation";
+        public bool IsCompleted { get; set; }
+        public long BalanceAfterMinor { get; set; }
+        public string ApprovalCode { get; set; } = string.Empty;
+        public string MaskedPosReference { get; set; } = string.Empty;
+        public string StatusMessage { get; set; } = string.Empty;
+    }
+
     public class CardRemovalResponse
     {
         public string RequestId { get; set; } = string.Empty;

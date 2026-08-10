@@ -39,6 +39,21 @@ namespace IzbanKiosk.LegacyHardwareBridge.Pos
             };
         }
 
+        /// <summary>
+        /// Reports the reversal as done. Nothing was ever charged by this placeholder,
+        /// so there is nothing outstanding - and saying otherwise would push a
+        /// transaction that never took money into manual reconciliation.
+        /// </summary>
+        public PosReversalResponse Reverse(PosReversalRequest request)
+        {
+            return new PosReversalResponse
+            {
+                Outcome = "Reversed",
+                IsReversed = true,
+                StatusMessage = NotConfiguredMessage
+            };
+        }
+
         public void Shutdown()
         {
         }

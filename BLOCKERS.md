@@ -65,8 +65,15 @@ These checks establish binary-contract compatibility. They do not replace a phys
 
 ## Safety boundary for this phase
 
-- Card top-up/write, ticket charge and auto-top-up are refused by the bridge with
+- Ticket charge, auto-top-up and raw block writes are refused by the bridge with
   `ERR_ACCESS_DENIED`.
+- Card top-up now runs through `TopUpSaga`, which sequences charge -> load -> read-back
+  and reverses the payment when the load fails. It still completes nothing: `ICardLoader`
+  is `NotAuthorisedCardLoader` until a write-capable SAM, its keys and scheme
+  authorisation are delivered, and the saga refuses before it reaches the payment
+  terminal so no passenger is charged for value the kiosk cannot deliver.
+- `IPosTerminal` now requires `Reverse`. Confirm the bank SDK supports void/reversal
+  before integration starts; without it the charge-then-write order is unsafe.
 - POS payment has a real seam but no implementation: `IPosTerminal` is the single interface a
   certified bank SDK plugs into, and `NotConfiguredPosTerminal` refuses every charge with
   `ERR_POS_NOT_CONFIGURED` until one is registered in `Program.Main`. No passenger can be
