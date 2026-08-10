@@ -34,7 +34,7 @@ namespace IzbanKiosk.Terminal
         private const string BridgeExeName = "IzbanKiosk.LegacyHardwareBridge.exe";
         private const string BridgeProcessName = "IzbanKiosk.LegacyHardwareBridge";
         private const string ExpectedBridgeVersion = "2.5.0-net40";
-        private const string PackageVersion = "R37";
+        private const string PackageVersion = "R38";
         private const int MaxManualAmount = 500;
         // Printer work is a technician action behind a button, not a passenger-path
         // poll, so it waits far longer for the shared pipe than card polling does.
@@ -1283,9 +1283,26 @@ namespace IzbanKiosk.Terminal
 
                     string code = response.Error == null ? string.Empty : response.Error.Code;
                     string detail = response.Error == null ? string.Empty : response.Error.Message;
-                    CardWriteStatusText.Text = code == "ERR_TOPUP_MISMATCH"
-                        ? "[UYUŞMAZLIK] " + detail + "\nFark 100 kat ise CardWriteAmountUnit yanlış. Düzeltmeden ikinci test yapmayın."
-                        : "[BAŞARISIZ] " + detail + "\nKart DEĞİŞMEDİ. En olası sebep TerminalNo/TerminalUid'in bu otomat için yanlış olması.";
+                    // Each code gets its own next step. Blaming the terminal identity
+                    // for a refusal that never reached the card sends a technician
+                    // hunting a number that was never the problem.
+                    if (code == "ERR_TOPUP_MISMATCH")
+                    {
+                        CardWriteStatusText.Text = "[UYUŞMAZLIK] " + detail +
+                            "\nFark 100 kat ise CardWriteAmountUnit yanlış. Düzeltmeden ikinci test yapmayın.";
+                    }
+                    else if (code == "ERR_ACCESS_DENIED")
+                    {
+                        CardWriteStatusText.Text = "[AYAR EKSİK] " + detail +
+                            "\nKart DEĞİŞMEDİ. Donanım servisi ayar dosyasını okuyamıyor; " +
+                            "uygulamayı yeniden başlatın, sürerse bildirin.";
+                    }
+                    else
+                    {
+                        CardWriteStatusText.Text = "[BAŞARISIZ] " + detail +
+                            "\nKart DEĞİŞMEDİ. Vendor çağrıyı reddetti: TerminalNo/TerminalUid/CompanyId " +
+                            "bu otomat için yanlış olabilir.";
+                    }
                 });
             });
         }

@@ -400,11 +400,10 @@ namespace IzbanKiosk.LegacyHardwareBridge
             bool comPortFromCommandLine,
             bool printerFromCommandLine)
         {
-            if (comPortFromCommandLine && printerFromCommandLine)
-            {
-                return;
-            }
-
+            // Deliberately no early return when both were passed on the command line.
+            // The kiosk always passes --port and --printer, so skipping the file here
+            // meant the bridge never saw any other setting: card writing stayed off on
+            // every kiosk while the screen beside it showed the values as configured.
             BridgeHardwareConfigFile settings;
             string sourcePath;
             string error;
