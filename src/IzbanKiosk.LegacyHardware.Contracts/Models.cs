@@ -30,6 +30,13 @@ namespace IzbanKiosk.LegacyHardware.Contracts
     {
         public NfcHealthResponse Nfc { get; set; } = new NfcHealthResponse();
         public PrinterHealthResponse Printer { get; set; } = new PrinterHealthResponse();
+        /// <summary>
+        /// True once a certified bank POS SDK is registered. The kiosk uses it to
+        /// retire the diagnostics test load: that button exists to prove card writing
+        /// before any payment path exists, and a free load is not something to leave
+        /// on a machine that can take real money.
+        /// </summary>
+        public bool IsPosConfigured { get; set; }
         public bool IsSystemHealthy => Nfc.IsReady && Printer.IsReady;
     }
 

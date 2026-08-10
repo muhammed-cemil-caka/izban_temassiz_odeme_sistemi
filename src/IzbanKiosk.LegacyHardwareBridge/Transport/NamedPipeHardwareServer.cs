@@ -309,6 +309,7 @@ namespace IzbanKiosk.LegacyHardwareBridge.Transport
                     bool samVerified = connected && _nfcDevice.ResetSam();
                     report.Nfc = CreateNfcHealth(connected, samVerified);
                     report.Printer = _printerDevice.HealthCheck();
+                    report.IsPosConfigured = _posTerminal.IsConfigured;
                     response.Success = report.IsSystemHealthy;
                     response.PayloadJson = JsonConvert.SerializeObject(report);
                     break;

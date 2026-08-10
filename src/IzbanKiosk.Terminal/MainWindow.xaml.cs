@@ -34,7 +34,7 @@ namespace IzbanKiosk.Terminal
         private const string BridgeExeName = "IzbanKiosk.LegacyHardwareBridge.exe";
         private const string BridgeProcessName = "IzbanKiosk.LegacyHardwareBridge";
         private const string ExpectedBridgeVersion = "2.5.0-net40";
-        private const string PackageVersion = "R39";
+        private const string PackageVersion = "R40";
         private const int MaxManualAmount = 500;
         // Printer work is a technician action behind a button, not a passenger-path
         // poll, so it waits far longer for the shared pipe than card polling does.
@@ -76,6 +76,7 @@ namespace IzbanKiosk.Terminal
         private string _numpadDigits = "0";
         private CardSnapshotResponse? _currentSnapshot;
         private bool _topUpInFlight;
+        private bool _posConfigured;
         private KioskScreen _screen = KioskScreen.Idle;
 
         private enum KioskScreen
@@ -229,6 +230,7 @@ namespace IzbanKiosk.Terminal
                     AddDiagnostic("Kiosk identity incomplete: " + _hardwareSettings.IdentityProblem);
                 }
 
+                _posConfigured = health.IsPosConfigured;
                 _printerReady = health.Printer.IsReady;
                 _printerStateKnown = true;
                 string printerStatusMessage = health.Printer.StatusMessage;
@@ -1355,6 +1357,16 @@ namespace IzbanKiosk.Terminal
                                "  Company=" + _hardwareSettings.CompanyId);
             builder.AppendLine("Tutar birimi   : " +
                 (_hardwareSettings.CardWriteAmountUnit.Length == 0 ? "[tanımsız]" : _hardwareSettings.CardWriteAmountUnit));
+
+            // Once a POS is integrated the test has done its job: card writing is
+            // proven by real top-ups, and a button that loads value without taking
+            // payment stops being a diagnostic and becomes a way to give money away.
+            if (_posConfigured)
+            {
+                CardWriteStatusText.Text = "Yükleme POS üzerinden çalışıyor. Test düğmesine gerek kalmadı.";
+                CardWriteTestButton.Visibility = Visibility.Collapsed;
+                return;
+            }
 
             bool ready = _hardwareSettings.CardWriteEnabled
                          && _hardwareSettings.TerminalNo > 0
