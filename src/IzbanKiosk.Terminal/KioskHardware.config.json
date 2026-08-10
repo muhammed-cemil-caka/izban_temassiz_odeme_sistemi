@@ -7,5 +7,12 @@
   "UpdateEnabled": true,
   "UpdateRepositoryOwner": "muhammed-cemil-caka",
   "UpdateRepositoryName": "izban_temassiz_odeme_sistemi",
-  "UpdateCheckHour": 4
+  "UpdateCheckHour": 4,
+
+  "CardWriteEnabled": false,
+  "TerminalNo": 0,
+  "TerminalUid": 0,
+  "CompanyId": 0,
+  "CardWriteAmountUnit": "Minor",
+  "TopupReferenceSeed": 900000
 }

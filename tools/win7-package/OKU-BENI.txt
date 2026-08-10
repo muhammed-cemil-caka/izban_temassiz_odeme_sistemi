@@ -1,4 +1,4 @@
-IZBAN KIOSK R34 - WINDOWS 7 / EMBEDDED (x86)
+IZBAN KIOSK R35 - WINDOWS 7 / EMBEDDED (x86)
 ============================================
 
 "DONANIM SERVISI BASLATILAMADI" / SURUM UYUSMAZLIGI
@@ -153,6 +153,47 @@ YAZMA FILTRESI HAKKINDA (Windows Embedded)
    geri acmak otomatin diskini tekrar korumaya alir ve bu, kurulumun
    dogrulandigindan emin olduktan sonra verilecek bir karardir. Sonuc
    ekraninda hatirlatma cikar.
+
+KARTA YUKLEME - SON IKI DEGERI OLCME
+------------------------------------
+Yukleme icin gereken her sey hazir; iki deger otomata ozel oldugu icin
+olculmesi gerekiyor: TerminalNo ve TerminalUid. Tutar biriminin KURUS oldugu
+sahadaki AUSKiosk gunluklerinden dogrulandi (Amount: 200,00 TL -> Charge:
+20000), CardWriteAmountUnit bu yuzden "Minor" geliyor.
+
+ADIM 1 - CompanyId'yi okuyun
+   Bridge\IzbanKiosk.LegacyHardwareBridge.exe --nfc-health
+   Ciktidaki "host mode=" sayisi CompanyId adayinizdir.
+
+ADIM 2 - Ayar dosyasini doldurun (KioskHardware.config.json)
+   "CardWriteEnabled": true,
+   "TerminalNo": 51591,          <-- setup.ini icindeki No degeri
+   "TerminalUid": 51591,
+   "CompanyId": <host mode>,
+   "CardWriteAmountUnit": "Minor",
+   "TopupReferenceSeed": 900000
+
+ADIM 3 - Tek bir kucuk test yuklemesi yapin
+   Elinizde bir TEST karti olsun, yolcu karti kullanmayin.
+
+   Bridge\IzbanKiosk.LegacyHardwareBridge.exe --topup-test 100
+
+   100 = 1,00 TL. Komut POS'a hic dokunmaz; kimseden tahsilat yapilmaz.
+   Karttan onceki bakiyeyi okur, yukler, sonra tekrar okur.
+
+   [TAMAM]         Bakiye tam 1,00 TL artti. Degerler DOGRU, isiniz bitti.
+   [BASARISIZ]     Vendor cagriyi reddetti. Kart DEGISMEDI. TerminalNo /
+                   TerminalUid yanlis; entegratore bu iki degeri sorun.
+   [UYUSMAZLIK]    Bakiye beklenenden farkli artti. Fark 100 kat ise birim
+                   yanlis. Duzeltmeden IKINCI TEST YAPMAYIN.
+
+ADIM 4 - Calisirsa ayarlari oldugu gibi birakin
+   Bu iki deger otomat basina degisebilir; her yeni otomatta 3. adimi
+   tekrarlayin.
+
+NEDEN BOYLE: yanlis TerminalNo ile yazmak semaya baskasinin kimligiyle islem
+gecmek, yanlis birimle yazmak yolcuya yuz kat fazla veya eksik yuklemektir.
+Ikisi de tahmin edilerek yapilamaz, bu yuzden hicbirinin varsayilani yok.
 
 OTOMATIK GUNCELLEME (GITHUB RELEASES)
 -------------------------------------

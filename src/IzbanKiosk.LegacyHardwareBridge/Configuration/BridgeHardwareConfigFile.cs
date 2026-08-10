@@ -21,6 +21,15 @@ namespace IzbanKiosk.LegacyHardwareBridge.Configuration
         public string NfcComPort { get; set; } = string.Empty;
         public string ThermalPrinterName { get; set; } = string.Empty;
 
+        // Card write. Absent keys leave the refusing defaults in HardwareOptions
+        // untouched, so an older settings file cannot switch loading on by accident.
+        public bool CardWriteEnabled { get; set; }
+        public int TerminalNo { get; set; }
+        public long TerminalUid { get; set; }
+        public int CompanyId { get; set; }
+        public string CardWriteAmountUnit { get; set; } = string.Empty;
+        public int TopupReferenceSeed { get; set; }
+
         public static bool TryLoad(out BridgeHardwareConfigFile settings, out string sourcePath, out string error)
         {
             settings = new BridgeHardwareConfigFile();
@@ -55,6 +64,7 @@ namespace IzbanKiosk.LegacyHardwareBridge.Configuration
 
                     parsed.NfcComPort = (parsed.NfcComPort ?? string.Empty).Trim();
                     parsed.ThermalPrinterName = (parsed.ThermalPrinterName ?? string.Empty).Trim();
+                    parsed.CardWriteAmountUnit = (parsed.CardWriteAmountUnit ?? string.Empty).Trim();
                     settings = parsed;
                     sourcePath = candidate;
                     return true;
