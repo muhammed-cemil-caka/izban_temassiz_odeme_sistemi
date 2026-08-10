@@ -57,6 +57,8 @@
              Link="Compatibility\KioskAutoConfigurationPolicy.cs" />
     <Compile Include="..\..\src\IzbanKiosk.Terminal\ReceiptDocumentBuilder.cs"
              Link="Compatibility\ReceiptDocumentBuilder.cs" />
+    <Compile Include="..\..\src\IzbanKiosk.Terminal\KioskHardwareSettings.cs"
+             Link="Compatibility\KioskHardwareSettings.cs" />
     <Compile Include="..\..\src\IzbanKiosk.Terminal\IzmirimKartNumber.cs"
              Link="Compatibility\IzmirimKartNumber.cs" />
     <Compile Include="..\..\src\IzbanKiosk.Terminal\Update\GitHubReleaseClient.cs"

@@ -132,28 +132,10 @@ namespace IzbanKiosk.Terminal
                     missing.Add(property.Name);
                 }
 
-                if (missing.Count == 0)
+                bool identityFilled = ResolveTerminalIdentity();
+                if (missing.Count == 0 && !identityFilled)
                 {
                     return;
-                }
-
-                // A kiosk identifies itself to the card scheme by its own number, which
-                // is already read from the machine's setup.ini. Defaulting to it beats
-                // shipping one deployment's number to the whole fleet.
-                if (missing.Contains("TerminalNo") || missing.Contains("TerminalUid"))
-                {
-                    int kioskNumber;
-                    if (int.TryParse(KioskNumber, out kioskNumber) && kioskNumber > 0)
-                    {
-                        if (missing.Contains("TerminalNo") && kioskNumber <= ushort.MaxValue)
-                        {
-                            TerminalNo = kioskNumber;
-                        }
-                        if (missing.Contains("TerminalUid"))
-                        {
-                            TerminalUid = kioskNumber;
-                        }
-                    }
                 }
 
                 File.WriteAllText(settingsPath, JsonConvert.SerializeObject(this, Formatting.Indented));
@@ -163,6 +145,37 @@ namespace IzbanKiosk.Terminal
                 // A settings file that cannot be topped up is not a reason to stop the
                 // kiosk; the missing setting simply keeps its built-in default.
             }
+        }
+
+        /// <summary>
+        /// Gives the kiosk its own number as the terminal identity when none is set.
+        ///
+        /// Zero counts as unset, not as a choice. The package ships these keys present
+        /// and zero, so treating "absent" as the only trigger left every freshly
+        /// installed kiosk identifying itself as terminal zero - which the loader then
+        /// refuses, silently disabling card loading on exactly the machines nobody had
+        /// tested yet. Existing non-zero values are never overwritten.
+        /// </summary>
+        internal bool ResolveTerminalIdentity()
+        {
+            int kioskNumber;
+            if (!int.TryParse(KioskNumber, out kioskNumber) || kioskNumber <= 0)
+            {
+                return false;
+            }
+
+            bool changed = false;
+            if (TerminalNo == 0 && kioskNumber <= ushort.MaxValue)
+            {
+                TerminalNo = kioskNumber;
+                changed = true;
+            }
+            if (TerminalUid == 0)
+            {
+                TerminalUid = kioskNumber;
+                changed = true;
+            }
+            return changed;
         }
 
         /// <summary>

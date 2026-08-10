@@ -34,7 +34,7 @@ namespace IzbanKiosk.Terminal
         private const string BridgeExeName = "IzbanKiosk.LegacyHardwareBridge.exe";
         private const string BridgeProcessName = "IzbanKiosk.LegacyHardwareBridge";
         private const string ExpectedBridgeVersion = "2.5.0-net40";
-        private const string PackageVersion = "R40";
+        private const string PackageVersion = "R41";
         private const int MaxManualAmount = 500;
         // Printer work is a technician action behind a button, not a passenger-path
         // poll, so it waits far longer for the shared pipe than card polling does.
