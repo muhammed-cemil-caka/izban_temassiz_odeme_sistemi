@@ -6,19 +6,6 @@ using IzbanKiosk.LegacyHardwareBridge.Pos;
 namespace IzbanKiosk.LegacyHardwareBridge.Card
 {
     /// <summary>
-    /// Outcomes of a top-up, as reported to the kiosk.
-    /// </summary>
-    public static class TopUpOutcome
-    {
-        public const string NotAuthorised = "NotAuthorised";
-        public const string PosNotConfigured = "PosNotConfigured";
-        public const string Declined = "Declined";
-        public const string Completed = "Completed";
-        public const string RefundedAfterLoadFailure = "RefundedAfterLoadFailure";
-        public const string NeedsReconciliation = "NeedsReconciliation";
-    }
-
-    /// <summary>
     /// Sequences a top-up: take the money, put the value on the card, prove it landed,
     /// and undo the payment if it did not.
     ///

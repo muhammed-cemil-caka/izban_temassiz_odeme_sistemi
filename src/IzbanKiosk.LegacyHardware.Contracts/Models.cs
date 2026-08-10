@@ -240,6 +240,20 @@ namespace IzbanKiosk.LegacyHardware.Contracts
         public string StatusMessage { get; set; } = string.Empty;
     }
 
+    /// <summary>
+    /// Outcomes of a top-up. Lives with the contracts because these strings cross the
+    /// pipe: the kiosk decides what to show the passenger by reading them.
+    /// </summary>
+    public static class TopUpOutcome
+    {
+        public const string NotAuthorised = "NotAuthorised";
+        public const string PosNotConfigured = "PosNotConfigured";
+        public const string Declined = "Declined";
+        public const string Completed = "Completed";
+        public const string RefundedAfterLoadFailure = "RefundedAfterLoadFailure";
+        public const string NeedsReconciliation = "NeedsReconciliation";
+    }
+
     public class CardRemovalResponse
     {
         public string RequestId { get; set; } = string.Empty;

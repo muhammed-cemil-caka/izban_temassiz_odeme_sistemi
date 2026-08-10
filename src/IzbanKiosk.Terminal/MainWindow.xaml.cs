@@ -34,7 +34,7 @@ namespace IzbanKiosk.Terminal
         private const string BridgeExeName = "IzbanKiosk.LegacyHardwareBridge.exe";
         private const string BridgeProcessName = "IzbanKiosk.LegacyHardwareBridge";
         private const string ExpectedBridgeVersion = "2.5.0-net40";
-        private const string PackageVersion = "R38";
+        private const string PackageVersion = "R39";
         private const int MaxManualAmount = 500;
         // Printer work is a technician action behind a button, not a passenger-path
         // poll, so it waits far longer for the shared pipe than card polling does.
@@ -75,6 +75,7 @@ namespace IzbanKiosk.Terminal
         private KioskHardwareSettings? _hardwareSettings;
         private string _numpadDigits = "0";
         private CardSnapshotResponse? _currentSnapshot;
+        private bool _topUpInFlight;
         private KioskScreen _screen = KioskScreen.Idle;
 
         private enum KioskScreen
@@ -527,7 +528,7 @@ namespace IzbanKiosk.Terminal
             int amount;
             if (int.TryParse(button.Tag.ToString(), out amount))
             {
-                ShowPosNotConfigured(amount);
+                StartTopUp(amount);
             }
         }
 
@@ -573,7 +574,7 @@ namespace IzbanKiosk.Terminal
             int amount;
             if (_cardPresent && _currentSnapshot != null && int.TryParse(_numpadDigits, out amount) && amount > 0)
             {
-                ShowPosNotConfigured(amount);
+                StartTopUp(amount);
             }
         }
 
@@ -587,6 +588,130 @@ namespace IzbanKiosk.Terminal
             {
                 ShowIdle();
             }
+        }
+
+        /// <summary>
+        /// Runs a passenger top-up: charge, load, verify, and show what the card holds
+        /// afterwards.
+        ///
+        /// The whole sequence lives in the bridge's saga, which reverses the payment if
+        /// the load fails. This method only drives the screen, so the one thing it must
+        /// never do is decide an outcome on its own - it reports what came back.
+        ///
+        /// The balance shown at the end is the figure read back off the card, not the
+        /// old balance plus the amount. If those two ever disagree the passenger should
+        /// see what the card really holds.
+        /// </summary>
+        private void StartTopUp(int amount)
+        {
+            if (_topUpInFlight || _currentSnapshot == null)
+            {
+                return;
+            }
+            _topUpInFlight = true;
+
+            string pseudonym = _currentSnapshot.StoragePseudonym;
+            long amountMinor = amount * 100L;
+
+            _screen = KioskScreen.Payment;
+            SelectedAmountText.Text = (_english ? "SELECTED AMOUNT: " : "SEÇİLEN TUTAR: ") +
+                amount.ToString("N2", CultureInfo.GetCultureInfo("tr-TR")) + " TL";
+            PaymentStatusText.Text = _english ? "PROCESSING" : "İŞLEM YAPILIYOR";
+            PaymentStatusText.Foreground = BusyBrush;
+            PaymentDetailsText.Text = _english
+                ? "Please keep your card on the reader."
+                : "Lütfen kartınızı okuyucudan ÇEKMEYİN.";
+            PaymentBackButton.IsEnabled = false;
+            ShowOnly(PaymentPanel);
+
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                BridgeResponse? response = SendRequest(new BridgeRequest
+                {
+                    RequestId = Guid.NewGuid().ToString("N"),
+                    Command = "Topup",
+                    TimeoutMs = 40000,
+                    PayloadJson = JsonConvert.SerializeObject(new PosPaymentRequest
+                    {
+                        // One key for the whole attempt: the saga returns the first
+                        // outcome if this ever arrives twice, so a retried pipe call
+                        // cannot charge the passenger a second time.
+                        IdempotencyKey = Guid.NewGuid().ToString("N"),
+                        AmountMinor = amountMinor,
+                        Currency = "TRY",
+                        StoragePseudonym = pseudonym
+                    })
+                }, 35000);
+
+                OnUi(delegate
+                {
+                    _topUpInFlight = false;
+                    PaymentBackButton.IsEnabled = true;
+                    RenderTopUpOutcome(response, amount);
+                });
+            });
+        }
+
+        private void RenderTopUpOutcome(BridgeResponse? response, int amount)
+        {
+            PaymentBackButton.Content = _english ? "RETURN TO AMOUNT SCREEN" : "TUTAR EKRANINA DÖN";
+
+            if (response == null)
+            {
+                PaymentStatusText.Text = _english ? "NO ANSWER FROM HARDWARE" : "DONANIM SERVİSİ YANIT VERMEDİ";
+                PaymentStatusText.Foreground = ErrorBrush;
+                PaymentDetailsText.Text = _english
+                    ? "The outcome of this attempt is unknown. Do not retry; report it."
+                    : "Bu işlemin sonucu bilinmiyor. TEKRAR DENEMEYİN, yetkiliye bildirin.";
+                SetHardwareStatus("İŞLEM BELİRSİZ", "Sonuç doğrulanamadı", ErrorBrush);
+                return;
+            }
+
+            TopUpResponse? result = string.IsNullOrWhiteSpace(response.PayloadJson)
+                ? null
+                : JsonConvert.DeserializeObject<TopUpResponse>(response.PayloadJson);
+
+            if (response.Success && result != null && result.IsCompleted)
+            {
+                // The card's own figure, so the passenger is never shown a balance the
+                // card does not actually carry.
+                if (_currentSnapshot != null)
+                {
+                    _currentSnapshot.BalanceMinor = result.BalanceAfterMinor;
+                    BalanceText.Text = (result.BalanceAfterMinor / 100m)
+                        .ToString("N2", CultureInfo.GetCultureInfo("tr-TR")) + " TL";
+                }
+
+                PaymentStatusText.Text = _english ? "LOAD COMPLETE" : "YÜKLEME TAMAMLANDI";
+                PaymentStatusText.Foreground = ReadyBrush;
+                PaymentDetailsText.Text = (_english ? "New balance: " : "Güncel bakiyeniz: ") +
+                    (result.BalanceAfterMinor / 100m).ToString("N2", CultureInfo.GetCultureInfo("tr-TR")) + " TL";
+                SetHardwareStatus("YÜKLEME TAMAMLANDI",
+                    (_english ? "New balance " : "Güncel bakiye ") +
+                    (result.BalanceAfterMinor / 100m).ToString("N2", CultureInfo.GetCultureInfo("tr-TR")) + " TL",
+                    ReadyBrush);
+                _journal.Record("TopUpCompleted", new { amountMinor = amount * 100L, balanceAfterMinor = result.BalanceAfterMinor });
+                return;
+            }
+
+            string code = response.Error == null ? string.Empty : response.Error.Code;
+            string detail = response.Error == null ? string.Empty : response.Error.Message;
+
+            if (code == "ERR_TOPUP_POSNOTCONFIGURED")
+            {
+                ShowPosNotConfigured(amount);
+                return;
+            }
+
+            bool uncertain = result != null && result.Outcome == TopUpOutcome.NeedsReconciliation;
+            PaymentStatusText.Text = uncertain
+                ? (_english ? "NEEDS REVIEW" : "İŞLEM İNCELENMELİ")
+                : (_english ? "NOT COMPLETED" : "İŞLEM TAMAMLANMADI");
+            PaymentStatusText.Foreground = ErrorBrush;
+            PaymentDetailsText.Text = detail.Length > 0
+                ? detail
+                : (_english ? "The top-up did not complete." : "Yükleme tamamlanmadı.");
+            SetHardwareStatus(uncertain ? "İŞLEM İNCELENMELİ" : "YÜKLEME YAPILMADI", detail, ErrorBrush);
         }
 
         private void ShowPosNotConfigured(int amount)
