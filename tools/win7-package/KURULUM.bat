@@ -24,13 +24,16 @@ REM   /S        soru sorma, test fisi basma, yeniden baslatmayi sorma
 REM   /RESTART  /S ile birlikte: bitince otomati kendisi yeniden baslatir
 REM   /KAPALIAG otomat internete cikmiyor: GitHub adimini atlar ve otomatik
 REM             guncellemeyi ayar dosyasinda kapatir
+REM   /FILTREATLA yazma filtresi kontrolunu atla (kapali oldugu dogrulandiysa)
 set SESSIZ=0
 set OTOBASLAT=0
 set KAPALIAG=0
+set FILTREATLA=0
 for %%f in (%*) do (
   if /i "%%f"=="/S" set SESSIZ=1
   if /i "%%f"=="/RESTART" set OTOBASLAT=1
   if /i "%%f"=="/KAPALIAG" set KAPALIAG=1
+  if /i "%%f"=="/FILTREATLA" set FILTREATLA=1
 )
 set "GUNLUK=%~dp0kurulum-gunlugu.txt"
 if "%SESSIZ%"=="1" echo [%DATE% %TIME%] KURULUM BASLADI>"%GUNLUK%"
@@ -127,14 +130,49 @@ echo   2/9  Yazma filtresi ^(write filter^)
 echo  --------------------------------------------------------------
 set WF=
 set "WFKOMUT="
+if "%FILTREATLA%"=="1" (
+  echo        [ATLANDI] Yazma filtresi kontrolu bayrakla atlandi.
+  goto :wf_bitti
+)
+
+REM Once hangi filtrenin KURULU oldugunu bul. Servisin calisiyor olmasi
+REM filtrenin ACIK oldugu anlamina GELMEZ: FBWF kapatildiktan sonra da surucu
+REM yuklu kalir ve servis RUNNING gorunur. Bu yuzden servis yalnizca hangi
+REM aracin sorulacagini secmek icin kullaniliyor; gercek durum araca soruluyor.
 sc query ewfsrv 2>nul | find "RUNNING" >nul && set WF=EWF
 sc query fbwf 2>nul | find "RUNNING" >nul && set WF=FBWF
 sc query uwfservicingsvc 2>nul | find "RUNNING" >nul && set WF=UWF
 
 if "%WF%"=="" (
-  echo        [TAMAM] Calisan bir yazma filtresi bulunamadi.
+  echo        [TAMAM] Yazma filtresi kurulu degil.
   goto :wf_bitti
 )
+
+if not "%WF%"=="FBWF" goto :wf_durum_bilinmiyor
+
+REM fbwfmgr iki bolum yazar: once bu oturum, sonra sonraki oturum. Bizi
+REM ilgilendiren ilki - su anda diske gercekten yazilip yazilmadigi.
+set "FBWFDURUM="
+for /f "tokens=2 delims=:" %%a in ('fbwfmgr /displayconfig 2^>nul ^| find /i "filter state"') do (
+  if not defined FBWFDURUM set "FBWFDURUM=%%a"
+)
+echo %FBWFDURUM% | find /i "disabled" >nul
+if not errorlevel 1 (
+  echo        [TAMAM] FBWF kurulu ama filtre KAPALI, diske yazilabiliyor.
+  set WF=
+  goto :wf_bitti
+)
+goto :wf_acik
+
+:wf_durum_bilinmiyor
+REM EWF/UWF icin aracin cikti bicimi dogrulanmadi; acik varsaymak guvenli
+REM olan yon. Operator kapali oldugunu biliyorsa /FILTREATLA ile gecebilir.
+echo        %WF% kurulu. Durumu su komutla dogrulayabilirsiniz:
+if "%WF%"=="EWF" echo           ewfmgr c:
+if "%WF%"=="UWF" echo           uwfmgr filter get-config
+echo        Kapali oldugundan eminseniz: KURULUM.bat /FILTREATLA
+
+:wf_acik
 
 echo        %WF% yazma filtresi calisiyor, devre disi birakiliyor...
 echo.
