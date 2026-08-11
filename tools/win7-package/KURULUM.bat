@@ -345,13 +345,53 @@ if not "%ESKIACILIS%"=="" (
   echo                yerini kapar.
 )
 
-set ESKIAUS=
-reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" 2>nul | find /i "AUSKiosk" >nul && set ESKIAUS=HKLM\...\Run
-reg query "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" 2>nul | find /i "AUSKiosk" >nul && set ESKIAUS=HKCU\...\Run
-if not "%ESKIAUS%"=="" (
-  echo        [UYARI] AUSKiosk acilista da baslatiliyor: %ESKIAUS%
-  echo                Yeniden baslatmadan sonra COM portunu yine kapar.
-  echo                Bu kaydi kaldirmaya siz karar verin.
+REM AUSKiosk'un kendisi SILINMIYOR - setup.ini otomat numarasini, klasoru de
+REM vendor DLL'lerini sagliyor. Kaldirilan tek sey ACILISTA BASLAMASI: ikisi
+REM ayni anda calisamaz, NFC okuyucunun COM portunu tek biri tutabilir.
+REM Silinen her kayit once yedeklenir; geri almak tek komut olmali.
+set "ACILISYEDEK=%~dp0auskiosk-acilis-yedek.txt"
+set ESKIAUS=0
+
+for %%K in ("HKLM" "HKCU") do (
+  for /f "tokens=1,2,*" %%a in ('reg query "%%~K\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" 2^>nul ^| find /i "AUSKiosk"') do (
+    echo %%~K\Run^|%%a^|%%c>>"%ACILISYEDEK%"
+    reg delete "%%~K\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v "%%a" /f >nul 2>&1
+    echo        [TAMAM] Acilis kaydi kaldirildi: %%~K\Run -^> %%a
+    set ESKIAUS=1
+  )
+)
+
+REM Baslangic klasorundeki kisayollar. Silinmiyor, yedek klasore tasiniyor.
+for %%D in ("%ALLUSERSPROFILE%\Start Menu\Programs\Startup" "%ProgramData%\Microsoft\Windows\Start Menu\Programs\Startup" "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup") do (
+  if exist "%%~D\*AUSKiosk*" (
+    if not exist "%~dp0auskiosk-acilis-yedek" md "%~dp0auskiosk-acilis-yedek" >nul 2>&1
+    move /Y "%%~D\*AUSKiosk*" "%~dp0auskiosk-acilis-yedek\" >nul 2>&1
+    echo        [TAMAM] Baslangic kisayolu tasindi: %%~D
+    set ESKIAUS=1
+  )
+)
+
+if "%ESKIAUS%"=="0" echo        [TAMAM] AUSKiosk acilista baslatilmiyor.
+if "%ESKIAUS%"=="1" echo               Yedek: %ACILISYEDEK%
+
+REM Kiosk makinelerinde uygulama cogu zaman Run anahtarindan degil, Windows
+REM KABUGU olarak baslatilir. Oyleyse Run kaydini silmek hicbir sey degistirmez
+REM ve bizim uygulama da acilmaz. Bu deger DEGISTIRILMIYOR: yanlis bir kabuk
+REM makineyi bos ekrana acar ve sahadaki bir otomatta geri donusu yoktur.
+set KABUK=
+for /f "tokens=2,*" %%a in ('reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v Shell 2^>nul ^| find /i "Shell"') do set "KABUK=%%b"
+echo %KABUK% | find /i "AUSKiosk" >nul
+if not errorlevel 1 (
+  echo.
+  echo        [UYARI] AUSKiosk Windows KABUGU olarak ayarli:
+  echo                %KABUK%
+  echo                Bu haliyle bizim uygulama acilista BASLAMAZ. Kabugu
+  echo                degistirmek bilerek verilecek bir karardir ve yanlis
+  echo                deger makineyi bos ekrana acar; betik dokunmuyor.
+  echo                Karar verirseniz kabugu explorer.exe yapin, acilis
+  echo                kaydimiz uygulamayi baslatir.
+  set HATA=1
+  set H6=1
 )
 echo.
 
@@ -491,6 +531,7 @@ if "%H1%"=="1" echo    - 1/9  Service Pack 1 yok. .NET 4.8 kurulamaz.
 if "%H2%"=="1" echo    - 2/9  Yazma filtresi kapatilamadi. Hicbir sey kalici degil.
 if "%H4%"=="1" echo    - 4/9  Kok sertifika kurulamadi. Guncelleme indirilemez.
 if "%H5%"=="1" echo    - 5/9  .NET Framework 4.5+ yok. Guncelleme calismaz.
+if "%H6%"=="1" echo    - 6/9  AUSKiosk Windows kabugu; uygulamamiz acilista BASLAMAZ.
 if "%H7%"=="1" echo    - 7/9  Yazici veya NFC portu secilemedi.
 if "%H8%"=="1" echo    - 8/9  Otomatik baslatma kaydi yok. Acilista uygulama acilmaz.
 if "%H9%"=="1" echo    - 9/9  GitHub'a erisilemiyor. Otomat guncelleme ALAMAZ.

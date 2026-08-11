@@ -1,4 +1,4 @@
-IZBAN KIOSK R43 - WINDOWS 7 / EMBEDDED (x86)
+IZBAN KIOSK R44 - WINDOWS 7 / EMBEDDED (x86)
 ============================================
 
 "DONANIM SERVISI BASLATILAMADI" / SURUM UYUSMAZLIGI
@@ -227,16 +227,42 @@ GUNCELLEME (sonraki surumler)
    KURULUM.bat'i tekrar calistirmaniz gerekmez; TLS, sertifika ve acilis
    kaydi zaten yerinde.
 
-AUSKIOSK SILINMEZ AMA CALISMAMALIDIR
+AUSKIOSK SILINMEZ, SADECE ACILISTAN CIKARILIR
    Eski kurulum yerinde kalir: setup.ini otomat numarasini, klasor de vendor
    DLL'lerini saglar. Ancak AUSKiosk.exe ile bu uygulama AYNI ANDA CALISAMAZ;
    NFC okuyucunun COM portunu tek biri tutabilir. Kopru, AUSKiosk calisiyorken
    acikca reddediyor.
 
-   Bu yuzden AUSKiosk'un ACILISTA BASLATMA kaydini kaldirin. KURULUM.bat 6/9
-   adiminda calisan AUSKiosk'u kapatir ve acilis kaydi bulursa uyarir, ama o
-   kaydi kendisi SILMEZ: baskasinin uretim uygulamasini acilistan cikarmak
-   bilerek verilecek bir karardir.
+   KURULUM.bat 6/9 adimi artik su isleri yapiyor:
+     - Calisan AUSKiosk.exe'yi kapatir
+     - HKLM ve HKCU altindaki Run kayitlarini SILER
+     - Baslangic klasorundeki kisayollari yedek klasore TASIR
+     - Yerine bizim uygulamanin acilis kaydini yazar (8/9)
+
+   Silinen her sey once yedeklenir:
+     auskiosk-acilis-yedek.txt        (kaldirilan kayit degerleri)
+     auskiosk-acilis-yedek\           (tasinan kisayollar)
+   Geri almak icin kayit degerini bu dosyadan okuyup reg add ile yazin.
+
+   UYGULAMANIN KENDISI SILINMEZ. Elle calistirmak isterseniz AUSKiosk.exe
+   yerinde duruyor - ama once bizim uygulamayi kapatin, yoksa COM portu
+   mesguldur.
+
+WINDOWS KABUGU - ONEMLI ISTISNA
+   Kiosk makinelerinde uygulama cogu zaman Run anahtarindan degil, WINDOWS
+   KABUGU olarak baslatilir (Winlogon\Shell). AUSKiosk boyle ayarliysa Run
+   kaydini silmek hicbir sey degistirmez ve bizim uygulama da acilista
+   BASLAMAZ.
+
+   Betik bunu tespit edip 6/9 adiminda [UYARI] veriyor ama DEGERI
+   DEGISTIRMIYOR. Yanlis bir kabuk degeri makineyi bos ekrana acar ve sahadaki
+   bir otomatta geri donusu yoktur; bu karar sizin.
+
+   Karar verirseniz kabugu explorer.exe yapin; acilis kaydimiz uygulamayi
+   baslatir:
+     reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" ^
+       /v Shell /t REG_SZ /d "explorer.exe" /f
+   Bunu yapmadan once mevcut degeri not edin.
 
 OTOMATIK GUNCELLEME (GITHUB RELEASES)
 -------------------------------------
