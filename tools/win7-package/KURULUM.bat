@@ -9,12 +9,31 @@ if errorlevel 1 (
   echo   Bu dosyayi YONETICI OLARAK calistirin.
   echo   Sag tik -^> "Yonetici olarak calistir"
   echo.
+  for %%f in (%*) do if /i "%%f"=="/S" exit /b 1
   pause
   exit /b 1
 )
 
 cd /d "%~dp0"
 set HATA=0
+
+REM Toplu dagitim icin sessiz mod. Saha ekibi yuzlerce otomatin basinda
+REM oturamaz; /S hicbir soru sormaz, sonucu ekran yerine gunluge yazar ve
+REM cikis koduyla bildirir.
+REM   /S        soru sorma, test fisi basma, yeniden baslatmayi sorma
+REM   /RESTART  /S ile birlikte: bitince otomati kendisi yeniden baslatir
+REM   /KAPALIAG otomat internete cikmiyor: GitHub adimini atlar ve otomatik
+REM             guncellemeyi ayar dosyasinda kapatir
+set SESSIZ=0
+set OTOBASLAT=0
+set KAPALIAG=0
+for %%f in (%*) do (
+  if /i "%%f"=="/S" set SESSIZ=1
+  if /i "%%f"=="/RESTART" set OTOBASLAT=1
+  if /i "%%f"=="/KAPALIAG" set KAPALIAG=1
+)
+set "GUNLUK=%~dp0kurulum-gunlugu.txt"
+if "%SESSIZ%"=="1" echo [%DATE% %TIME%] KURULUM BASLADI>"%GUNLUK%"
 set SP1=1
 set "KIOSKEXE=%~dp0IZBAN-Kiosk.exe"
 set "KOPRU=%~dp0Bridge\IzbanKiosk.LegacyHardwareBridge.exe"
@@ -369,6 +388,7 @@ set H7=1
 :testfisi
 if not "%ACRC%"=="0" goto :baslangic
 echo.
+if "%SESSIZ%"=="1" goto :baslangic
 set TEST=
 set /p TEST=       Simdi bir test fisi basilsin mi? (E/H):
 if /i not "%TEST%"=="E" goto :baslangic
@@ -426,6 +446,16 @@ if not exist "%KIOSKEXE%" (
   goto :sonuc
 )
 
+REM Kapali agdaki otomatta GitHub'a ulasilamamasi bir ariza degil, tasarim.
+REM Adimi [HATA] saymak, saha ekibine her kurulumda gercek olmayan bir sorun
+REM bildirmek olurdu. Otomatik guncelleme ayari degistirilmiyor: gunde bir
+REM basarisiz denemenin zarari yok, ayar dosyasini burada duzenlemek ise
+REM WES7'de bulunmayabilecek araclara bagimlilik getirirdi.
+if "%KAPALIAG%"=="1" (
+  echo        [ATLANDI] Otomat kapali agda; guncellemeler elle dagitiliyor.
+  goto :sonuc
+)
+
 echo        GitHub'a baglaniliyor, bekleyin...
 echo.
 "%KIOSKEXE%" --check-update
@@ -477,6 +507,7 @@ echo   Bunlar tamamsa otomata bir daha gelmeniz gerekmez;
 echo   uygulama kendini gunceller.
 echo.
 call :yeniden_baslat_sor
+if "%HATA%"=="1" exit /b 1
 exit /b 0
 
 REM ---------------------------------------------------------------
@@ -485,6 +516,12 @@ REM baslatmadan sonra gecerli oldugu icin, bunu operatorun hatirlamasina
 REM birakmak kurulumun en sik atlanan adimi oluyordu.
 REM ---------------------------------------------------------------
 :yeniden_baslat_sor
+if "%SESSIZ%"=="1" (
+  if "%HATA%"=="1" echo [%DATE% %TIME%] EKSIK ADIM VAR>>"%GUNLUK%"
+  if not "%HATA%"=="1" echo [%DATE% %TIME%] KURULUM TAMAM>>"%GUNLUK%"
+  if "%OTOBASLAT%"=="1" shutdown /r /t 30 /c "IZBAN Kiosk kurulumu" >nul 2>&1
+  goto :eof
+)
 set CEVAP=
 set /p CEVAP=   Otomat simdi yeniden baslatilsin mi? (E/H):
 if /i not "%CEVAP%"=="E" (

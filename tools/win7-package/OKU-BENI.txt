@@ -1,4 +1,4 @@
-IZBAN KIOSK R42 - WINDOWS 7 / EMBEDDED (x86)
+IZBAN KIOSK R43 - WINDOWS 7 / EMBEDDED (x86)
 ============================================
 
 "DONANIM SERVISI BASLATILAMADI" / SURUM UYUSMAZLIGI
@@ -194,6 +194,49 @@ ADIM 4 - Calisirsa ayarlari oldugu gibi birakin
 NEDEN BOYLE: yanlis TerminalNo ile yazmak semaya baskasinin kimligiyle islem
 gecmek, yanlis birimle yazmak yolcuya yuz kat fazla veya eksik yuklemektir.
 Ikisi de tahmin edilerek yapilamaz, bu yuzden hicbirinin varsayilani yok.
+
+KAPALI AGDAKI SAHA OTOMATLARINA TOPLU DAGITIM
+---------------------------------------------
+Saha otomatlari istasyon modemi uzerinden yalnizca kendi aralarinda ve merkezle
+haberlesiyor; GitHub'a cikis yok. Otomatik guncelleme bu makinelerde CALISMAZ.
+Dagitim, o aga erisebilen ekip tarafindan elle yapilir.
+
+SESSIZ KURULUM
+   KURULUM.bat hicbir soru sormadan calisabilir:
+
+      KURULUM.bat /S /KAPALIAG /RESTART
+
+   /S         soru sormaz, test fisi basmaz, ekrana degil gunluge yazar
+   /KAPALIAG  GitHub adimini atlar (kapali agda erisimsizlik ariza degildir)
+   /RESTART   bitince otomati kendisi yeniden baslatir
+
+   Sonuc: klasordeki kurulum-gunlugu.txt + cikis kodu (0 = tamam, 1 = eksik).
+   Toplu dagitimda cikis kodu 1 donen otomatlarin listesini cikarin; o
+   makinelerin gunlugune bakmak gerekir.
+
+ILK KURULUM (otomat basina bir kez)
+   1. -KURULUM.zip icerigini C:\IZBAN-Kiosk klasorune kopyalayin.
+   2. KURULUM.bat /S /KAPALIAG /RESTART
+
+GUNCELLEME (sonraki surumler)
+   1. Yayin zip'inin icerigini C:\IZBAN-Kiosk uzerine kopyalayin.
+      KioskHardware.config.json'u KOPYALAMAYIN - o makineye ait.
+      Bridge\ klasorunu MUTLAKA degistirin; eski birakilirsa uygulama
+      "MIXED INSTALLATION" verip acilmaz.
+   2. Otomati yeniden baslatin.
+   KURULUM.bat'i tekrar calistirmaniz gerekmez; TLS, sertifika ve acilis
+   kaydi zaten yerinde.
+
+AUSKIOSK SILINMEZ AMA CALISMAMALIDIR
+   Eski kurulum yerinde kalir: setup.ini otomat numarasini, klasor de vendor
+   DLL'lerini saglar. Ancak AUSKiosk.exe ile bu uygulama AYNI ANDA CALISAMAZ;
+   NFC okuyucunun COM portunu tek biri tutabilir. Kopru, AUSKiosk calisiyorken
+   acikca reddediyor.
+
+   Bu yuzden AUSKiosk'un ACILISTA BASLATMA kaydini kaldirin. KURULUM.bat 6/9
+   adiminda calisan AUSKiosk'u kapatir ve acilis kaydi bulursa uyarir, ama o
+   kaydi kendisi SILMEZ: baskasinin uretim uygulamasini acilistan cikarmak
+   bilerek verilecek bir karardir.
 
 OTOMATIK GUNCELLEME (GITHUB RELEASES)
 -------------------------------------
