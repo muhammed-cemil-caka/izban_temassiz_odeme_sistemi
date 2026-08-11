@@ -33,8 +33,17 @@ namespace IzbanKiosk.Terminal
         private const string PipeName = "IzbanKiosk.LegacyHardware.v1";
         private const string BridgeExeName = "IzbanKiosk.LegacyHardwareBridge.exe";
         private const string BridgeProcessName = "IzbanKiosk.LegacyHardwareBridge";
+
+        /// <summary>
+        /// How long the kiosk waits for its reader at start-up before giving up.
+        /// Twelve attempts five seconds apart covers a minute, which is longer than a
+        /// cold boot takes to enumerate a USB serial device and short enough that a
+        /// genuinely missing reader is still reported while a technician is present.
+        /// </summary>
+        private const int SamReadyAttempts = 12;
+        private const int SamRetryDelayMs = 5000;
         private const string ExpectedBridgeVersion = "2.5.0-net40";
-        private const string PackageVersion = "R45";
+        private const string PackageVersion = "R46";
         private const int MaxManualAmount = 500;
         // Printer work is a technician action behind a button, not a passenger-path
         // poll, so it waits far longer for the shared pipe than card polling does.
@@ -197,16 +206,45 @@ namespace IzbanKiosk.Terminal
                     return;
                 }
 
-                BridgeResponse? healthResponse = SendRequest(new BridgeRequest
+                // Retried, because this now runs at boot. The kiosk used to be started
+                // by whoever was at the machine, long after Windows had settled; it is
+                // now launched from the Run key moments after the shell, and the
+                // USB-to-serial reader is often not enumerated yet. Failing on the
+                // first answer turned a reader that was two seconds late into a fatal
+                // screen that needed someone to walk up and press a button.
+                HardwareHealthResponse? health = null;
+                BridgeResponse? healthResponse = null;
+                for (int attempt = 0; attempt < SamReadyAttempts && !_shutdownRequested; attempt++)
                 {
-                    RequestId = Guid.NewGuid().ToString("N"),
-                    Command = "HealthCheck",
-                    TimeoutMs = 5000
-                }, 3000);
+                    healthResponse = SendRequest(new BridgeRequest
+                    {
+                        RequestId = Guid.NewGuid().ToString("N"),
+                        Command = "HealthCheck",
+                        TimeoutMs = 5000
+                    }, 3000);
 
-                HardwareHealthResponse? health = healthResponse != null && !string.IsNullOrWhiteSpace(healthResponse.PayloadJson)
-                    ? JsonConvert.DeserializeObject<HardwareHealthResponse>(healthResponse.PayloadJson)
-                    : null;
+                    health = healthResponse != null && !string.IsNullOrWhiteSpace(healthResponse.PayloadJson)
+                        ? JsonConvert.DeserializeObject<HardwareHealthResponse>(healthResponse.PayloadJson)
+                        : null;
+
+                    if (health != null && health.Nfc.IsReady && health.Nfc.IsSamVerified)
+                    {
+                        break;
+                    }
+
+                    if (attempt + 1 < SamReadyAttempts)
+                    {
+                        AddDiagnostic("NFC/SAM not ready yet (attempt " + (attempt + 1) + " of " +
+                            SamReadyAttempts + "); waiting for the reader.");
+                        int remaining = attempt + 1;
+                        OnUi(delegate
+                        {
+                            SetHardwareStatus("DONANIM HAZIRLANIYOR",
+                                "NFC okuyucu bekleniyor... (" + remaining + "/" + SamReadyAttempts + ")", BusyBrush);
+                        });
+                        Thread.Sleep(SamRetryDelayMs);
+                    }
+                }
 
                 if (health == null || !health.Nfc.IsReady || !health.Nfc.IsSamVerified)
                 {

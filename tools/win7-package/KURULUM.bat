@@ -25,15 +25,23 @@ REM   /RESTART  /S ile birlikte: bitince otomati kendisi yeniden baslatir
 REM   /KAPALIAG otomat internete cikmiyor: GitHub adimini atlar ve otomatik
 REM             guncellemeyi ayar dosyasinda kapatir
 REM   /FILTREATLA yazma filtresi kontrolunu atla (kapali oldugu dogrulandiysa)
+REM   /KABUK-EXPLORER  Windows kabugunu explorer.exe yapar (masaustu gelir,
+REM                    uygulamamiz acilis kaydindan uzerine acilir)
+REM   /KABUK-KIOSK     Windows kabugunu bizim uygulamamiz yapar (otomat kilitli
+REM                    kalir, masaustu hic gorunmez)
+REM   Eski kabuk degeri her durumda yedeklenir.
 set SESSIZ=0
 set OTOBASLAT=0
 set KAPALIAG=0
 set FILTREATLA=0
+set "KABUKAYAR="
 for %%f in (%*) do (
   if /i "%%f"=="/S" set SESSIZ=1
   if /i "%%f"=="/RESTART" set OTOBASLAT=1
   if /i "%%f"=="/KAPALIAG" set KAPALIAG=1
   if /i "%%f"=="/FILTREATLA" set FILTREATLA=1
+  if /i "%%f"=="/KABUK-EXPLORER" set KABUKAYAR=explorer.exe
+  if /i "%%f"=="/KABUK-KIOSK" set KABUKAYAR=KIOSK
 )
 set "GUNLUK=%~dp0kurulum-gunlugu.txt"
 if "%SESSIZ%"=="1" echo [%DATE% %TIME%] KURULUM BASLADI>"%GUNLUK%"
@@ -431,6 +439,33 @@ if not errorlevel 1 (
   set HATA=1
   set H6=1
 )
+
+REM Kabugu degistirmek, ancak operator bilerek istediginde yapiliyor. Yanlis bir
+REM deger makineyi bos ekrana acar ve sahadaki bir otomatta geri donusu yoktur;
+REM bu yuzden varsayilan davranis dokunmamak. Eski deger her zaman once
+REM yedekleniyor, geri almak tek komut olsun diye.
+if not defined KABUKAYAR goto :kabuk_bitti
+if not defined KABUK goto :kabuk_bitti
+
+set "YENIKABUK=%KABUKAYAR%"
+if /i "%KABUKAYAR%"=="KIOSK" set "YENIKABUK=%KIOSKEXE%"
+
+echo.
+echo        Windows kabugu degistiriliyor.
+echo           Eski: %KABUK%
+echo           Yeni: %YENIKABUK%
+echo Eski kabuk: %KABUK%>>"%ACILISYEDEK%"
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v Shell /t REG_SZ /d "%YENIKABUK%" /f >nul 2>&1
+if errorlevel 1 (
+  echo        [HATA] Kabuk degistirilemedi.
+  set HATA=1
+  set H6=1
+) else (
+  echo        [TAMAM] Kabuk yazildi. Yedek: %ACILISYEDEK%
+  set H6=0
+)
+
+:kabuk_bitti
 echo.
 
 echo  --------------------------------------------------------------
