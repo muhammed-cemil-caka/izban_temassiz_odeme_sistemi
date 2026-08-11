@@ -311,16 +311,4 @@ public class TopUpSagaTests
         Assert.Equal(0, loader.LoadCount);
     }
 
-    [Fact]
-    public void ThePlaceholderLoaderRefusesAndSaysWhy()
-    {
-        var loader = new NotAuthorisedCardLoader();
-
-        CardLoadResponse response = loader.Load(new CardLoadRequest { BalanceBeforeMinor = Before });
-
-        Assert.False(loader.IsAuthorised);
-        Assert.False(response.IsLoaded);
-        Assert.Equal(Before, response.BalanceAfterMinor);
-        Assert.Contains("yazma yetkisi", response.StatusMessage);
-    }
 }

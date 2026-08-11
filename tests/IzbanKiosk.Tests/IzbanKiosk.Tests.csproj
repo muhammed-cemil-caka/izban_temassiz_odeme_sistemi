@@ -47,8 +47,6 @@
              Link="Compatibility\TopUpSaga.cs" />
     <Compile Include="..\..\src\IzbanKiosk.LegacyHardwareBridge\Card\ICardLoader.cs"
              Link="Compatibility\ICardLoader.cs" />
-    <Compile Include="..\..\src\IzbanKiosk.LegacyHardwareBridge\Card\NotAuthorisedCardLoader.cs"
-             Link="Compatibility\NotAuthorisedCardLoader.cs" />
     <Compile Include="..\..\src\IzbanKiosk.LegacyHardwareBridge\Pos\IPosTerminal.cs"
              Link="Compatibility\IPosTerminal.cs" />
     <Compile Include="..\..\src\IzbanKiosk.LegacyHardwareBridge\Pos\NotConfiguredPosTerminal.cs"

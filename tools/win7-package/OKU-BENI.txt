@@ -1,4 +1,4 @@
-IZBAN KIOSK R47 - WINDOWS 7 / EMBEDDED (x86)
+IZBAN KIOSK R48 - WINDOWS 7 / EMBEDDED (x86)
 ============================================
 
 "DONANIM SERVISI BASLATILAMADI" / SURUM UYUSMAZLIGI
@@ -176,10 +176,13 @@ ADIM 2 - Ayar dosyasini doldurun (KioskHardware.config.json)
 ADIM 3 - Tek bir kucuk test yuklemesi yapin
    Elinizde bir TEST karti olsun, yolcu karti kullanmayin.
 
-   Bridge\IzbanKiosk.LegacyHardwareBridge.exe --topup-test 100
+   Karti okutun, sonra SISTEM TANILA -> "1 TL TEST YUKLEMESI YAP".
+   Dugme POS'a hic dokunmaz; kimseden tahsilat yapilmaz. Karttan onceki
+   bakiyeyi okur, yukler, sonra tekrar okur.
 
-   100 = 1,00 TL. Komut POS'a hic dokunmaz; kimseden tahsilat yapilmaz.
-   Karttan onceki bakiyeyi okur, yukler, sonra tekrar okur.
+   POS entegre edildikten sonra bu dugme kendiliginden kaybolur: tahsilat
+   yapmadan deger ureten bir dugme, gercek para alabilen bir makinede
+   birakilmaz.
 
    [TAMAM]         Bakiye tam 1,00 TL artti. Degerler DOGRU, isiniz bitti.
    [BASARISIZ]     Vendor cagriyi reddetti. Kart DEGISMEDI. TerminalNo /

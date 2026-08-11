@@ -29,7 +29,6 @@ namespace IzbanKiosk.LegacyHardwareBridge
             bool cliPrinterDiagnose = false;
             bool cliAutoConfigure = false;
             bool cliInteractive = false;
-            long cliTopupTestMinor = 0;
             bool rejectedScaleOverride = false;
             bool comPortFromCommandLine = false;
             bool printerFromCommandLine = false;
@@ -62,10 +61,6 @@ namespace IzbanKiosk.LegacyHardwareBridge
                 else if (string.Equals(args[i], "--interactive", StringComparison.OrdinalIgnoreCase))
                 {
                     cliInteractive = true;
-                }
-                else if (string.Equals(args[i], "--topup-test", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
-                {
-                    long.TryParse(args[++i], out cliTopupTestMinor);
                 }
                 else if (string.Equals(args[i], "--verify-scale", StringComparison.OrdinalIgnoreCase))
                 {
@@ -133,11 +128,6 @@ namespace IzbanKiosk.LegacyHardwareBridge
                 }
 
                 return RunCliCommand(false, false, cliPrinterHealth, false, cliPrintTest, options, new VendorDependencyValidator());
-            }
-
-            if (cliTopupTestMinor > 0)
-            {
-                return RunTopupTestCommand(options, cliTopupTestMinor);
             }
 
             // 3. Load HMAC secret key from Environment
@@ -462,107 +452,6 @@ namespace IzbanKiosk.LegacyHardwareBridge
         /// The exit code tells the installer script which half is unresolved; the
         /// script prints that back to the operator before they leave the machine.
         /// </summary>
-        /// <summary>
-        /// Puts one load onto the card on the reader and reports what the card says
-        /// afterwards, without involving the payment terminal.
-        ///
-        /// Exists because the last two unknowns - the terminal identity the scheme
-        /// expects and the unit the vendor wants the amount in - cannot be answered
-        /// from a desk. They are answered by writing a small amount to a real card and
-        /// reading the balance back, which is exactly what this does and nothing more:
-        /// no passenger, no money taken, no reversal to get wrong.
-        ///
-        /// Refuses unless the deployment has already enabled writing and filled in the
-        /// identity, so it cannot become a way to write with values nobody chose.
-        /// </summary>
-        private static int RunTopupTestCommand(HardwareOptions options, long amountMinor)
-        {
-            Console.WriteLine("--- YUKLEME TESTI (POS yok, tahsilat yapilmaz) ---");
-            Console.WriteLine("Terminal      : No=" + options.TerminalNo + " Uid=" + options.TerminalUid +
-                              " Company=" + options.CompanyId);
-            Console.WriteLine("Tutar birimi  : " + (options.CardWriteAmountUnit.Length == 0 ? "[tanimsiz]" : options.CardWriteAmountUnit));
-            Console.WriteLine("Yuklenecek    : " + (amountMinor / 100m).ToString("0.00") + " TL (" + amountMinor + " kurus)");
-            Console.WriteLine();
-
-            // The test never reads cardholder identity, so a throwaway pseudonymisation
-            // key is correct here: nothing it produces is stored or compared.
-            var device = new EmvRdr35NfcDevice(
-                new SensitiveDataRedactor(Convert.ToBase64String(new byte[32])));
-            var loader = new LegacyCardLoader(device, options);
-            if (!loader.IsAuthorised)
-            {
-                Console.WriteLine("[DURDU] " + loader.LastErrorMessage);
-                return 2;
-            }
-
-            try
-            {
-                if (!device.Initialize() || !device.OpenComm(options.NfcComPort))
-                {
-                    Console.WriteLine("[HATA] Okuyucu acilamadi (" + options.NfcComPort + ").");
-                    return 3;
-                }
-                if (!device.ResetSam())
-                {
-                    Console.WriteLine("[HATA] SAM hazir degil: " + device.LastSamStatusMessage);
-                    return 3;
-                }
-                Console.WriteLine("SAM: " + device.LastSamStatusMessage);
-
-                var reader = new NfcCardBalanceReader(device);
-                long before;
-                string error;
-                if (!reader.TryReadBalanceMinor(string.Empty, out before, out error))
-                {
-                    Console.WriteLine("[HATA] Yukleme oncesi bakiye okunamadi: " + error);
-                    return 4;
-                }
-                Console.WriteLine("Onceki bakiye : " + (before / 100m).ToString("0.00") + " TL");
-
-                CardLoadResponse load = loader.Load(new CardLoadRequest
-                {
-                    IdempotencyKey = "topup-test-" + DateTime.Now.ToString("yyyyMMddHHmmss"),
-                    AmountMinor = amountMinor,
-                    BalanceBeforeMinor = before
-                });
-
-                if (!load.IsLoaded)
-                {
-                    Console.WriteLine("[BASARISIZ] " + load.StatusMessage);
-                    Console.WriteLine("  Vendor cagriyi reddetti. En olasi sebep TerminalNo/TerminalUid/");
-                    Console.WriteLine("  CompanyId degerlerinin bu otomat icin yanlis olmasi. Kart DEGISMEDI.");
-                    return 5;
-                }
-
-                long after;
-                if (!reader.TryReadBalanceMinor(string.Empty, out after, out error))
-                {
-                    Console.WriteLine("[BELIRSIZ] Yukleme yapildi ama dogrulama okunamadi: " + error);
-                    return 6;
-                }
-
-                Console.WriteLine("Sonraki bakiye: " + (after / 100m).ToString("0.00") + " TL");
-                if (after == before + amountMinor)
-                {
-                    Console.WriteLine();
-                    Console.WriteLine("[TAMAM] Bakiye tam beklenen kadar artti.");
-                    Console.WriteLine("  Terminal kimligi ve tutar birimi DOGRU. Ayarlari boyle birakin.");
-                    return 0;
-                }
-
-                Console.WriteLine();
-                Console.WriteLine("[UYUSMAZLIK] Beklenen " + ((before + amountMinor) / 100m).ToString("0.00") +
-                                  " TL, okunan " + (after / 100m).ToString("0.00") + " TL.");
-                Console.WriteLine("  Fark 100 kat ise CardWriteAmountUnit yanlis. Kart uzerindeki degeri");
-                Console.WriteLine("  not edin ve ayari duzeltmeden ikinci bir test yapmayin.");
-                return 7;
-            }
-            finally
-            {
-                device.Shutdown();
-            }
-        }
-
         private static int RunAutoConfigureCommand(bool interactive)
         {
             KioskAutoConfigurator.AutoConfigureOutcome outcome;

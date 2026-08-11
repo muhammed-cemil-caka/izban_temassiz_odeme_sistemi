@@ -137,7 +137,6 @@ echo  --------------------------------------------------------------
 echo   2/9  Yazma filtresi ^(write filter^)
 echo  --------------------------------------------------------------
 set WF=
-set "WFKOMUT="
 if "%FILTREATLA%"=="1" (
   echo        [ATLANDI] Yazma filtresi kontrolu bayrakla atlandi.
   goto :wf_bitti

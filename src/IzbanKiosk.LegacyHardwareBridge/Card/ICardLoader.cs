@@ -7,8 +7,7 @@ namespace IzbanKiosk.LegacyHardwareBridge.Card
     ///
     /// Kept separate from the reader on purpose. Reading a balance needs nothing but
     /// the card; writing one needs a write-capable SAM, its keys, and written
-    /// authorisation from the card scheme. Those arrive as their own delivery, and
-    /// until they do <see cref="NotAuthorisedCardLoader"/> refuses every load.
+    /// authorisation from the card scheme.
     ///
     /// Contract requirements the top-up flow depends on:
     /// <list type="bullet">
