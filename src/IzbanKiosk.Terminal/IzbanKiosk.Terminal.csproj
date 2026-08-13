@@ -4,7 +4,7 @@
     <AssemblyName>IZBAN-Kiosk</AssemblyName>
     <!-- Compared against the GitHub release tag by KioskUpdateService: bump this with
          every release, and tag the release with the same number. -->
-    <Version>1.0.26</Version>
+    <Version>1.0.27</Version>
     <TargetFramework>net40</TargetFramework>
     <TargetFrameworkProfile>Client</TargetFrameworkProfile>
     <UseWPF>true</UseWPF>

@@ -306,7 +306,7 @@ namespace IzbanKiosk.Terminal.Update
             var client = new GitHubReleaseClient(_settings.UpdateRepositoryOwner, _settings.UpdateRepositoryName);
 
             string staging = Path.Combine(Path.GetTempPath(), "izban-kiosk-update");
-            PrepareEmptyDirectory(staging);
+            staging = PrepareEmptyDirectory(staging);
 
             string packagePath = client.DownloadPackage(release, staging);
             _log("Downloaded " + release.PackageName + " (" + new FileInfo(packagePath).Length + " bytes).");
@@ -348,7 +348,9 @@ namespace IzbanKiosk.Terminal.Update
             Process.Start(new ProcessStartInfo
             {
                 FileName = script,
-                WorkingDirectory = staging,
+                // Absolute paths throughout, so the script has no need to sit inside
+                // the folder it is about to have deleted on the next run.
+                WorkingDirectory = installRoot,
                 UseShellExecute = false,
                 CreateNoWindow = true
             });
@@ -378,13 +380,31 @@ namespace IzbanKiosk.Terminal.Update
             return false;
         }
 
-        private static void PrepareEmptyDirectory(string path)
+        /// <summary>
+        /// Returns an empty staging folder, falling back to a fresh name when the
+        /// usual one cannot be cleared.
+        ///
+        /// Something else holding a single file - a leftover shell, an antivirus
+        /// scanner, an operator with the folder open - used to abort the whole update.
+        /// Working around it costs one temporary folder and keeps the kiosk updating.
+        /// </summary>
+        private static string PrepareEmptyDirectory(string path)
         {
-            if (Directory.Exists(path))
+            try
             {
-                Directory.Delete(path, true);
+                if (Directory.Exists(path))
+                {
+                    Directory.Delete(path, true);
+                }
+                Directory.CreateDirectory(path);
+                return path;
             }
-            Directory.CreateDirectory(path);
+            catch (Exception)
+            {
+                string alternate = path + "-" + DateTime.Now.ToString("HHmmss");
+                Directory.CreateDirectory(alternate);
+                return alternate;
+            }
         }
 
         private string AppliedTagPath()
@@ -488,7 +508,12 @@ namespace IzbanKiosk.Terminal.Update
             script.AppendLine(")");
 
             script.AppendLine("copy /Y \"" + staging + "\\settings.bak\" \"" + installRoot + "\\" + KioskHardwareSettings.FileName + "\" >>\"" + log + "\" 2>&1");
-            script.AppendLine("start \"\" \"" + installRoot + "\\" + exeName + "\"");
+            // /D is what keeps the next update working. Without it the relaunched
+            // kiosk inherits this script's working directory - the staging folder in
+            // %TEMP% - and a process holding a directory open is enough to stop it
+            // being deleted. The following update then fails on "being used by another
+            // process" until somebody closes and reopens the application by hand.
+            script.AppendLine("start \"\" /D \"" + installRoot + "\" \"" + installRoot + "\\" + exeName + "\"");
             script.AppendLine("endlocal");
 
             // cmd.exe reads a .cmd in the console's OEM code page, not the ANSI one
