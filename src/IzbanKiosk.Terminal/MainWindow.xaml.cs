@@ -43,7 +43,7 @@ namespace IzbanKiosk.Terminal
         private const int SamReadyAttempts = 12;
         private const int SamRetryDelayMs = 5000;
         private const string ExpectedBridgeVersion = "2.5.0-net40";
-        private const string PackageVersion = "R53";
+        private const string PackageVersion = "R54";
         private const int MaxManualAmount = 500;
         // Printer work is a technician action behind a button, not a passenger-path
         // poll, so it waits far longer for the shared pipe than card polling does.
@@ -1638,6 +1638,14 @@ namespace IzbanKiosk.Terminal
                     (report.LatestTag.Length > 0 ? "  (etiket " + report.LatestTag + ")" : string.Empty));
                 builder.AppendLine();
                 builder.AppendLine(report.Message);
+            }
+
+            if (report.RollbackPending)
+            {
+                // Distinct from "an update is available": nobody should press a button
+                // for this and nobody should wait for the night either.
+                builder.AppendLine();
+                builder.AppendLine("GERİ ALMA BEKLİYOR - yayındaki sürüm bu otomattakinden eski.");
             }
 
             UpdateStatusText.Text = builder.ToString().TrimEnd();

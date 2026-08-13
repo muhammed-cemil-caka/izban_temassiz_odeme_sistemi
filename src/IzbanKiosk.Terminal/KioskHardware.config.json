@@ -8,6 +8,8 @@
   "UpdateRepositoryOwner": "muhammed-cemil-caka",
   "UpdateRepositoryName": "izban_temassiz_odeme_sistemi",
   "UpdateCheckHour": 4,
+  "UpdateRollbackEnabled": true,
+  "UpdatePollMinutes": 30,
   "CardWriteEnabled": true,
   "TerminalNo": 0,
   "TerminalUid": 0,

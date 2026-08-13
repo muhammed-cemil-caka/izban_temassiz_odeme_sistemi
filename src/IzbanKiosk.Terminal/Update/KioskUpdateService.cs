@@ -30,6 +30,12 @@ namespace IzbanKiosk.Terminal.Update
         /// this kiosk is stuck and needs someone, not another download.
         /// </summary>
         internal bool InstallStalled;
+
+        /// <summary>
+        /// The published release is behind the running one, so a build has been
+        /// withdrawn and this kiosk is going back to it without waiting for the night.
+        /// </summary>
+        internal bool RollbackPending;
         internal string Message = string.Empty;
     }
 
@@ -62,6 +68,7 @@ namespace IzbanKiosk.Terminal.Update
         private Thread? _worker;
         private UpdateStatusReport _report = new UpdateStatusReport();
         private GitHubRelease? _pendingRelease;
+        private GitHubRelease? _pendingRollback;
 
         /// <param name="beforeRestart">
         /// Releases anything the replaced installation still owns, immediately before
@@ -108,9 +115,14 @@ namespace IzbanKiosk.Terminal.Update
             _stop.Set();
         }
 
+        /// <summary>
+        /// Polls rather than sleeping until the nightly hour, because a withdrawn
+        /// release has to be noticed quickly. The decision about whether to act on
+        /// what it finds still keeps upgrades inside their window.
+        /// </summary>
         private void Run()
         {
-            while (!_stop.WaitOne(MillisecondsUntilNextCheck()))
+            while (!_stop.WaitOne(_settings.UpdatePollMinutes * 60 * 1000))
             {
                 try
                 {
@@ -119,7 +131,7 @@ namespace IzbanKiosk.Terminal.Update
                 catch (Exception ex)
                 {
                     // A failed update must never take the kiosk down; it simply stays on
-                    // the version it is running and tries again tomorrow.
+                    // the version it is running and tries again at the next poll.
                     _log("Update check failed: " + ex.GetType().Name + ": " + ex.Message);
                 }
             }
@@ -186,7 +198,9 @@ namespace IzbanKiosk.Terminal.Update
                 }
 
                 report.LatestVersion = release.Version.ToString();
-                report.UpdateAvailable = release.Version > CurrentVersion();
+                int order = UpdateDecisionPolicy.Compare(release.Version, CurrentVersion());
+                report.UpdateAvailable = order > 0;
+                report.RollbackPending = order < 0 && _settings.UpdateRollbackEnabled;
 
                 // The same release was installed already and the running version did
                 // not move, so installing it again would change nothing. Reinstalling
@@ -204,9 +218,19 @@ namespace IzbanKiosk.Terminal.Update
                     return Store(report, null);
                 }
 
+                if (report.RollbackPending)
+                {
+                    report.Message =
+                        "Yayındaki sürüm bu otomattakinden ESKİ. Bozuk bir sürümün geri çekildiği " +
+                        "anlamına gelir; otomat boşaldığında " + release.Tag + " sürümüne dönülecek. " +
+                        "Gece 04:00 beklenmez.";
+                    return Store(report, null, release);
+                }
+
                 report.Message = report.UpdateAvailable
                     ? "Yeni bir sürüm yayınlanmış. Kurmak için ŞİMDİ GÜNCELLE düğmesini kullanabilir " +
-                      "veya gece 04:00'teki otomatik kurulumu bekleyebilirsiniz."
+                      "veya gece " + _settings.UpdateCheckHour.ToString("00") + ":00'teki otomatik " +
+                      "kurulumu bekleyebilirsiniz."
                     : "Bu otomat en güncel sürümü çalıştırıyor.";
                 return Store(report, report.UpdateAvailable ? release : null);
             }
@@ -229,12 +253,14 @@ namespace IzbanKiosk.Terminal.Update
             }
         }
 
-        private UpdateStatusReport Store(UpdateStatusReport report, GitHubRelease? pending)
+        private UpdateStatusReport Store(
+            UpdateStatusReport report, GitHubRelease? pending, GitHubRelease? rollback = null)
         {
             lock (_reportLock)
             {
                 _report = report;
                 _pendingRelease = pending;
+                _pendingRollback = rollback;
             }
             return report;
         }
@@ -267,20 +293,32 @@ namespace IzbanKiosk.Terminal.Update
         private void CheckAndApply()
         {
             UpdateStatusReport report = CheckNow();
-            if (!report.UpdateAvailable)
-            {
-                _log("Update check: " + report.Message);
-                return;
-            }
 
             GitHubRelease? release;
             lock (_reportLock)
             {
-                release = _pendingRelease;
+                release = _pendingRelease ?? _pendingRollback;
             }
             if (release == null)
             {
                 return;
+            }
+
+            UpdateAction action = UpdateDecisionPolicy.Decide(
+                CurrentVersion(), release.Version, release.Tag, ReadAppliedTag(),
+                DateTime.Now.Hour, _settings.UpdateCheckHour, _settings.UpdateRollbackEnabled);
+
+            if (action == UpdateAction.None)
+            {
+                return;
+            }
+
+            if (action == UpdateAction.Rollback)
+            {
+                // Deleting a release is how an operator recalls a bad build, so this
+                // does not wait for the nightly window - only for the terminal to be
+                // free of a passenger.
+                _log("Release " + release.Tag + " is behind the running version; rolling back.");
             }
 
             if (string.Equals(ReadAppliedTag(), release.Tag, StringComparison.OrdinalIgnoreCase))

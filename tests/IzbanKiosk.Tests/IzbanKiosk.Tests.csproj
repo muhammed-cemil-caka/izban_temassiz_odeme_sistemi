@@ -61,6 +61,8 @@
              Link="Compatibility\KioskHardwareSettings.cs" />
     <Compile Include="..\..\src\IzbanKiosk.Terminal\IzmirimKartNumber.cs"
              Link="Compatibility\IzmirimKartNumber.cs" />
+    <Compile Include="..\..\src\IzbanKiosk.Terminal\Update\UpdateDecisionPolicy.cs"
+             Link="Compatibility\UpdateDecisionPolicy.cs" />
     <Compile Include="..\..\src\IzbanKiosk.Terminal\Update\GitHubReleaseClient.cs"
              Link="Compatibility\GitHubReleaseClient.cs" />
   </ItemGroup>

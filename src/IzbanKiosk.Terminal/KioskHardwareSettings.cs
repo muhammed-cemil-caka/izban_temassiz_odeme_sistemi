@@ -66,6 +66,20 @@ namespace IzbanKiosk.Terminal
         /// <summary>Local hour of the daily check. Defaults to 04:00, when no train runs.</summary>
         public int UpdateCheckHour { get; set; } = 4;
 
+        /// <summary>
+        /// Deleting a release from GitHub is how a bad build is recalled. With this on,
+        /// a kiosk that finds the published version behind its own goes back to it at
+        /// the next poll instead of staying on a known-bad build until 04:00.
+        /// </summary>
+        public bool UpdateRollbackEnabled { get; set; } = true;
+
+        /// <summary>
+        /// Minutes between update checks. Only recalls act outside the nightly window,
+        /// so this is how quickly a withdrawn release reaches the fleet - and also how
+        /// often every kiosk asks GitHub, which shares one rate limit per address.
+        /// </summary>
+        public int UpdatePollMinutes { get; set; } = 30;
+
         /// <summary>Where <see cref="KioskNumber"/> ended up coming from, for display.</summary>
         internal string KioskNumberSource { get; private set; } = string.Empty;
 
