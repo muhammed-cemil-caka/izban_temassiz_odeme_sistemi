@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Windows;
+using IzbanKiosk.Terminal.Recovery;
 using IzbanKiosk.Terminal.Update;
 
 namespace IzbanKiosk.Terminal
@@ -26,6 +27,11 @@ namespace IzbanKiosk.Terminal
                     return;
                 }
             }
+
+            // Installed before the window exists, so a failure during start-up is
+            // caught too - that is exactly when a bad settings file or a missing
+            // device would otherwise leave a shell-mode kiosk on a black screen.
+            KioskCrashGuard.Install(this);
 
             base.OnStartup(e);
             new MainWindow().Show();

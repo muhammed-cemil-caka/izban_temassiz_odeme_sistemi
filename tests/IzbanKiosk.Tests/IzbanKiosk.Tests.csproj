@@ -55,6 +55,8 @@
              Link="Compatibility\KioskAutoConfigurationPolicy.cs" />
     <Compile Include="..\..\src\IzbanKiosk.Terminal\ReceiptDocumentBuilder.cs"
              Link="Compatibility\ReceiptDocumentBuilder.cs" />
+    <Compile Include="..\..\src\IzbanKiosk.Terminal\Recovery\CrashRecoveryPolicy.cs"
+             Link="Compatibility\CrashRecoveryPolicy.cs" />
     <Compile Include="..\..\src\IzbanKiosk.Terminal\KioskHardwareSettings.cs"
              Link="Compatibility\KioskHardwareSettings.cs" />
     <Compile Include="..\..\src\IzbanKiosk.Terminal\IzmirimKartNumber.cs"
