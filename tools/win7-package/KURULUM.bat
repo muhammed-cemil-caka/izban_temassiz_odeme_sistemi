@@ -446,17 +446,20 @@ REM yedekleniyor, geri almak tek komut olsun diye.
 if not defined KABUKAYAR goto :kabuk_bitti
 if not defined KABUK goto :kabuk_bitti
 
-REM Yol tirnak ICINDE yaziliyor. Winlogon kabuk degerini bosluktan boler:
-REM C:\kurulum kiosk\IZBAN-Kiosk.exe tirnaksiz yazilirsa Windows "C:\kurulum"
-REM calistirmaya calisir, bulamaz ve ekran BOS acilir - makineye girmenin tek
-REM yolu gorev yoneticisi kalir.
+REM Winlogon kabuk degerini bosluktan boler, o yuzden yol TIRNAK ICINDE
+REM kaydedilmeli: C:\IZBAN KIOSK\IZBAN-Kiosk.exe tirnaksiz yazilirsa Windows
+REM "C:\IZBAN" calistirmaya calisir ve ekran bos acilir.
+REM
+REM Tirnak reg.exe'ye \" olarak gecirilir. Duz tirnak yazmak /d ""C:\..."" 
+REM uretir; reg.exe bunu ayristiramaz ve "Kabuk degistirilemedi" der - ilk
+REM denemede tam olarak bu oldu.
 set "YENIKABUK=%KABUKAYAR%"
-if /i "%KABUKAYAR%"=="KIOSK" set "YENIKABUK="%KIOSKEXE%""
+if /i "%KABUKAYAR%"=="KIOSK" set "YENIKABUK=\"%KIOSKEXE%\""
 
 echo.
 echo        Windows kabugu degistiriliyor.
 echo           Eski: %KABUK%
-echo           Yeni: %YENIKABUK%
+if /i "%KABUKAYAR%"=="KIOSK" (echo           Yeni: "%KIOSKEXE%") else (echo           Yeni: %KABUKAYAR%)
 echo Eski kabuk: %KABUK%>>"%ACILISYEDEK%"
 REM Once exe'nin gercekten orada oldugu dogrulaniyor. Var olmayan bir kabuk
 REM yolu makineyi bos ekrana acar; yazmadan once bakmak bunu tamamen onler.
