@@ -43,7 +43,7 @@ namespace IzbanKiosk.Terminal
         private const int SamReadyAttempts = 12;
         private const int SamRetryDelayMs = 5000;
         private const string ExpectedBridgeVersion = "2.5.0-net40";
-        private const string PackageVersion = "R50";
+        private const string PackageVersion = "R51";
         private const int MaxManualAmount = 500;
         // Printer work is a technician action behind a button, not a passenger-path
         // poll, so it waits far longer for the shared pipe than card polling does.
@@ -95,6 +95,7 @@ namespace IzbanKiosk.Terminal
             Amount,
             Numpad,
             Payment,
+            TakeCard,
             Error
         }
 
@@ -549,12 +550,39 @@ namespace IzbanKiosk.Terminal
             ShowOnly(IdlePanel);
         }
 
+        /// <summary>
+        /// Asks the passenger to take their card back, and holds the screen until they
+        /// do.
+        ///
+        /// The production kiosk has a holder the card sits in for the whole
+        /// transaction, so nothing about finishing makes the card leave on its own. A
+        /// passenger who is simply shown their new balance has no cue that anything is
+        /// still theirs to collect, and the next person walks up to a screen still
+        /// showing someone else's money.
+        ///
+        /// Nothing here forces the issue: removal is already what returns the kiosk to
+        /// its home screen, so this only makes the last step visible.
+        /// </summary>
+        private void ShowTakeCard(string detail)
+        {
+            _screen = KioskScreen.TakeCard;
+            TakeCardTitleText.Text = _english ? "TRANSACTION COMPLETE" : "İŞLEMİNİZ TAMAMLANDI";
+            TakeCardInstructionText.Text = _english ? "PLEASE TAKE YOUR CARD" : "KARTINIZI ALINIZ";
+            TakeCardDetailText.Text = detail;
+            ShowOnly(TakeCardPanel);
+            SetHardwareStatus(
+                _english ? "TAKE YOUR CARD" : "KARTINIZI ALINIZ",
+                _english ? "Waiting for the card to be removed" : "Kartın alınması bekleniyor",
+                ReadyBrush);
+        }
+
         private void ShowOnly(UIElement panel)
         {
             IdlePanel.Visibility = panel == IdlePanel ? Visibility.Visible : Visibility.Collapsed;
             AmountPanel.Visibility = panel == AmountPanel ? Visibility.Visible : Visibility.Collapsed;
             NumpadPanel.Visibility = panel == NumpadPanel ? Visibility.Visible : Visibility.Collapsed;
             PaymentPanel.Visibility = panel == PaymentPanel ? Visibility.Visible : Visibility.Collapsed;
+            TakeCardPanel.Visibility = panel == TakeCardPanel ? Visibility.Visible : Visibility.Collapsed;
             ErrorPanel.Visibility = panel == ErrorPanel ? Visibility.Visible : Visibility.Collapsed;
         }
 
@@ -789,6 +817,21 @@ namespace IzbanKiosk.Terminal
         private void TopUpReceiptNoButton_Click(object sender, RoutedEventArgs e)
         {
             TopUpReceiptPanel.Visibility = Visibility.Collapsed;
+            ShowTakeCardAfterTopUp();
+        }
+
+        /// <summary>
+        /// Ends a top-up on the "take your card" screen, carrying the new balance so
+        /// the passenger sees what they paid for while being reminded to collect it.
+        /// </summary>
+        private void ShowTakeCardAfterTopUp()
+        {
+            TopUpResponse? result = _lastTopUp;
+            string detail = result == null
+                ? string.Empty
+                : (_english ? "New balance: " : "Güncel bakiyeniz: ") +
+                  (result.BalanceAfterMinor / 100m).ToString("N2", CultureInfo.GetCultureInfo("tr-TR")) + " TL";
+            ShowTakeCard(detail);
         }
 
         /// <summary>
@@ -847,7 +890,12 @@ namespace IzbanKiosk.Terminal
                         : (_english
                             ? "The receipt could not be printed. Your card was loaded."
                             : "Makbuz basılamadı. Kartınıza yükleme YAPILDI.");
-                    if (!printed)
+                    if (printed)
+                    {
+                        TopUpReceiptPanel.Visibility = Visibility.Collapsed;
+                        ShowTakeCardAfterTopUp();
+                    }
+                    else
                     {
                         TopUpReceiptYesButton.IsEnabled = _printerReady;
                     }
@@ -1737,6 +1785,16 @@ namespace IzbanKiosk.Terminal
                         ? (_english ? "Receipt sent. Please take your slip." : "Fiş yazıcıya gönderildi. Lütfen fişinizi alınız.")
                         : (_english ? "Receipt could not be printed: " : "Fiş yazdırılamadı: ") + failureDetail;
                     BalanceReceiptStatusText.Foreground = printed ? ReadyBrush : ErrorBrush;
+
+                    // The slip is the end of the visit, so this is where the card has
+                    // to be asked for. A failed print is not the end of anything: the
+                    // passenger may want to try again, so the screen is left alone.
+                    if (printed && _cardPresent)
+                    {
+                        ShowTakeCard(_english
+                            ? "Please take your receipt as well."
+                            : "Fişinizi de almayı unutmayınız.");
+                    }
                 });
             })) { IsBackground = true, Name = "IZBAN Balance Receipt Worker" };
             printThread.Start();

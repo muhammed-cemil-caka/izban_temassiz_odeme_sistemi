@@ -210,6 +210,16 @@
             </Grid>
 
             <!-- Payment view deliberately stays fail-closed until a real bank POS SDK is integrated. -->
+            <Grid Name="TakeCardPanel" Margin="45" Visibility="Collapsed">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <Border Width="150" Height="150" CornerRadius="75" Background="#DCFCE7" HorizontalAlignment="Center">
+                        <TextBlock Text="&#x2713;" Foreground="#16A34A" FontSize="86" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Name="TakeCardTitleText" Text="İŞLEMİNİZ TAMAMLANDI" Foreground="#0F172A" FontSize="38" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,34,0,0"/>
+                    <TextBlock Name="TakeCardInstructionText" Text="KARTINIZI ALINIZ" Foreground="#B45309" FontSize="46" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,18,0,0"/>
+                    <TextBlock Name="TakeCardDetailText" Text="" Foreground="#475569" FontSize="20" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="0,22,0,0"/>
+                </StackPanel>
+            </Grid>
             <Grid Name="PaymentPanel" Margin="45" Visibility="Collapsed">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="830">
                     <Border Width="132" Height="82" Background="#FFFFFF" BorderBrush="#2563EB" BorderThickness="3" CornerRadius="16" Padding="10">

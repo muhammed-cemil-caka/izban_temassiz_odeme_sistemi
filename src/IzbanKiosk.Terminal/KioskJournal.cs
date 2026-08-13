@@ -22,9 +22,51 @@ namespace IzbanKiosk.Terminal
         private readonly object _sync = new object();
         private readonly string _directory;
 
+        /// <summary>
+        /// Days of journal kept on the machine. A kiosk runs for years unattended and
+        /// nobody visits to sweep up; one file a day left forever eventually fills the
+        /// disk of a Windows Embedded image that has very little to spare, and a full
+        /// disk stops the kiosk far more thoroughly than a missing old log ever could.
+        /// A year is well past any reconciliation window and still bounded.
+        /// </summary>
+        private const int RetentionDays = 365;
+
+        private bool _pruned;
+
         internal KioskJournal()
         {
             _directory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Journal");
+        }
+
+        /// <summary>
+        /// Deletes journals past the retention window. Runs once per process rather
+        /// than on every write: a kiosk restarts often enough, and scanning the folder
+        /// on each card read would be work for nothing.
+        /// </summary>
+        private void PruneOnce()
+        {
+            if (_pruned)
+            {
+                return;
+            }
+            _pruned = true;
+
+            try
+            {
+                DateTime cutoff = DateTime.Now.AddDays(-RetentionDays);
+                foreach (string file in Directory.GetFiles(_directory, "kiosk-*.jsonl"))
+                {
+                    if (File.GetLastWriteTime(file) < cutoff)
+                    {
+                        File.Delete(file);
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // Housekeeping must never cost the kiosk a journal entry; the write
+                // that follows is the part that matters.
+            }
         }
 
         internal string LastErrorMessage { get; private set; } = string.Empty;
@@ -39,6 +81,8 @@ namespace IzbanKiosk.Terminal
                     {
                         Directory.CreateDirectory(_directory);
                     }
+
+                    PruneOnce();
 
                     string path = Path.Combine(
                         _directory,
