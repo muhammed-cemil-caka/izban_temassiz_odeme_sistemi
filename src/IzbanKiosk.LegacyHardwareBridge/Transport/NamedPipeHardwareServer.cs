@@ -54,11 +54,14 @@ namespace IzbanKiosk.LegacyHardwareBridge.Transport
             // terminal identity and the amount unit, so this is still fail-closed; it
             // just fails with the reason instead of a flat denial.
             _cardLoader = new LegacyCardLoader(nfcDevice, options);
+            // A real writer, not a no-op: the saga's intent record is what a disputed
+            // or interrupted transaction is reconstructed from.
+            var journal = new BridgeJournal();
             _topUp = new TopUpSaga(
                 posTerminal,
                 _cardLoader,
                 new NfcCardBalanceReader(nfcDevice),
-                delegate { });
+                journal.Record);
         }
 
         public void Start()
