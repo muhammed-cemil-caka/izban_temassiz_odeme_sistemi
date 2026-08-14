@@ -48,12 +48,16 @@ namespace IzbanKiosk.Terminal
         /// of them eventually says a figure the kiosk does not actually write - on the
         /// one screen whose whole job is to prove the written figure is right.
         /// </summary>
-        private const long TestTopUpMinor = 10000;
+        /// Kept at one lira on purpose. The test proves the terminal identity and the
+        /// amount unit, and it proves them exactly as well at any figure - while every
+        /// press writes real spendable value that nobody paid for and that cannot be
+        /// taken back. There is no diagnostic reason to make it larger, only cost.
+        private const long TestTopUpMinor = 100;
 
         private const int SamReadyAttempts = 12;
         private const int SamRetryDelayMs = 5000;
         private const string ExpectedBridgeVersion = "2.5.0-net40";
-        private const string PackageVersion = "R55";
+        private const string PackageVersion = "R56";
         private const int MaxManualAmount = 500;
         // Printer work is a technician action behind a button, not a passenger-path
         // poll, so it waits far longer for the shared pipe than card polling does.
