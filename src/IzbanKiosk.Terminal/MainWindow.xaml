@@ -295,6 +295,7 @@
                                     <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
                                         <Button Name="UpdateCheckButton" Content="ŞİMDİ KONTROL ET" Style="{StaticResource KioskButton}" Background="#2563EB" Foreground="White" BorderBrush="#1E40AF" FontSize="15" Height="50" Padding="20,0" Click="UpdateCheckButton_Click"/>
                                         <Button Name="UpdateApplyButton" Content="ŞİMDİ GÜNCELLE" Style="{StaticResource KioskButton}" Background="#10B981" Foreground="White" BorderBrush="#047857" FontSize="15" Height="50" Padding="20,0" Margin="12,0,0,0" Visibility="Collapsed" Click="UpdateApplyButton_Click"/>
+                                        <Button Name="ClockSyncButton" Content="SAATİ EŞİTLE" Style="{StaticResource KioskButton}" Background="#7C3AED" Foreground="White" BorderBrush="#5B21B6" FontSize="15" Height="50" Padding="20,0" Margin="12,0,0,0" Click="ClockSyncButton_Click"/>
                                     </StackPanel>
                                 </StackPanel>
                             </Border>

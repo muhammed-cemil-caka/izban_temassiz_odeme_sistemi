@@ -14,6 +14,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using IzbanKiosk.LegacyHardware.Contracts;
+using IzbanKiosk.Terminal.Timekeeping;
 using IzbanKiosk.Terminal.Update;
 using Newtonsoft.Json;
 
@@ -57,7 +58,7 @@ namespace IzbanKiosk.Terminal
         private const int SamReadyAttempts = 12;
         private const int SamRetryDelayMs = 5000;
         private const string ExpectedBridgeVersion = "2.5.0-net40";
-        private const string PackageVersion = "R56";
+        private const string PackageVersion = "R57";
         private const int MaxManualAmount = 500;
         // Printer work is a technician action behind a button, not a passenger-path
         // poll, so it waits far longer for the shared pipe than card polling does.
@@ -73,6 +74,7 @@ namespace IzbanKiosk.Terminal
         private readonly KioskJournal _journal = new KioskJournal();
         private readonly List<string> _queueCandidates = new List<string>();
         private KioskUpdateService? _updateService;
+        private KioskClock? _systemClock;
 
         private volatile bool _shutdownRequested;
         private volatile bool _hardwareReady;
@@ -969,6 +971,7 @@ namespace IzbanKiosk.Terminal
             PrinterDiagnosticsTitleText.Text = _english ? "SYSTEM DIAGNOSTICS" : "SİSTEM TANILAMA";
             UpdateTitleText.Text = _english ? "AUTOMATIC UPDATES" : "OTOMATİK GÜNCELLEME";
             UpdateCheckButton.Content = _english ? "CHECK NOW" : "ŞİMDİ KONTROL ET";
+            ClockSyncButton.Content = _english ? "SYNC CLOCK" : "SAATİ EŞİTLE";
             PrinterRetryButton.Content = _english ? "REINITIALIZE PRINTER" : "YAZICIYI YENİDEN BAŞLAT";
             PrinterPurgeButton.Content = _english ? "CLEAR QUEUE" : "KUYRUĞU TEMİZLE";
             PrinterOnlineButton.Content = _english ? "BRING PRINTER ONLINE" : "ÇEVRİMDIŞI MODU KAPAT";
@@ -1350,6 +1353,10 @@ namespace IzbanKiosk.Terminal
             {
                 _updateService.Stop();
             }
+            if (_systemClock != null)
+            {
+                _systemClock.Stop();
+            }
             Application.Current.Shutdown();
         }
 
@@ -1479,6 +1486,48 @@ namespace IzbanKiosk.Terminal
                     RenderUpdateStatus(report);
                 });
             })) { IsBackground = true, Name = "IZBAN Update Check" };
+            thread.Start();
+        }
+
+        /// <summary>
+        /// Lets a technician standing at the kiosk fix the date without a keyboard, a
+        /// command prompt, or a way out of a shell-mode machine that has no desktop.
+        /// </summary>
+        private void ClockSyncButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_systemClock == null || !ClockSyncButton.IsEnabled)
+            {
+                return;
+            }
+
+            ClockSyncButton.IsEnabled = false;
+            ClockSyncButton.Content = _english ? "SYNCING..." : "EŞİTLENİYOR...";
+
+            var thread = new Thread(new ThreadStart(delegate
+            {
+                KioskClockStatus status = _systemClock.Synchronise();
+                _journal.Record("ClockSync", new
+                {
+                    verdict = status.Verdict.ToString(),
+                    source = status.Source,
+                    corrected = status.CorrectionApplied,
+                    refused = status.CorrectionRefused,
+                    localNow = status.LocalNow
+                });
+
+                OnUi(delegate
+                {
+                    ClockSyncButton.IsEnabled = true;
+                    ClockSyncButton.Content = _english ? "SYNC CLOCK" : "SAATİ EŞİTLE";
+                    if (_updateService != null)
+                    {
+                        RenderUpdateStatus(_updateService.LastStatus());
+                    }
+                    UpdateStatusText.Text += Environment.NewLine + Environment.NewLine + status.Message;
+                    UpdateStatusText.Foreground =
+                        ClockPlausibilityPolicy.BreaksSecureConnections(status.Verdict) ? ErrorBrush : ReadyBrush;
+                });
+            })) { IsBackground = true, Name = "IZBAN Clock Sync" };
             thread.Start();
         }
 
@@ -1645,6 +1694,7 @@ namespace IzbanKiosk.Terminal
             builder.AppendLine("Zamanlayıcı      : " + (report.Armed
                 ? "kurulu, her gün " + (_hardwareSettings == null ? "04" : _hardwareSettings.UpdateCheckHour.ToString("00")) + ":00"
                 : "KURULU DEĞİL"));
+            AppendClockLines(builder);
 
             if (report.CheckedAt.Length == 0)
             {
@@ -1668,13 +1718,67 @@ namespace IzbanKiosk.Terminal
                 builder.AppendLine("GERİ ALMA BEKLİYOR - yayındaki sürüm bu otomattakinden eski.");
             }
 
+            // Only when the check itself succeeded; a failed check already carries this
+            // inside its own message, where it belongs next to the error it explains.
+            if (report.ClockBlocksUpdate && report.Reachable)
+            {
+                builder.AppendLine();
+                builder.AppendLine(report.ClockNote);
+            }
+
             UpdateStatusText.Text = builder.ToString().TrimEnd();
-            UpdateStatusText.Foreground = report.CheckedAt.Length == 0 || (report.Reachable && !report.UpdateAvailable)
-                ? (Brush)new SolidColorBrush(Color.FromRgb(0x33, 0x41, 0x55))
-                : (report.Reachable ? BusyBrush : ErrorBrush);
+            UpdateStatusText.Foreground = report.ClockBlocksUpdate
+                ? ErrorBrush
+                : report.CheckedAt.Length == 0 || (report.Reachable && !report.UpdateAvailable)
+                    ? (Brush)new SolidColorBrush(Color.FromRgb(0x33, 0x41, 0x55))
+                    : (report.Reachable ? BusyBrush : ErrorBrush);
             UpdateApplyButton.Visibility = report.UpdateAvailable ? Visibility.Visible : Visibility.Collapsed;
             UpdateApplyButton.IsEnabled = report.UpdateAvailable;
             UpdateApplyButton.Content = _english ? "UPDATE NOW" : "ŞİMDİ GÜNCELLE";
+        }
+
+        /// <summary>
+        /// Puts the machine's date beside the update status, because that is where its
+        /// absence hurt: a kiosk with a wrong clock reported nothing but a network
+        /// error, and the date it was showing all along never appeared on this screen.
+        /// </summary>
+        private void AppendClockLines(System.Text.StringBuilder builder)
+        {
+            if (_systemClock == null)
+            {
+                return;
+            }
+
+            KioskClockStatus clock = _systemClock.LastStatus();
+            if (!clock.Checked)
+            {
+                builder.AppendLine("Otomat saati     : " +
+                    DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss", CultureInfo.InvariantCulture) +
+                    "  (henüz doğrulanmadı)");
+                return;
+            }
+
+            string verdict;
+            switch (clock.Verdict)
+            {
+                case ClockVerdict.Trusted:
+                    verdict = "DOĞRULANDI";
+                    break;
+                case ClockVerdict.Behind:
+                case ClockVerdict.Ahead:
+                    verdict = "YANLIŞ";
+                    break;
+                default:
+                    verdict = "doğrulanamadı";
+                    break;
+            }
+
+            builder.AppendLine("Otomat saati     : " + clock.LocalNow + "  (" + verdict + ")");
+            builder.AppendLine("Saat dilimi      : " + clock.TimeZone);
+            if (clock.Source.Length > 0)
+            {
+                builder.AppendLine("Saat kaynağı     : " + clock.Source);
+            }
         }
 
         private void ClosePrinterDiagnosticsButton_Click(object sender, RoutedEventArgs e)
@@ -1689,8 +1793,16 @@ namespace IzbanKiosk.Terminal
                 return;
             }
 
+            // Started before the updater and on its own thread. The clock decides
+            // whether any certificate can validate, so it is the thing that has to be
+            // right first - but a kiosk must never wait on a time server to open, and
+            // on a closed station network none of them will ever answer.
+            _systemClock = new KioskClock(_hardwareSettings, AddDiagnostic);
+            _systemClock.Start();
+
             _updateService = new KioskUpdateService(
-                _hardwareSettings, IsServingPassenger, AddDiagnostic, ReleaseHardwareBeforeUpdateRestart);
+                _hardwareSettings, IsServingPassenger, AddDiagnostic, ReleaseHardwareBeforeUpdateRestart,
+                _systemClock);
             _updateService.Start();
         }
 
@@ -2247,6 +2359,10 @@ namespace IzbanKiosk.Terminal
             if (_updateService != null)
             {
                 _updateService.Stop();
+            }
+            if (_systemClock != null)
+            {
+                _systemClock.Stop();
             }
             _clockTimer.Stop();
 

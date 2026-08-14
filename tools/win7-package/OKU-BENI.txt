@@ -325,10 +325,39 @@ KURULUMDAN SONRA GUNCELLEMEYI TEST EDIN
       Yayindaki surum : 1.0.0  (etiket v1.0.0)
       -> "Bu otomat en guncel surumu calistiriyor."
 
-   "GitHub'a erisim: BASARISIZ" gorurseniz asagidaki TLS maddesine bakin.
+   "GitHub'a erisim: BASARISIZ" gorurseniz ONCE ayni ekrandaki "Otomat saati"
+   satirina bakin, sonra asagidaki TLS maddesine.
 
    Yeni bir surum yayinlandiginda ayni ekranda "SIMDI GUNCELLE" dugmesi cikar;
    04:00'i beklemeden kurabilirsiniz. Yolcu varken bu dugme calismaz.
+
+GEREKSINIM: DOGRU SAAT  --  "Otomat saati: ... (YANLIS)" GORURSENIZ
+   GitHub'in sertifikasi sistem saatine gore dogrulanir. 2010'da oldugunu
+   sanan bir otomat, 2026'da uretilmis sertifikayi "henuz gecerli degil"
+   diye reddeder ve guncelleme almayi sessizce birakir.
+
+   Belirti: TLS ayarlari dogru, internet var, ama guncelleme kontrolu yine de
+   basarisiz. SISTEM TANILA ekranindaki "Otomat saati" satirinda tarih bugun
+   degil.
+
+   Otomat bunu KENDI duzeltmeye calisir: acilista ve gunde dort kez zaman
+   sunucusuna sorar, ulasabilirse saati kendisi ayarlar. Kapali agda hicbir
+   sunucuya ulasilamaz - bu bir ariza degil, beklenen durumdur; otomat o
+   zaman saatin yanlis oldugunu SOYLER ama degistirmez.
+
+   COZUM:
+     1. SISTEM TANILA -^> SAATI ESITLE dugmesine basin. Cogu durumda yeter.
+     2. Olmazsa 6-Saat-Duzelt.bat dosyasini YONETICI OLARAK calistirin.
+        Saat dilimini ayarlar, Windows zaman servisini acar, sunucuya
+        baglanmayi dener ve olmazsa saati elle girmenizi ister.
+     3. Otomati kapatip acin ve tarihi TEKRAR kontrol edin.
+
+   TARIH HER ACILISTA YENIDEN BOZULUYORSA yazilimla cozulmez: anakarttaki
+   CR2032 pili bitmistir, degistirin. BIOS'a girip oradaki saate de bakin;
+   orada da yanlissa pil kesin bitmistir. Birkac liralik parcadir.
+
+   Kapali agdaki filoda kendi zaman sunucunuz varsa KioskHardware.config.json
+   icindeki ClockTimeServers satirina onun adresini yazin.
 
 GEREKSINIM: TLS 1.2  --  "GitHub'a erisim: BASARISIZ" GORURSENIZ
    GitHub yalnizca TLS 1.2 kabul eder. Windows 7'de TLS 1.2 desteklenir ama
@@ -474,6 +503,7 @@ Klasor yapisi bozulmamalidir:
      3-Test-Fisi-Bas.bat
      4-Kiosk-Arayuzunu-Ac.bat
      5-TLS-Duzelt.bat               <-- guncelleme baglanamazsa
+     6-Saat-Duzelt.bat              <-- otomatin tarihi yanlissa
      IZBAN-Kiosk.exe
      KioskHardware.config.json      <-- yazici adi ve COM portu BURADA
      Bridge\                        <-- kopru + vendor DLL'leri

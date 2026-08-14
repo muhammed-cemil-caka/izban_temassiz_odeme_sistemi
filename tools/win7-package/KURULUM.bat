@@ -560,8 +560,49 @@ if errorlevel 1 (
 echo.
 
 echo  --------------------------------------------------------------
-echo   9/9  GitHub erisimi
+echo   9/9  Saat ve GitHub erisimi
 echo  --------------------------------------------------------------
+REM Saat once geliyor, cunku yanlis saat GitHub testini adi ne tarihi
+REM ne de cozumu anan bir TLS hatasiyla dusurur. O sirayi tersine
+REM cevirmek, teknisyene var olmayan bir ag arizasi arattiriyor.
+REM Buyuk duzeltmelere izin verilmezse w32time pili bitmis bir
+REM makinede dogru saati alir ve uygulamayi reddeder - duzeltme orada
+REM her zaman buyuktur.
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\W32Time\Config" /v MaxPosPhaseCorrection /t REG_DWORD /d 0xFFFFFFFF /f >nul 2>&1
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\W32Time\Config" /v MaxNegPhaseCorrection /t REG_DWORD /d 0xFFFFFFFF /f >nul 2>&1
+sc config w32time start= auto >nul 2>&1
+net start w32time >nul 2>&1
+tzutil /s "Turkey Standard Time" >nul 2>&1
+if errorlevel 1 (
+  tzutil /s "GTB Standard Time" >nul 2>&1
+  reg add "HKLM\SYSTEM\CurrentControlSet\Control\TimeZoneInformation" /v DynamicDaylightTimeDisabled /t REG_DWORD /d 1 /f >nul 2>&1
+)
+
+REM errorlevel parantezli blogun icinden dogru okunmaz; bu dosyanin her
+REM yerinde oldugu gibi blok disinda yakalaniyor.
+set SAATRC=0
+if not exist "%KIOSKEXE%" goto :saat_bitti
+"%KIOSKEXE%" --sync-clock
+set SAATRC=%errorlevel%
+:saat_bitti
+echo.
+if "%SAATRC%"=="6" (
+  echo        [HATA] OTOMATIN SAATI YANLIS ve duzeltilemedi.
+  echo               Bu hâliyle otomat GUNCELLEME ALAMAZ.
+  echo               6-Saat-Duzelt.bat dosyasini yonetici olarak
+  echo               calistirip saati elle girin. Her acilista
+  echo               bozuluyorsa anakart pilini (CR2032) degistirin.
+  set HATA=1
+  set H9=1
+)
+if "%SAATRC%"=="5" (
+  echo        [HATA] Saat yanlis ve Windows duzeltmeyi kabul etmedi.
+  echo               6-Saat-Duzelt.bat dosyasini YONETICI olarak
+  echo               calistirin.
+  set HATA=1
+  set H9=1
+)
+echo.
 REM Sahadaki otomatlarda tanilama ekrani yok; bu, erisimin calistigini
 REM kimsenin ogrenebilecegi TEK an. Erisemeyen bir otomat yolcuya normal
 REM hizmet vermeye devam eder, bu yuzden hicbir sey dikkat cekmez - sadece

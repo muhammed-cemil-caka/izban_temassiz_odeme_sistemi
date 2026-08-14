@@ -27,29 +27,49 @@
 
 These checks establish binary-contract compatibility. They do not replace a physical hardware-in-the-loop test.
 
-## Blocking before the first physical test
+## Deployment requirements on each kiosk
 
-1. Build `IzbanKiosk.LegacyHardwareBridge` and `IzbanKiosk.Terminal` as Release/x86/net48 on Windows with the .NET Framework 4.8 targeting pack.
-2. Prepare the package with `tools/Prepare-Win7HardwareTestPackage.ps1`; do not copy DLLs recursively from `AUSKiosk\Temp` because it contains multiple historical versions.
+The first physical test is long past: card reading, balance display, receipt printing,
+the shell takeover and a real card load have all run on the bench kiosk. What follows is
+what each machine still needs, not what blocks a first attempt.
+
+1. Build both projects as Release/x86/**net40** (`TargetFrameworkProfile` Client). They
+   compile with the .NET SDK on any host OS, macOS included; a Windows toolchain is not
+   required.
+2. Prepare the package with `tools/Prepare-Win7HardwareTestPackage.py`; do not copy DLLs
+   recursively from `AUSKiosk\Temp` because it contains multiple historical versions.
 3. Set a Base64-encoded `IZBAN_HMAC_SECRET` containing at least 32 random bytes.
 4. Stop `AUSKiosk.exe` during testing so it releases `COM4`.
-5. Verify that the termal printer is installed in Windows and that its spooler name is known.
-6. Enable "bidirectional support" on the thermal printer queue (Printer properties, Ports tab).
-   With it off, Windows never queries the device and every status flag reads 0: the queue
-   accepts jobs and no paper appears, with no error anywhere. The Alsancak kiosk reported
-   PRINTER_STATUS_DOOR_OPEN (0x400000) the moment it was enabled, after days of silent
-   failure.
-   Run `IzbanKiosk.LegacyHardwareBridge.exe --list-printers` on the kiosk and copy the exact
-   queue name into `ThermalPrinterName`. The value currently committed in
-   `KioskHardware.config.json` ("Trentino Printer Driver 56mm") reads like a driver name and
-   has not been confirmed against an installed queue.
+5. Enable "bidirectional support" on the thermal printer queue (Printer properties, Ports
+   tab). With it off, Windows never queries the device and every status flag reads 0: the
+   queue accepts jobs and no paper appears, with no error anywhere. The Alsancak kiosk
+   reported PRINTER_STATUS_DOOR_OPEN (0x400000) the moment it was enabled, after days of
+   silent failure — the underlying fault there was no 24 V supply to the print head.
+   `KURULUM.bat` now ticks the box itself, and the diagnostics screen writes the queue the
+   device actually answers on, so the value committed in `KioskHardware.config.json`
+   ("Trentino Printer Driver 56mm") is a starting guess, not a claim about any machine.
+6. The system clock must be right, and on hardware this old it frequently is not. GitHub's
+   certificate is validated against it, so a kiosk whose CMOS battery has died stops
+   receiving updates while serving passengers perfectly — the only symptom is a TLS error
+   that mentions neither the date nor the remedy. The kiosk now checks and corrects its own
+   clock (`KioskClock`), reports the verdict on the diagnostics screen and names the clock
+   in the updater's failure message; `KURULUM.bat` settles the date before it tests GitHub
+   access, and `6-Saat-Duzelt.bat` is the manual route. A clock that resets at every boot is
+   a dead CR2032, not a software fault.
 
-## Must remain unverified until physical comparison
+## Must remain unverified until the integration owner accepts it
 
-- `TOffCardInf.balance` is read successfully only after the real reader and SAM accept the card.
-- The assumed money scale of 100 must be compared against at least three known card balances. The removed `--verify-scale` shortcut cannot mark this as verified.
-- `IsAuthoritative` must remain false until the card/SAM result and balance scale are accepted by the authorized İzmirim Kart integration owner.
-- Printer API success means the job was submitted; the first test still requires checking that paper was physically produced and correctly formatted.
+- `TOffCardInf.balance` reads correctly through the real reader and SAM — confirmed on the
+  bench kiosk on 2026-08-10.
+- The money scale is settled for writing: a 1,00 TL load passed `100` to the vendor and the
+  balance read back exactly, so the vendor `amount` is kuruş and the read path agrees with
+  it. It has not been compared against a wide spread of pre-existing card balances.
+- `IsAuthoritative` must remain false until the card/SAM result and balance scale are
+  accepted by the authorized İzmirim Kart integration owner. This is an organisational
+  approval, not a missing measurement.
+- Printer API success means the job was submitted; that paper is physically produced and
+  correctly formatted has been verified by hand on the bench kiosk and must be re-checked
+  on each machine, because it depends on that machine's queue and print-head power.
 
 ## Operating-system boundary
 
@@ -72,10 +92,11 @@ These checks establish binary-contract compatibility. They do not replace a phys
   read out of the deployed AUSKiosk's own metadata. `LegacyCardLoader` calls it, but
   refuses until the deployment sets `CardWriteEnabled`, `TerminalNo`, `TerminalUid`,
   `CompanyId` and `CardWriteAmountUnit`. Every default is the refusing one.
-- UNRESOLVED: the unit of the vendor `amount` argument. Surrounding configuration and
-  `ReadOffCard` both use kuruş, which makes kuruş likely, but it is not confirmed and a
-  wrong choice loads 100x or 1/100x. `CardWriteAmountUnit` has no default for this
-  reason and the saga's read-back is what proves the choice.
+- RESOLVED on 2026-08-10 by a real 1,00 TL test load whose balance read back exactly:
+  the vendor `amount` argument is in **kuruş**, so `CardWriteAmountUnit` is `Minor`.
+  The same test settled `TerminalNo` = `TerminalUid` = the kiosk's own number from
+  `setup.ini`, `CompanyId` = 1, and proved that the SAM already in the machine carries
+  write authority — no new DLL or SAM was ever needed.
 - Card top-up now runs through `TopUpSaga`, which sequences charge -> load -> read-back
   and reverses the payment when the load fails. It still completes nothing: `ICardLoader`
   is `NotAuthorisedCardLoader` until a write-capable SAM, its keys and scheme

@@ -2,6 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Windows;
 using IzbanKiosk.Terminal.Recovery;
+using IzbanKiosk.Terminal.Timekeeping;
 using IzbanKiosk.Terminal.Update;
 
 namespace IzbanKiosk.Terminal
@@ -24,6 +25,12 @@ namespace IzbanKiosk.Terminal
                 if (string.Equals(argument, "--check-update", StringComparison.OrdinalIgnoreCase))
                 {
                     Environment.Exit(RunUpdateCheck());
+                    return;
+                }
+
+                if (string.Equals(argument, "--sync-clock", StringComparison.OrdinalIgnoreCase))
+                {
+                    Environment.Exit(RunClockSync());
                     return;
                 }
             }
@@ -75,13 +82,17 @@ namespace IzbanKiosk.Terminal
                 settings,
                 delegate { return false; },
                 delegate { },
-                delegate { });
+                delegate { },
+                new KioskClock(settings, delegate { }));
 
             UpdateStatusReport report = service.CheckNow();
 
             Console.WriteLine("        Calisan surum   : " + report.CurrentVersion);
             Console.WriteLine("        Depo            : " +
                 settings.UpdateRepositoryOwner + "/" + settings.UpdateRepositoryName);
+            Console.WriteLine("        Otomat saati    : " +
+                DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss") +
+                (report.ClockBlocksUpdate ? "  <<< YANLIS" : string.Empty));
 
             if (!report.Reachable)
             {
@@ -99,6 +110,44 @@ namespace IzbanKiosk.Terminal
             }
             Console.WriteLine("        " + report.Message.Replace("\n", "\n        "));
             return 0;
+        }
+
+        /// <summary>
+        /// Checks and, where it can, corrects the machine's clock from the command line,
+        /// so the installer settles the date before it tests GitHub access.
+        ///
+        /// The order matters: a wrong clock makes the access test fail with a TLS error
+        /// that names neither the date nor the remedy, and the technician then spends
+        /// the visit chasing a network fault that does not exist.
+        /// </summary>
+        private static int RunClockSync()
+        {
+            AttachConsole(AttachParentProcess);
+
+            KioskHardwareSettings settings;
+            try
+            {
+                settings = KioskHardwareSettings.LoadFromApplicationDirectory();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("[HATA] Ayar dosyasi okunamadi: " + ex.Message);
+                return 3;
+            }
+
+            KioskClockStatus status = new KioskClock(settings, delegate { }).Synchronise();
+
+            Console.WriteLine("        Otomat saati    : " + status.LocalNow);
+            Console.WriteLine("        Saat dilimi     : " + status.TimeZone);
+            Console.WriteLine("        Kaynak          : " +
+                (status.Source.Length > 0 ? status.Source : "ulasilamadi"));
+            Console.WriteLine("        " + status.Message.Replace("\n", "\n        "));
+
+            if (status.CorrectionRefused)
+            {
+                return 5;
+            }
+            return ClockPlausibilityPolicy.BreaksSecureConnections(status.Verdict) ? 6 : 0;
         }
     }
 }

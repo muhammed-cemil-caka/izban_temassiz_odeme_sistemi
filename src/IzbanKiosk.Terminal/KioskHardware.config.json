@@ -10,6 +10,8 @@
   "UpdateCheckHour": 4,
   "UpdateRollbackEnabled": true,
   "UpdatePollMinutes": 30,
+  "ClockSyncEnabled": true,
+  "ClockTimeServers": "tr.pool.ntp.org,time.google.com,time.windows.com",
   "CardWriteEnabled": true,
   "TerminalNo": 0,
   "TerminalUid": 0,

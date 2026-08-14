@@ -80,6 +80,22 @@ namespace IzbanKiosk.Terminal
         /// </summary>
         public int UpdatePollMinutes { get; set; } = 30;
 
+        /// <summary>
+        /// Whether the kiosk may check and correct its own clock. On by default: a
+        /// wrong clock silently ends automatic updates, and the machines this runs on
+        /// are old enough that a dead CMOS battery is the ordinary case rather than
+        /// the exception.
+        /// </summary>
+        public bool ClockSyncEnabled { get; set; } = true;
+
+        /// <summary>
+        /// Time servers to try, in order, comma separated. A closed station network
+        /// answers none of them - which is expected, not a fault - so the field
+        /// deployment can put its own local server here instead of reaching outside.
+        /// Emptying this leaves the offline plausibility check as the only guard.
+        /// </summary>
+        public string ClockTimeServers { get; set; } = "tr.pool.ntp.org,time.google.com,time.windows.com";
+
         /// <summary>Where <see cref="KioskNumber"/> ended up coming from, for display.</summary>
         internal string KioskNumberSource { get; private set; } = string.Empty;
 
@@ -317,6 +333,7 @@ namespace IzbanKiosk.Terminal
             // withheld while the passenger-facing balance enquiry keeps working.
             UpdateRepositoryOwner = (UpdateRepositoryOwner ?? string.Empty).Trim();
             UpdateRepositoryName = (UpdateRepositoryName ?? string.Empty).Trim();
+            ClockTimeServers = (ClockTimeServers ?? string.Empty).Trim();
             if (UpdateCheckHour < 0 || UpdateCheckHour > 23)
             {
                 UpdateCheckHour = 4;

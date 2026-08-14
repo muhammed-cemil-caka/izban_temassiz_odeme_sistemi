@@ -63,6 +63,8 @@
              Link="Compatibility\IzmirimKartNumber.cs" />
     <Compile Include="..\..\src\IzbanKiosk.Terminal\Update\UpdateDecisionPolicy.cs"
              Link="Compatibility\UpdateDecisionPolicy.cs" />
+    <Compile Include="..\..\src\IzbanKiosk.Terminal\Timekeeping\ClockPlausibilityPolicy.cs"
+             Link="Compatibility\ClockPlausibilityPolicy.cs" />
     <Compile Include="..\..\src\IzbanKiosk.Terminal\Update\GitHubReleaseClient.cs"
              Link="Compatibility\GitHubReleaseClient.cs" />
   </ItemGroup>

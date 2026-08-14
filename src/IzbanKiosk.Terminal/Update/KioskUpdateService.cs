@@ -5,6 +5,7 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 using System.Threading;
+using IzbanKiosk.Terminal.Timekeeping;
 
 namespace IzbanKiosk.Terminal.Update
 {
@@ -37,6 +38,16 @@ namespace IzbanKiosk.Terminal.Update
         /// </summary>
         internal bool RollbackPending;
         internal string Message = string.Empty;
+
+        /// <summary>
+        /// What the clock check found, shown next to the update status. A wrong clock
+        /// is the one update failure whose cause is nowhere in the network error it
+        /// produces, so it has to be reported beside the failure it explains.
+        /// </summary>
+        internal string ClockNote = string.Empty;
+
+        /// <summary>The clock is wrong enough that no certificate can validate.</summary>
+        internal bool ClockBlocksUpdate;
     }
 
     /// <summary>
@@ -63,6 +74,7 @@ namespace IzbanKiosk.Terminal.Update
         private readonly Func<bool> _isBusy;
         private readonly Action<string> _log;
         private readonly Action _beforeRestart;
+        private readonly KioskClock _clock;
         private readonly ManualResetEvent _stop = new ManualResetEvent(false);
         private readonly object _reportLock = new object();
         private Thread? _worker;
@@ -78,13 +90,20 @@ namespace IzbanKiosk.Terminal.Update
         /// this the old bridge outlives the update, keeps the single-instance named
         /// pipe, and the freshly installed terminal cannot reach its own bridge.
         /// </param>
+        /// <param name="clock">
+        /// Consulted before every check. The clock is what decides whether GitHub's
+        /// certificate can validate at all, so a machine with a wrong date is told that
+        /// rather than being handed a TLS error that names neither the date nor the fix.
+        /// </param>
         internal KioskUpdateService(
-            KioskHardwareSettings settings, Func<bool> isBusy, Action<string> log, Action beforeRestart)
+            KioskHardwareSettings settings, Func<bool> isBusy, Action<string> log, Action beforeRestart,
+            KioskClock clock)
         {
             _settings = settings;
             _isBusy = isBusy;
             _log = log;
             _beforeRestart = beforeRestart;
+            _clock = clock;
         }
 
         internal void Start()
@@ -172,6 +191,15 @@ namespace IzbanKiosk.Terminal.Update
                 CheckedAt = DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss")
             };
 
+            // Deliberately does NOT stop the attempt when the clock looks wrong. The
+            // verdict can be over-cautious - a floor written during an earlier fault
+            // outlives the repair - and a fleet that refuses to even ask GitHub because
+            // of its own guess would be a worse failure than the one being guarded
+            // against. The clock is used to explain a failure, never to cause one.
+            KioskClockStatus clock = _clock.EnsureSynchronised();
+            report.ClockNote = clock.Message;
+            report.ClockBlocksUpdate = ClockPlausibilityPolicy.BreaksSecureConnections(clock.Verdict);
+
             if (_settings.UpdateRepositoryOwner.Length == 0 || _settings.UpdateRepositoryName.Length == 0)
             {
                 report.Message = "Güncelleme deposu tanımlı değil.";
@@ -238,6 +266,15 @@ namespace IzbanKiosk.Terminal.Update
             {
                 report.Reachable = false;
                 report.Message = ex.GetType().Name + ": " + ex.Message;
+
+                // A provably wrong clock is named first, because it is both the more
+                // likely cause and the one nothing in the error mentions: the
+                // certificate is rejected for being outside its validity window, and
+                // the exception reads exactly like a TLS or network fault.
+                if (report.ClockBlocksUpdate)
+                {
+                    report.Message += "\n\n" + clock.Message;
+                }
 
                 // Windows 7 keeps TLS 1.2 switched off by default and GitHub accepts
                 // nothing older, so this is the failure a kiosk hits first. The raw
