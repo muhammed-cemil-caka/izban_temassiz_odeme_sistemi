@@ -304,7 +304,7 @@
                                 <StackPanel>
                                     <TextBlock Name="CardWriteTitleText" Text="KARTA YÜKLEME" Foreground="#0F172A" FontSize="14" FontWeight="Bold"/>
                                     <TextBlock Name="CardWriteStatusText" Text="" Foreground="#334155" FontFamily="Consolas,Courier New" FontSize="13" TextWrapping="Wrap" Margin="0,8,0,0"/>
-                                    <Button Name="CardWriteTestButton" Content="1 TL TEST YÜKLEMESİ YAP" Style="{StaticResource KioskButton}" Background="#B45309" Foreground="White" BorderBrush="#78350F" FontSize="15" Height="50" Padding="20,0" Margin="0,10,0,0" HorizontalAlignment="Left" Visibility="Collapsed" Click="CardWriteTestButton_Click"/>
+                                    <Button Name="CardWriteTestButton" Content="100,00 TL TEST YÜKLEMESİ YAP" Style="{StaticResource KioskButton}" Background="#B45309" Foreground="White" BorderBrush="#78350F" FontSize="15" Height="50" Padding="20,0" Margin="0,10,0,0" HorizontalAlignment="Left" Visibility="Collapsed" Click="CardWriteTestButton_Click"/>
                                 </StackPanel>
                             </Border>
                         </StackPanel>

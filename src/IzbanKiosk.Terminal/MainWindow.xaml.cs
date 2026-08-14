@@ -40,10 +40,20 @@ namespace IzbanKiosk.Terminal
         /// cold boot takes to enumerate a USB serial device and short enough that a
         /// genuinely missing reader is still reported while a technician is present.
         /// </summary>
+        /// <summary>
+        /// Amount the diagnostics test load writes, in kuruş.
+        ///
+        /// Named once because it appears on the button, in the instruction, in the
+        /// result message and in the request itself. Split across four literals, one
+        /// of them eventually says a figure the kiosk does not actually write - on the
+        /// one screen whose whole job is to prove the written figure is right.
+        /// </summary>
+        private const long TestTopUpMinor = 10000;
+
         private const int SamReadyAttempts = 12;
         private const int SamRetryDelayMs = 5000;
         private const string ExpectedBridgeVersion = "2.5.0-net40";
-        private const string PackageVersion = "R54";
+        private const string PackageVersion = "R55";
         private const int MaxManualAmount = 500;
         // Printer work is a technician action behind a button, not a passenger-path
         // poll, so it waits far longer for the shared pipe than card polling does.
@@ -1549,11 +1559,17 @@ namespace IzbanKiosk.Terminal
                          && _hardwareSettings.CardWriteAmountUnit.Length > 0;
 
             builder.AppendLine(ready
-                ? "Kart okutup aşağıdaki düğmeyle 1 TL test yüklemesi yapabilirsiniz. POS'a dokunulmaz, kimseden tahsilat yapılmaz."
+                ? "Kart okutup aşağıdaki düğmeyle " + TestTopUpText() + " test yüklemesi yapabilirsiniz. POS'a dokunulmaz, kimseden tahsilat yapılmaz."
                 : "Eksik ayar var. KioskHardware.config.json içinde CardWriteEnabled, TerminalNo, TerminalUid, CompanyId ve CardWriteAmountUnit doldurulmalı.");
 
             CardWriteStatusText.Text = builder.ToString().TrimEnd();
+            CardWriteTestButton.Content = TestTopUpText() + " TEST YÜKLEMESİ YAP";
             CardWriteTestButton.Visibility = ready ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private static string TestTopUpText()
+        {
+            return (TestTopUpMinor / 100m).ToString("N2", CultureInfo.GetCultureInfo("tr-TR")) + " TL";
         }
 
         private void CardWriteTestButton_Click(object sender, RoutedEventArgs e)
@@ -1571,7 +1587,7 @@ namespace IzbanKiosk.Terminal
                     PayloadJson = JsonConvert.SerializeObject(new PosPaymentRequest
                     {
                         IdempotencyKey = "topup-test-" + DateTime.Now.ToString("yyyyMMddHHmmss"),
-                        AmountMinor = 100,
+                        AmountMinor = TestTopUpMinor,
                         Currency = "TRY"
                     })
                 }, 12000);
@@ -1587,7 +1603,7 @@ namespace IzbanKiosk.Terminal
                     if (response.Success)
                     {
                         CardWriteStatusText.Text =
-                            "[TAMAM] Bakiye tam 1,00 TL arttı.\n" +
+                            "[TAMAM] Bakiye tam " + TestTopUpText() + " arttı.\n" +
                             "Terminal kimliği ve tutar birimi DOĞRU. Ayarları böyle bırakın.";
                         return;
                     }
