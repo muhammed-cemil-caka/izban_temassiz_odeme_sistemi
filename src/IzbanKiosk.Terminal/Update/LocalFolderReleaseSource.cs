@@ -53,6 +53,15 @@ namespace IzbanKiosk.Terminal.Update
             get { return false; }
         }
 
+        /// <summary>
+        /// Yes. The stick did not appear on its own: an engineer is standing at the
+        /// kiosk and needs to watch it come back on the new version before leaving.
+        /// </summary>
+        public bool InstallsImmediately
+        {
+            get { return true; }
+        }
+
         public GitHubRelease? GetLatestRelease()
         {
             GitHubRelease? best = null;

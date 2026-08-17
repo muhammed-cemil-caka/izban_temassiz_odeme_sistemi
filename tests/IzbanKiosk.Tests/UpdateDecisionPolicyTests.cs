@@ -16,11 +16,12 @@ public class UpdateDecisionPolicyTests
 
     private static UpdateAction Decide(
         string current, string? latest, int hour = Scheduled,
-        string latestTag = "v9", string appliedTag = "", bool rollback = true)
+        string latestTag = "v9", string appliedTag = "", bool rollback = true,
+        bool immediate = false)
         => UpdateDecisionPolicy.Decide(
             new Version(current),
             latest == null ? null : new Version(latest),
-            latestTag, appliedTag, hour, Scheduled, rollback);
+            latestTag, appliedTag, hour, Scheduled, rollback, immediate);
 
     [Fact]
     public void ATagAndTheBuildItCameFromAreTheSameVersion()
@@ -37,6 +38,30 @@ public class UpdateDecisionPolicyTests
     {
         Assert.Equal(UpdateAction.Upgrade, Decide(current: "1.0.26.0", latest: "1.0.27", hour: 4));
         Assert.Equal(UpdateAction.None, Decide(current: "1.0.26.0", latest: "1.0.27", hour: 13));
+    }
+
+    [Fact]
+    public void APackageOnAUsbStickDoesNotWaitForTheNight()
+    {
+        // Somebody walked to the station and plugged it in; that is the instruction.
+        // Waiting until 04:00 would send the engineer away without ever seeing whether
+        // the update took, which is the only reason the visit happened.
+        Assert.Equal(UpdateAction.Upgrade,
+            Decide(current: "1.0.26.0", latest: "1.0.27", hour: 13, immediate: true));
+    }
+
+    [Fact]
+    public void AnImmediateSourceStillRefusesAnythingButAnUpgrade()
+    {
+        // Skipping the nightly window must not also skip the guards. An equal version
+        // changes nothing, and a stick holding an older package is not a recall.
+        Assert.Equal(UpdateAction.None,
+            Decide(current: "1.0.27.0", latest: "1.0.27", hour: 13, immediate: true));
+        Assert.Equal(UpdateAction.None,
+            Decide(current: "1.0.27.0", latest: "1.0.26", hour: 13, rollback: false, immediate: true));
+        Assert.Equal(UpdateAction.None,
+            Decide(current: "1.0.26.0", latest: "1.0.27", latestTag: "v1.0.27", appliedTag: "v1.0.27",
+                   hour: 13, immediate: true));
     }
 
     [Fact]

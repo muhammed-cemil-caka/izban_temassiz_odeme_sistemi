@@ -55,6 +55,15 @@ namespace IzbanKiosk.Terminal.Update
         }
 
         /// <summary>
+        /// No. A release published at midday must not restart a hundred kiosks in the
+        /// middle of service; that is what the nightly window is for.
+        /// </summary>
+        public bool InstallsImmediately
+        {
+            get { return false; }
+        }
+
+        /// <summary>
         /// .NET Framework 4.0 negotiates SSL3/TLS1.0 by default and GitHub refuses
         /// both. The TLS 1.2 enum value did not exist until 4.5, so it is applied by
         /// its numeric value; this works whenever the machine has 4.5 or later

@@ -183,9 +183,25 @@ namespace IzbanKiosk.Terminal.Update
         /// release has to be noticed quickly. The decision about whether to act on
         /// what it finds still keeps upgrades inside their window.
         /// </summary>
+        /// <summary>
+        /// How often a closed-network kiosk looks at its drives. Far shorter than the
+        /// network poll because it costs a directory listing rather than a request
+        /// against a shared rate limit - and because the person who plugged the stick in
+        /// is waiting. Half an hour of standing at a kiosk wondering whether it noticed
+        /// would send them back to copying files over the installation by hand.
+        /// </summary>
+        private const int LocalPollMs = 60000;
+
+        private int PollIntervalMs()
+        {
+            return _settings.ClosedNetwork
+                ? LocalPollMs
+                : _settings.UpdatePollMinutes * 60 * 1000;
+        }
+
         private void Run()
         {
-            while (!_stop.WaitOne(_settings.UpdatePollMinutes * 60 * 1000))
+            while (!_stop.WaitOne(PollIntervalMs()))
             {
                 try
                 {
@@ -412,10 +428,12 @@ namespace IzbanKiosk.Terminal.Update
             // A USB stick cannot: it holds whatever it holds, and treating an old
             // package on a forgotten stick as a recall would downgrade every kiosk it
             // was plugged into.
+            IReleaseSource source = CreateSource();
             UpdateAction action = UpdateDecisionPolicy.Decide(
                 CurrentVersion(), release.Version, release.Tag, ReadAppliedTag(),
                 DateTime.Now.Hour, _settings.UpdateCheckHour,
-                _settings.UpdateRollbackEnabled && CreateSource().SupportsRollback);
+                _settings.UpdateRollbackEnabled && source.SupportsRollback,
+                source.InstallsImmediately);
 
             if (action == UpdateAction.None)
             {

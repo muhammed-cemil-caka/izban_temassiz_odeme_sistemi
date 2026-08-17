@@ -53,6 +53,13 @@ namespace IzbanKiosk.Terminal.Update
         /// running version still has not moved, the install is not taking effect and
         /// repeating it every check would achieve nothing but traffic.
         /// </param>
+        /// <param name="installImmediately">
+        /// Skips the nightly window. True for a package found on a local drive: somebody
+        /// is standing at the machine having just plugged a stick into it, and that is
+        /// the instruction. Making them wait until 04:00 would mean the engineer leaves
+        /// the station without knowing whether the update worked - which is the whole
+        /// reason the visit happened.
+        /// </param>
         internal static UpdateAction Decide(
             Version current,
             Version? latest,
@@ -60,7 +67,8 @@ namespace IzbanKiosk.Terminal.Update
             string appliedTag,
             int hourNow,
             int scheduledHour,
-            bool rollbackEnabled)
+            bool rollbackEnabled,
+            bool installImmediately = false)
         {
             if (latest == null)
             {
@@ -84,7 +92,9 @@ namespace IzbanKiosk.Terminal.Update
                 return rollbackEnabled ? UpdateAction.Rollback : UpdateAction.None;
             }
 
-            return hourNow == scheduledHour ? UpdateAction.Upgrade : UpdateAction.None;
+            return installImmediately || hourNow == scheduledHour
+                ? UpdateAction.Upgrade
+                : UpdateAction.None;
         }
     }
 }

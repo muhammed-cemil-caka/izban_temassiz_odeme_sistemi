@@ -27,6 +27,17 @@ namespace IzbanKiosk.Terminal.Update
         /// </summary>
         bool SupportsRollback { get; }
 
+        /// <summary>
+        /// True when a newer package should be installed as soon as the terminal is
+        /// free, instead of waiting for the nightly window.
+        ///
+        /// GitHub waits: a release reaching the whole fleet at once during service is a
+        /// change nobody asked for at that moment. A USB stick is the opposite - it did
+        /// not appear on its own, somebody walked to the machine and plugged it in, and
+        /// they need to see the result before they leave the station.
+        /// </summary>
+        bool InstallsImmediately { get; }
+
         GitHubRelease? GetLatestRelease();
 
         /// <summary>Puts the package on local disk and returns its path.</summary>
