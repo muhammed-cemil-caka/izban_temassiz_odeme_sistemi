@@ -64,9 +64,20 @@ what each machine still needs, not what blocks a first attempt.
 - The money scale is settled for writing: a 1,00 TL load passed `100` to the vendor and the
   balance read back exactly, so the vendor `amount` is kuruş and the read path agrees with
   it. It has not been compared against a wide spread of pre-existing card balances.
-- `IsAuthoritative` must remain false until the card/SAM result and balance scale are
-  accepted by the authorized İzmirim Kart integration owner. This is an organisational
-  approval, not a missing measurement.
+- Authorisation to load value in production is an **organisational** approval from the
+  İzmirim Kart scheme owner, not anything missing in code. Nothing cryptographic is
+  outstanding: the SAM installed in the machine already carries write authority, proven
+  by a 1,00 TL load that read back exactly. What is outstanding is permission to use
+  their keys, against their cards, for real passengers — plus their sign-off on what the
+  kiosk reports for end-of-day reconciliation.
+
+  Do not confuse this with the `IsAuthoritative` flag on `CardSnapshotResponse`, which is
+  unrelated: it means "this balance came off the real card through a verified SAM rather
+  than from a cache or a simulator" and is already true whenever the SAM verifies. It
+  gates whether the kiosk trusts a reading enough to show and print it. An earlier
+  revision of this file implied the flag was held false pending the approval; it never
+  was, and reading it that way sends someone looking for a switch in the code that does
+  not exist.
 - Printer API success means the job was submitted; that paper is physically produced and
   correctly formatted has been verified by hand on the bench kiosk and must be re-checked
   on each machine, because it depends on that machine's queue and print-head power.
