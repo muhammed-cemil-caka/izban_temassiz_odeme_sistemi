@@ -1,4 +1,4 @@
-IZBAN KIOSK R56 - WINDOWS 7 / EMBEDDED (x86)
+IZBAN KIOSK R58 - WINDOWS 7 / EMBEDDED (x86)
 ============================================
 
 "DONANIM SERVISI BASLATILAMADI" / SURUM UYUSMAZLIGI
@@ -330,6 +330,40 @@ KURULUMDAN SONRA GUNCELLEMEYI TEST EDIN
 
    Yeni bir surum yayinlandiginda ayni ekranda "SIMDI GUNCELLE" dugmesi cikar;
    04:00'i beklemeden kurabilirsiniz. Yolcu varken bu dugme calismaz.
+
+KAPALI AGDAKI OTOMAT  --  INTERNETE CIKMAYAN MAKINELER
+   Istasyon aginda GitHub'a ulasilamaz. Otomati kurarken:
+
+      KURULUM.bat /KAPALIAG
+
+   Bu, otomati kapali ag olarak ISARETLER. Eskiden bayrak sadece kurulumdaki
+   GitHub testini atliyordu, uygulama bunu hic ogrenmiyordu ve omru boyunca
+   gecemeyecegi bir kontrolu yarim saatte bir tekrarliyordu. Artik:
+
+     - GitHub'a hic sorulmaz; "BASARISIZ" diye yaniltici bir satir cikmaz
+     - Guncelleme USB'den okunur
+     - Saat icin internete uzanilmaz, sadece ClockTimeServers denenir
+
+   GUNCELLEMEYI USB ILE GECIRMEK
+     1. USB cubugun KOKUNE su klasoru acin:  IZBAN-Kiosk-Guncelleme
+     2. Paketi icine koyun:                  IZBAN-Kiosk-v1.0.32.zip
+        Varsa .sha256 dosyasini da yanina koyun; otomat kopyalama sirasinda
+        bozulma olup olmadigini onunla kontrol eder.
+     3. Cubugu otomata takin. Otomat BOS oldugunda kendisi kurar ve yeniden
+        baslar. Yolcu varken kurmaz.
+
+   Surucu harfi onemli degil, otomat hazir olan tum surucularde bu klasoru
+   arar. Sabit bir klasor kullanmak isterseniz LocalUpdateFolders ayarina
+   tam yolu yazin.
+
+   DIKKAT
+     - "-KURULUM" iceren zip'ler ASLA guncelleme olarak kurulmaz; icinde
+       120 MB'lik .NET kurulumu vardir ve otomatin klasorune kopyalanmasi
+       diski doldururdu. USB kurulum arsivini oraya koymayin.
+     - Otomat SADECE daha YENI surumu kurar. Cekmecede unutulmus eski bir
+       cubuk otomati geri dusuremez.
+     - Bu yol, cubugu takan kisiye guvenir. Zaten otomatin basinda duran biri
+       dosyalari elle de kopyalayabilirdi; yapilan sey o islemi otomatiklestirmek.
 
 GEREKSINIM: DOGRU SAAT  --  "Otomat saati: ... (YANLIS)" GORURSENIZ
    GitHub'in sertifikasi sistem saatine gore dogrulanir. 2010'da oldugunu

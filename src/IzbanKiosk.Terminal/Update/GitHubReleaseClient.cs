@@ -21,8 +21,11 @@ namespace IzbanKiosk.Terminal.Update
     ///
     /// Only the GitHub API over HTTPS is used, and only the release's own assets are
     /// downloaded: the kiosk installs code from this one source and nowhere else.
+    ///
+    /// Useless on a kiosk with no route to the internet, which is why it is one
+    /// <see cref="IReleaseSource"/> among others rather than the only way in.
     /// </summary>
-    internal sealed class GitHubReleaseClient
+    internal sealed class GitHubReleaseClient : IReleaseSource
     {
         private const string UserAgent = "IZBAN-Kiosk-Updater";
         private const int RequestTimeoutMs = 60000;
@@ -35,6 +38,20 @@ namespace IzbanKiosk.Terminal.Update
             _owner = owner;
             _repository = repository;
             EnableModernTls();
+        }
+
+        public string Describe()
+        {
+            return "GitHub: " + _owner + "/" + _repository;
+        }
+
+        /// <summary>
+        /// Deleting a release from GitHub is how an operator recalls a bad build, so a
+        /// published version behind the running one is a deliberate instruction.
+        /// </summary>
+        public bool SupportsRollback
+        {
+            get { return true; }
         }
 
         /// <summary>
@@ -56,7 +73,7 @@ namespace IzbanKiosk.Terminal.Update
             }
         }
 
-        internal GitHubRelease? GetLatestRelease()
+        public GitHubRelease? GetLatestRelease()
         {
             string url = "https://api.github.com/repos/" + _owner + "/" + _repository + "/releases/latest";
             string json = DownloadString(url);
@@ -135,7 +152,7 @@ namespace IzbanKiosk.Terminal.Update
             return Version.TryParse(cleaned, out parsed) ? parsed : null;
         }
 
-        internal string DownloadPackage(GitHubRelease release, string targetDirectory)
+        public string DownloadPackage(GitHubRelease release, string targetDirectory)
         {
             if (!Directory.Exists(targetDirectory))
             {

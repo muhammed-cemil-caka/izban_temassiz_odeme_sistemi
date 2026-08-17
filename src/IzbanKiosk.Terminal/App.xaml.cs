@@ -33,6 +33,12 @@ namespace IzbanKiosk.Terminal
                     Environment.Exit(RunClockSync());
                     return;
                 }
+
+                if (string.Equals(argument, "--closed-network", StringComparison.OrdinalIgnoreCase))
+                {
+                    Environment.Exit(RunSetClosedNetwork());
+                    return;
+                }
             }
 
             // Installed before the window exists, so a failure during start-up is
@@ -88,20 +94,19 @@ namespace IzbanKiosk.Terminal
             UpdateStatusReport report = service.CheckNow();
 
             Console.WriteLine("        Calisan surum   : " + report.CurrentVersion);
-            Console.WriteLine("        Depo            : " +
-                settings.UpdateRepositoryOwner + "/" + settings.UpdateRepositoryName);
+            Console.WriteLine("        Kaynak          : " + report.Source);
             Console.WriteLine("        Otomat saati    : " +
                 DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss") +
                 (report.ClockBlocksUpdate ? "  <<< YANLIS" : string.Empty));
 
             if (!report.Reachable)
             {
-                Console.WriteLine("        GitHub'a erisim : BASARISIZ");
+                Console.WriteLine("        Kaynaga erisim  : BASARISIZ");
                 Console.WriteLine("        " + report.Message.Replace("\n", "\n        "));
                 return 2;
             }
 
-            Console.WriteLine("        GitHub'a erisim : BASARILI");
+            Console.WriteLine("        Kaynaga erisim  : BASARILI");
             if (report.LatestTag.Length > 0)
             {
                 Console.WriteLine("        Yayindaki surum : " +
@@ -148,6 +153,31 @@ namespace IzbanKiosk.Terminal
                 return 5;
             }
             return ClockPlausibilityPolicy.BreaksSecureConnections(status.Verdict) ? 6 : 0;
+        }
+
+        /// <summary>
+        /// Marks this kiosk as having no route to the internet, so it stops asking
+        /// GitHub and starts looking for update packages on local drives instead.
+        /// </summary>
+        private static int RunSetClosedNetwork()
+        {
+            AttachConsole(AttachParentProcess);
+
+            try
+            {
+                KioskHardwareSettings.SaveClosedNetwork(true);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("[HATA] Ayar yazilamadi: " + ex.Message);
+                return 3;
+            }
+
+            Console.WriteLine("        Otomat KAPALI AG olarak isaretlendi.");
+            Console.WriteLine("        Guncellemeler artik USB ile gelecek: cubugun kokune");
+            Console.WriteLine("        " + LocalPackageNaming.FolderName + " klasoru acin ve");
+            Console.WriteLine("        IZBAN-Kiosk-v1.0.32.zip gibi paketi icine koyun.");
+            return 0;
         }
     }
 }

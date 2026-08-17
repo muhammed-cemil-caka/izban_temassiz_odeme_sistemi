@@ -617,13 +617,24 @@ if not exist "%KIOSKEXE%" (
 
 REM Kapali agdaki otomatta GitHub'a ulasilamamasi bir ariza degil, tasarim.
 REM Adimi [HATA] saymak, saha ekibine her kurulumda gercek olmayan bir sorun
-REM bildirmek olurdu. Otomatik guncelleme ayari degistirilmiyor: gunde bir
-REM basarisiz denemenin zarari yok, ayar dosyasini burada duzenlemek ise
-REM WES7'de bulunmayabilecek araclara bagimlilik getirirdi.
-if "%KAPALIAG%"=="1" (
-  echo        [ATLANDI] Otomat kapali agda; guncellemeler elle dagitiliyor.
-  goto :sonuc
-)
+REM bildirmek olurdu.
+REM
+REM Bu bayrak eskiden SADECE bu testi atliyordu; uygulamanin kendisi bunu hic
+REM ogrenmiyor ve omru boyunca gecemeyecegi bir kontrolu yarim saatte bir
+REM tekrarliyordu. Artik ayari uygulamanin kendisine yazdiriyoruz - ayar
+REM dosyasini burada elle duzenlemek WES7'de bulunmayabilecek araclara
+REM bagimlilik getirirdi, kendi exe'miz ise zaten orada.
+if not "%KAPALIAG%"=="1" goto :acikag
+echo        Otomat KAPALI AG olarak isaretleniyor...
+"%KIOSKEXE%" --closed-network
+echo.
+echo        [ATLANDI] Otomat kapali agda; GitHub testi yapilmadi.
+echo                  Guncellemeler USB ile gelecek: cubugun kokune
+echo                  IZBAN-Kiosk-Guncelleme klasoru acin, paketi
+echo                  icine koyun ve cubugu otomata takin. Otomat
+echo                  bos oldugunda kendisi kurar.
+goto :sonuc
+:acikag
 
 echo        GitHub'a baglaniliyor, bekleyin...
 echo.

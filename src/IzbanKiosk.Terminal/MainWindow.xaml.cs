@@ -58,7 +58,7 @@ namespace IzbanKiosk.Terminal
         private const int SamReadyAttempts = 12;
         private const int SamRetryDelayMs = 5000;
         private const string ExpectedBridgeVersion = "2.5.0-net40";
-        private const string PackageVersion = "R57";
+        private const string PackageVersion = "R58";
         private const int MaxManualAmount = 500;
         // Printer work is a technician action behind a button, not a passenger-path
         // poll, so it waits far longer for the shared pipe than card polling does.
@@ -1696,6 +1696,11 @@ namespace IzbanKiosk.Terminal
                 : "KURULU DEĞİL"));
             AppendClockLines(builder);
 
+            if (report.Source.Length > 0)
+            {
+                builder.AppendLine("Güncelleme kaynağı: " + report.Source);
+            }
+
             if (report.CheckedAt.Length == 0)
             {
                 builder.AppendLine("Son kontrol      : henüz yapılmadı");
@@ -1703,8 +1708,16 @@ namespace IzbanKiosk.Terminal
             else
             {
                 builder.AppendLine("Son kontrol      : " + report.CheckedAt);
-                builder.AppendLine("GitHub'a erişim  : " + (report.Reachable ? "BAŞARILI" : "BAŞARISIZ"));
-                builder.AppendLine("Yayındaki sürüm  : " + Dash(report.LatestVersion) +
+
+                // On a closed network there is nothing to "reach": the check either
+                // found a package on a local drive or it did not, and reporting
+                // BAŞARISIZ for an absent USB stick would put a permanent red line on
+                // every kiosk in the fleet.
+                builder.AppendLine(report.ClosedNetwork
+                    ? "Kaynak okundu    : " + (report.Reachable ? "EVET" : "HAYIR")
+                    : "GitHub'a erişim  : " + (report.Reachable ? "BAŞARILI" : "BAŞARISIZ"));
+                builder.AppendLine((report.ClosedNetwork ? "Bulunan paket    : " : "Yayındaki sürüm  : ") +
+                    Dash(report.LatestVersion) +
                     (report.LatestTag.Length > 0 ? "  (etiket " + report.LatestTag + ")" : string.Empty));
                 builder.AppendLine();
                 builder.AppendLine(report.Message);

@@ -236,7 +236,12 @@ namespace IzbanKiosk.Terminal.Timekeeping
                 }
             }
 
-            if (TryQueryHttpDate(out referenceUtc))
+            // Skipped on a closed-network kiosk. The HTTP fallback exists for a machine
+            // that has internet but whose UDP 123 is blocked; on a kiosk with no route
+            // out at all it can only waste the DNS and connect timeouts, four times a
+            // day, forever. The configured NTP servers are the field answer - point
+            // them at İZBAN's own server and this path is never needed.
+            if (!_settings.ClosedNetwork && TryQueryHttpDate(out referenceUtc))
             {
                 source = "github.com (HTTP)";
                 return true;
@@ -535,7 +540,9 @@ namespace IzbanKiosk.Terminal.Timekeeping
 
                 default:
                     return "Zaman sunucusuna ulaşılamadı; kapalı ağda bu normaldir. Saat makinenin " +
-                        "kendi geçmişiyle tutarlı, bilinen bir sorun yok.";
+                        "kendi geçmişiyle tutarlı, bilinen bir sorun yok. Kapalı ağda kendi zaman " +
+                        "sunucunuz varsa adresini ClockTimeServers ayarına yazın; otomat o zaman " +
+                        "saatini kendi düzeltebilir.";
             }
         }
 

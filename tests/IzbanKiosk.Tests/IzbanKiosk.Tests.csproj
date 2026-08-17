@@ -65,8 +65,12 @@
              Link="Compatibility\UpdateDecisionPolicy.cs" />
     <Compile Include="..\..\src\IzbanKiosk.Terminal\Timekeeping\ClockPlausibilityPolicy.cs"
              Link="Compatibility\ClockPlausibilityPolicy.cs" />
+    <Compile Include="..\..\src\IzbanKiosk.Terminal\Update\LocalPackageNaming.cs"
+             Link="Compatibility\LocalPackageNaming.cs" />
     <Compile Include="..\..\src\IzbanKiosk.Terminal\Update\GitHubReleaseClient.cs"
              Link="Compatibility\GitHubReleaseClient.cs" />
+    <Compile Include="..\..\src\IzbanKiosk.Terminal\Update\IReleaseSource.cs"
+             Link="Compatibility\IReleaseSource.cs" />
   </ItemGroup>
 
 </Project>

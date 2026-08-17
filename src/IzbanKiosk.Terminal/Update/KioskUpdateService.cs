@@ -48,6 +48,15 @@ namespace IzbanKiosk.Terminal.Update
 
         /// <summary>The clock is wrong enough that no certificate can validate.</summary>
         internal bool ClockBlocksUpdate;
+
+        /// <summary>Where this kiosk looks for its next version.</summary>
+        internal string Source = string.Empty;
+
+        /// <summary>
+        /// The kiosk is configured as having no internet. Finding nothing is then the
+        /// expected outcome rather than a fault, and the panel must not shout about it.
+        /// </summary>
+        internal bool ClosedNetwork;
     }
 
     /// <summary>
@@ -106,6 +115,40 @@ namespace IzbanKiosk.Terminal.Update
             _clock = clock;
         }
 
+        /// <summary>
+        /// Where this kiosk's next version comes from.
+        ///
+        /// A closed-network kiosk cannot reach GitHub at all, so pointing it there would
+        /// mean a failed request every poll, forever, and an update path that exists only
+        /// on paper. It looks at local drives instead - which is the same USB stick an
+        /// engineer already carries between stations, just no longer copied over the
+        /// installation by hand.
+        /// </summary>
+        private IReleaseSource CreateSource()
+        {
+            if (_settings.ClosedNetwork)
+            {
+                return new LocalFolderReleaseSource(SplitFolders(_settings.LocalUpdateFolders), _log);
+            }
+            return new GitHubReleaseClient(_settings.UpdateRepositoryOwner, _settings.UpdateRepositoryName);
+        }
+
+        private static string[] SplitFolders(string configured)
+        {
+            string value = (configured ?? string.Empty).Trim();
+            if (value.Length == 0)
+            {
+                return new string[0];
+            }
+
+            string[] parts = value.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries);
+            for (int i = 0; i < parts.Length; i++)
+            {
+                parts[i] = parts[i].Trim();
+            }
+            return parts;
+        }
+
         internal void Start()
         {
             if (!_settings.UpdateEnabled)
@@ -114,7 +157,8 @@ namespace IzbanKiosk.Terminal.Update
                 return;
             }
 
-            if (_settings.UpdateRepositoryOwner.Length == 0 || _settings.UpdateRepositoryName.Length == 0)
+            if (!_settings.ClosedNetwork &&
+                (_settings.UpdateRepositoryOwner.Length == 0 || _settings.UpdateRepositoryName.Length == 0))
             {
                 _log("Automatic updates are idle: no update repository is configured.");
                 return;
@@ -184,11 +228,14 @@ namespace IzbanKiosk.Terminal.Update
         /// </summary>
         internal UpdateStatusReport CheckNow()
         {
+            IReleaseSource source = CreateSource();
             var report = new UpdateStatusReport
             {
                 Armed = _worker != null,
                 CurrentVersion = CurrentVersion().ToString(),
-                CheckedAt = DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss")
+                CheckedAt = DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss"),
+                ClosedNetwork = _settings.ClosedNetwork,
+                Source = source.Describe()
             };
 
             // Deliberately does NOT stop the attempt when the clock looks wrong. The
@@ -200,7 +247,8 @@ namespace IzbanKiosk.Terminal.Update
             report.ClockNote = clock.Message;
             report.ClockBlocksUpdate = ClockPlausibilityPolicy.BreaksSecureConnections(clock.Verdict);
 
-            if (_settings.UpdateRepositoryOwner.Length == 0 || _settings.UpdateRepositoryName.Length == 0)
+            if (!_settings.ClosedNetwork &&
+                (_settings.UpdateRepositoryOwner.Length == 0 || _settings.UpdateRepositoryName.Length == 0))
             {
                 report.Message = "Güncelleme deposu tanımlı değil.";
                 return Store(report, null);
@@ -208,13 +256,21 @@ namespace IzbanKiosk.Terminal.Update
 
             try
             {
-                var client = new GitHubReleaseClient(_settings.UpdateRepositoryOwner, _settings.UpdateRepositoryName);
-                GitHubRelease? release = client.GetLatestRelease();
+                GitHubRelease? release = source.GetLatestRelease();
                 report.Reachable = true;
 
                 if (release == null)
                 {
-                    report.Message = "Yayındaki sürümde .zip dosyası yok.";
+                    // On a closed network an empty result is the resting state, not a
+                    // problem: no stick is plugged in. Calling that a fault would put a
+                    // permanent red line on every kiosk in the fleet and teach the field
+                    // team to ignore this panel.
+                    report.Message = _settings.ClosedNetwork
+                        ? "Kurulmayı bekleyen paket yok. Otomat kapalı ağda: güncelleme " +
+                          "USB ile geliyor. Çubuğun kökünde " + LocalPackageNaming.FolderName +
+                          " klasörü olmalı ve içinde IZBAN-Kiosk-v1.0.32.zip gibi bir dosya " +
+                          "bulunmalı."
+                        : "Yayındaki sürümde .zip dosyası yok.";
                     return Store(report, null);
                 }
 
@@ -228,7 +284,8 @@ namespace IzbanKiosk.Terminal.Update
                 report.LatestVersion = release.Version.ToString();
                 int order = UpdateDecisionPolicy.Compare(release.Version, CurrentVersion());
                 report.UpdateAvailable = order > 0;
-                report.RollbackPending = order < 0 && _settings.UpdateRollbackEnabled;
+                report.RollbackPending =
+                    order < 0 && _settings.UpdateRollbackEnabled && source.SupportsRollback;
 
                 // The same release was installed already and the running version did
                 // not move, so installing it again would change nothing. Reinstalling
@@ -255,11 +312,19 @@ namespace IzbanKiosk.Terminal.Update
                     return Store(report, null, release);
                 }
 
-                report.Message = report.UpdateAvailable
-                    ? "Yeni bir sürüm yayınlanmış. Kurmak için ŞİMDİ GÜNCELLE düğmesini kullanabilir " +
-                      "veya gece " + _settings.UpdateCheckHour.ToString("00") + ":00'teki otomatik " +
-                      "kurulumu bekleyebilirsiniz."
-                    : "Bu otomat en güncel sürümü çalıştırıyor.";
+                if (report.UpdateAvailable)
+                {
+                    report.Message = (_settings.ClosedNetwork
+                            ? "Yeni bir paket bulundu (" + release.PackageName + ")."
+                            : "Yeni bir sürüm yayınlanmış.") +
+                        " Kurmak için ŞİMDİ GÜNCELLE düğmesini kullanabilir veya gece " +
+                        _settings.UpdateCheckHour.ToString("00") + ":00'teki otomatik kurulumu " +
+                        "bekleyebilirsiniz.";
+                }
+                else
+                {
+                    report.Message = "Bu otomat en güncel sürümü çalıştırıyor.";
+                }
                 return Store(report, report.UpdateAvailable ? release : null);
             }
             catch (Exception ex)
@@ -279,8 +344,10 @@ namespace IzbanKiosk.Terminal.Update
                 // Windows 7 keeps TLS 1.2 switched off by default and GitHub accepts
                 // nothing older, so this is the failure a kiosk hits first. The raw
                 // WebException says nothing about that, and a technician standing at
-                // the machine has no way to guess it.
-                if (ex is System.Net.WebException)
+                // the machine has no way to guess it. Pointless on a closed-network
+                // kiosk, which is not failing TLS - it has no route at all, and sending
+                // the field team to the TLS script would waste the visit.
+                if (ex is System.Net.WebException && !_settings.ClosedNetwork)
                 {
                     report.Message += "\n\nİnternet çalışıyor ama güvenli bağlantı kurulamıyor olabilir. " +
                         "Otomatta 5-TLS-Duzelt.bat dosyasını yönetici olarak çalıştırın ve makineyi " +
@@ -341,9 +408,14 @@ namespace IzbanKiosk.Terminal.Update
                 return;
             }
 
+            // Rollback is only ever right when the source can express a withdrawal.
+            // A USB stick cannot: it holds whatever it holds, and treating an old
+            // package on a forgotten stick as a recall would downgrade every kiosk it
+            // was plugged into.
             UpdateAction action = UpdateDecisionPolicy.Decide(
                 CurrentVersion(), release.Version, release.Tag, ReadAppliedTag(),
-                DateTime.Now.Hour, _settings.UpdateCheckHour, _settings.UpdateRollbackEnabled);
+                DateTime.Now.Hour, _settings.UpdateCheckHour,
+                _settings.UpdateRollbackEnabled && CreateSource().SupportsRollback);
 
             if (action == UpdateAction.None)
             {
@@ -378,13 +450,14 @@ namespace IzbanKiosk.Terminal.Update
 
         private void Apply(GitHubRelease release)
         {
-            var client = new GitHubReleaseClient(_settings.UpdateRepositoryOwner, _settings.UpdateRepositoryName);
+            IReleaseSource source = CreateSource();
 
             string staging = Path.Combine(Path.GetTempPath(), "izban-kiosk-update");
             staging = PrepareEmptyDirectory(staging);
 
-            string packagePath = client.DownloadPackage(release, staging);
-            _log("Downloaded " + release.PackageName + " (" + new FileInfo(packagePath).Length + " bytes).");
+            string packagePath = source.DownloadPackage(release, staging);
+            _log("Staged " + release.PackageName + " from " + source.Describe() +
+                " (" + new FileInfo(packagePath).Length + " bytes).");
 
             string payload = Path.Combine(staging, "payload");
             Directory.CreateDirectory(payload);

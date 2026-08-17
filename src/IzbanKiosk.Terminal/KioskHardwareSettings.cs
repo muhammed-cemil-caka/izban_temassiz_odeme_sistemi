@@ -81,6 +81,26 @@ namespace IzbanKiosk.Terminal
         public int UpdatePollMinutes { get; set; } = 30;
 
         /// <summary>
+        /// This kiosk has no route to the internet — the normal case inside İZBAN's
+        /// station network.
+        ///
+        /// Changes what the kiosk *expects* rather than what it is allowed to do. An
+        /// unreachable GitHub stops being reported as a fault, the updater looks for
+        /// packages on local drives instead, and the clock stops trying to read a date
+        /// off a web server it cannot reach. Nothing here disables a feature; each one
+        /// is pointed at something that exists on a closed network.
+        /// </summary>
+        public bool ClosedNetwork { get; set; }
+
+        /// <summary>
+        /// Extra folders to look in for update packages, comma separated. Leave empty to
+        /// search every ready drive for a <c>IZBAN-Kiosk-Guncelleme</c> folder, which is
+        /// what makes a USB stick work whatever letter Windows gives it. Only consulted
+        /// when <see cref="ClosedNetwork"/> is on.
+        /// </summary>
+        public string LocalUpdateFolders { get; set; } = string.Empty;
+
+        /// <summary>
         /// Whether the kiosk may check and correct its own clock. On by default: a
         /// wrong clock silently ends automatic updates, and the machines this runs on
         /// are old enough that a dead CMOS battery is the ordinary case rather than
@@ -233,6 +253,24 @@ namespace IzbanKiosk.Terminal
         }
 
         /// <summary>
+        /// Records that this machine has no route to the internet.
+        ///
+        /// Written by the installer's <c>/KAPALIAG</c> switch rather than by hand: the
+        /// flag already existed there but only skipped the install-time GitHub test, so
+        /// the kiosk itself never learned it and spent its life failing a check it could
+        /// never pass. Editing JSON on a machine with no keyboard is not a realistic
+        /// alternative.
+        /// </summary>
+        internal static void SaveClosedNetwork(bool closedNetwork)
+        {
+            string settingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, SettingsFileName);
+            KioskHardwareSettings settings = LoadFromApplicationDirectory();
+            settings.ClosedNetwork = closedNetwork;
+
+            File.WriteAllText(settingsPath, JsonConvert.SerializeObject(settings, Formatting.Indented));
+        }
+
+        /// <summary>
         /// Takes the kiosk number from the machine rather than from the copied
         /// configuration whenever the legacy setup.ini can be found.
         ///
@@ -334,6 +372,7 @@ namespace IzbanKiosk.Terminal
             UpdateRepositoryOwner = (UpdateRepositoryOwner ?? string.Empty).Trim();
             UpdateRepositoryName = (UpdateRepositoryName ?? string.Empty).Trim();
             ClockTimeServers = (ClockTimeServers ?? string.Empty).Trim();
+            LocalUpdateFolders = (LocalUpdateFolders ?? string.Empty).Trim();
             if (UpdateCheckHour < 0 || UpdateCheckHour > 23)
             {
                 UpdateCheckHour = 4;
