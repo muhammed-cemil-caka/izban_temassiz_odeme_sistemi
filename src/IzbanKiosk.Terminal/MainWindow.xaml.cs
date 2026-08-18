@@ -41,24 +41,10 @@ namespace IzbanKiosk.Terminal
         /// cold boot takes to enumerate a USB serial device and short enough that a
         /// genuinely missing reader is still reported while a technician is present.
         /// </summary>
-        /// <summary>
-        /// Amount the diagnostics test load writes, in kuruş.
-        ///
-        /// Named once because it appears on the button, in the instruction, in the
-        /// result message and in the request itself. Split across four literals, one
-        /// of them eventually says a figure the kiosk does not actually write - on the
-        /// one screen whose whole job is to prove the written figure is right.
-        /// </summary>
-        /// Kept at one lira on purpose. The test proves the terminal identity and the
-        /// amount unit, and it proves them exactly as well at any figure - while every
-        /// press writes real spendable value that nobody paid for and that cannot be
-        /// taken back. There is no diagnostic reason to make it larger, only cost.
-        private const long TestTopUpMinor = 100;
-
         private const int SamReadyAttempts = 12;
         private const int SamRetryDelayMs = 5000;
         private const string ExpectedBridgeVersion = "2.5.0-net40";
-        private const string PackageVersion = "R59";
+        private const string PackageVersion = "R60";
         private const int MaxManualAmount = 500;
         // Printer work is a technician action behind a button, not a passenger-path
         // poll, so it waits far longer for the shared pipe than card polling does.
@@ -1595,96 +1581,17 @@ namespace IzbanKiosk.Terminal
             builder.AppendLine("Tutar birimi   : " +
                 (_hardwareSettings.CardWriteAmountUnit.Length == 0 ? "[tanımsız]" : _hardwareSettings.CardWriteAmountUnit));
 
-            // Once a POS is integrated the test has done its job: card writing is
-            // proven by real top-ups, and a button that loads value without taking
-            // payment stops being a diagnostic and becomes a way to give money away.
-            if (_posConfigured)
-            {
-                CardWriteStatusText.Text = "Yükleme POS üzerinden çalışıyor. Test düğmesine gerek kalmadı.";
-                CardWriteTestButton.Visibility = Visibility.Collapsed;
-                return;
-            }
-
-            bool ready = _hardwareSettings.CardWriteEnabled
-                         && _hardwareSettings.TerminalNo > 0
-                         && _hardwareSettings.TerminalUid > 0
-                         && _hardwareSettings.CompanyId > 0
-                         && _hardwareSettings.CardWriteAmountUnit.Length > 0;
-
-            builder.AppendLine(ready
-                ? "Kart okutup aşağıdaki düğmeyle " + TestTopUpText() + " test yüklemesi yapabilirsiniz. POS'a dokunulmaz, kimseden tahsilat yapılmaz."
-                : "Eksik ayar var. KioskHardware.config.json içinde CardWriteEnabled, TerminalNo, TerminalUid, CompanyId ve CardWriteAmountUnit doldurulmalı.");
+            // The test load that used to sit here has been removed. It existed to prove
+            // the terminal identity and the amount unit before any POS existed, and it
+            // did that on 2026-08-10: 1,00 TL went onto a real card and read back
+            // exactly. With the answer recorded in the settings below, what was left was
+            // a button that puts money on a card and charges nobody - not something to
+            // leave on an unattended machine while the project waits for a POS.
+            builder.AppendLine(_posConfigured
+                ? "Yükleme POS üzerinden çalışıyor."
+                : "Yükleme yolu hazır ve doğrulandı; gerçek tahsilat için POS entegrasyonu bekleniyor.");
 
             CardWriteStatusText.Text = builder.ToString().TrimEnd();
-            CardWriteTestButton.Content = TestTopUpText() + " TEST YÜKLEMESİ YAP";
-            CardWriteTestButton.Visibility = ready ? Visibility.Visible : Visibility.Collapsed;
-        }
-
-        private static string TestTopUpText()
-        {
-            return (TestTopUpMinor / 100m).ToString("N2", CultureInfo.GetCultureInfo("tr-TR")) + " TL";
-        }
-
-        private void CardWriteTestButton_Click(object sender, RoutedEventArgs e)
-        {
-            CardWriteTestButton.IsEnabled = false;
-            CardWriteStatusText.Text = "Test yüklemesi yapılıyor, kartı okuyucudan ÇEKMEYİN...";
-
-            ThreadPool.QueueUserWorkItem(delegate
-            {
-                BridgeResponse? response = SendRequest(new BridgeRequest
-                {
-                    RequestId = Guid.NewGuid().ToString("N"),
-                    Command = "TopupTest",
-                    TimeoutMs = 15000,
-                    PayloadJson = JsonConvert.SerializeObject(new PosPaymentRequest
-                    {
-                        IdempotencyKey = "topup-test-" + DateTime.Now.ToString("yyyyMMddHHmmss"),
-                        AmountMinor = TestTopUpMinor,
-                        Currency = "TRY"
-                    })
-                }, 12000);
-
-                OnUi(delegate
-                {
-                    CardWriteTestButton.IsEnabled = true;
-                    if (response == null)
-                    {
-                        CardWriteStatusText.Text = "Donanım servisinden yanıt alınamadı.";
-                        return;
-                    }
-                    if (response.Success)
-                    {
-                        CardWriteStatusText.Text =
-                            "[TAMAM] Bakiye tam " + TestTopUpText() + " arttı.\n" +
-                            "Terminal kimliği ve tutar birimi DOĞRU. Ayarları böyle bırakın.";
-                        return;
-                    }
-
-                    string code = response.Error == null ? string.Empty : response.Error.Code;
-                    string detail = response.Error == null ? string.Empty : response.Error.Message;
-                    // Each code gets its own next step. Blaming the terminal identity
-                    // for a refusal that never reached the card sends a technician
-                    // hunting a number that was never the problem.
-                    if (code == "ERR_TOPUP_MISMATCH")
-                    {
-                        CardWriteStatusText.Text = "[UYUŞMAZLIK] " + detail +
-                            "\nFark 100 kat ise CardWriteAmountUnit yanlış. Düzeltmeden ikinci test yapmayın.";
-                    }
-                    else if (code == "ERR_ACCESS_DENIED")
-                    {
-                        CardWriteStatusText.Text = "[AYAR EKSİK] " + detail +
-                            "\nKart DEĞİŞMEDİ. Donanım servisi ayar dosyasını okuyamıyor; " +
-                            "uygulamayı yeniden başlatın, sürerse bildirin.";
-                    }
-                    else
-                    {
-                        CardWriteStatusText.Text = "[BAŞARISIZ] " + detail +
-                            "\nKart DEĞİŞMEDİ. Vendor çağrıyı reddetti: TerminalNo/TerminalUid/CompanyId " +
-                            "bu otomat için yanlış olabilir.";
-                    }
-                });
-            });
         }
 
         private void RenderUpdateStatus(UpdateStatusReport report)

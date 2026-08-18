@@ -1,4 +1,4 @@
-IZBAN KIOSK R59 - WINDOWS 7 / EMBEDDED (x86)
+IZBAN KIOSK R60 - WINDOWS 7 / EMBEDDED (x86)
 ============================================
 
 "DONANIM SERVISI BASLATILAMADI" / SURUM UYUSMAZLIGI
@@ -173,26 +173,18 @@ ADIM 2 - Ayar dosyasini doldurun (KioskHardware.config.json)
    "CardWriteAmountUnit": "Minor",
    "TopupReferenceSeed": 900000
 
-ADIM 3 - Tek bir kucuk test yuklemesi yapin
-   Elinizde bir TEST karti olsun, yolcu karti kullanmayin.
+ADIM 3 - Test yuklemesi dugmesi KALDIRILDI
+   Bu ekranda "1,00 TL TEST YUKLEMESI YAP" diye bir dugme vardi. Isini
+   yapti: 10.08.2026'da gercek bir karta 1,00 TL yazip aynen geri okudu ve
+   yukaridaki degerlerin dogrulugunu kanitladi.
 
-   Karti okutun, sonra SISTEM TANILA -> "1,00 TL TEST YUKLEMESI YAP".
-   Dugme POS'a hic dokunmaz; kimseden tahsilat yapilmaz. Karttan onceki
-   bakiyeyi okur, yukler, sonra tekrar okur.
+   Cevap alindiktan sonra geriye kalan sey, tahsilat yapmadan karta para
+   yazan bir dugmeydi. Proje POS gelene kadar askiya alindigi icin bu
+   dugme ve arkasindaki komut TAMAMEN kaldirildi - basinda kimsenin
+   olmadigi bir makinede oyle bir yol acik birakilmaz.
 
-   POS entegre edildikten sonra bu dugme kendiliginden kaybolur: tahsilat
-   yapmadan deger ureten bir dugme, gercek para alabilen bir makinede
-   birakilmaz.
-
-   [TAMAM]         Bakiye tam 1,00 TL artti. Degerler DOGRU, isiniz bitti.
-   [BASARISIZ]     Vendor cagriyi reddetti. Kart DEGISMEDI. TerminalNo /
-                   TerminalUid yanlis; entegratore bu iki degeri sorun.
-   [UYUSMAZLIK]    Bakiye beklenenden farkli artti. Fark 100 kat ise birim
-                   yanlis. Duzeltmeden IKINCI TEST YAPMAYIN.
-
-ADIM 4 - Calisirsa ayarlari oldugu gibi birakin
-   Bu iki deger otomat basina degisebilir; her yeni otomatta 3. adimi
-   tekrarlayin.
+   Yeni bir otomatta bu degerleri dogrulamaniz gerekirse bildirin; dugme
+   kontrollu sekilde geri getirilebilir.
 
 NEDEN BOYLE: yanlis TerminalNo ile yazmak semaya baskasinin kimligiyle islem
 gecmek, yanlis birimle yazmak yolcuya yuz kat fazla veya eksik yuklemektir.

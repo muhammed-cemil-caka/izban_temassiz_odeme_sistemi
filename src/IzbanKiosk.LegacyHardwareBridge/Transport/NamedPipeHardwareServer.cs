@@ -521,75 +521,17 @@ namespace IzbanKiosk.LegacyHardwareBridge.Transport
                     }
                     break;
 
-                case "TopupTest":
-                    // Deliberately skips the payment terminal. Its whole purpose is to
-                    // answer "are the terminal identity and the amount unit right for
-                    // this kiosk?", which has to be answerable before a POS exists -
-                    // and nobody is charged, so there is nothing to reverse.
-                    PosPaymentRequest? testRequest = string.IsNullOrEmpty(request.PayloadJson)
-                        ? null
-                        : JsonConvert.DeserializeObject<PosPaymentRequest>(request.PayloadJson);
-                    if (testRequest == null || testRequest.AmountMinor <= 0)
-                    {
-                        response.Success = false;
-                        response.Error = new BridgeError { Code = "ERR_BAD_PAYLOAD", Message = "TopupTest requires AmountMinor." };
-                        break;
-                    }
-
-                    var testReader = new NfcCardBalanceReader(_nfcDevice);
-                    var testResult = new TopUpResponse { RequestId = testRequest.IdempotencyKey };
-                    long testBefore;
-                    string testError;
-                    if (!testReader.TryReadBalanceMinor(testRequest.StoragePseudonym, out testBefore, out testError))
-                    {
-                        response.Success = false;
-                        response.Error = new BridgeError { Code = "ERR_CARD_READ", Message = testError };
-                        break;
-                    }
-
-                    CardLoadResponse testLoad = _cardLoader.Load(new CardLoadRequest
-                    {
-                        IdempotencyKey = testRequest.IdempotencyKey,
-                        AmountMinor = testRequest.AmountMinor,
-                        StoragePseudonym = testRequest.StoragePseudonym,
-                        BalanceBeforeMinor = testBefore
-                    });
-                    if (!testLoad.IsLoaded)
-                    {
-                        response.Success = false;
-                        response.Error = new BridgeError
-                        {
-                            Code = _cardLoader.IsAuthorised ? "ERR_TOPUP_REFUSED" : "ERR_ACCESS_DENIED",
-                            Message = testLoad.StatusMessage
-                        };
-                        break;
-                    }
-
-                    long testAfter;
-                    if (!testReader.TryReadBalanceMinor(testRequest.StoragePseudonym, out testAfter, out testError))
-                    {
-                        response.Success = false;
-                        response.Error = new BridgeError { Code = "ERR_READBACK", Message = testError };
-                        break;
-                    }
-
-                    testResult.BalanceAfterMinor = testAfter;
-                    testResult.IsCompleted = testAfter == testBefore + testRequest.AmountMinor;
-                    testResult.Outcome = testResult.IsCompleted ? TopUpOutcome.Completed : TopUpOutcome.NeedsReconciliation;
-                    testResult.StatusMessage = testResult.IsCompleted
-                        ? "Bakiye tam beklenen kadar arttı. Terminal kimliği ve tutar birimi doğru."
-                        : "Bakiye beklenenden farklı: beklenen " + (testBefore + testRequest.AmountMinor) +
-                          ", okunan " + testAfter + " kuruş.";
-                    response.Success = testResult.IsCompleted;
-                    response.PayloadJson = JsonConvert.SerializeObject(testResult);
-                    if (!testResult.IsCompleted)
-                    {
-                        response.Error = new BridgeError { Code = "ERR_TOPUP_MISMATCH", Message = testResult.StatusMessage };
-                    }
-                    break;
-
+                // "TopupTest" used to live here: it wrote value to a card while
+                // deliberately skipping the payment terminal, to answer "are the terminal
+                // identity and the amount unit right for this kiosk?" before a POS
+                // existed. It answered that on 2026-08-10 and the values are recorded, so
+                // the question is settled and the path is now removed rather than left
+                // reachable. What remains of it would be a pipe command that loads money
+                // onto a card and charges nobody - and the project is paused until a POS
+                // arrives, so nothing is watching it.
                 case "AutoTopup":
                 case "TicketCharge":
+                case "TopupTest":
                 case "MfrWriteBlock":
                     response.Success = false;
                     response.Error = new BridgeError
